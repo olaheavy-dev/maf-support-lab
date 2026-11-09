@@ -54,7 +54,7 @@ def render_ticket(ticket: dict, sources: dict, mapping: dict, checked_on: str) -
         "- [ ] Include sanitized traces/screenshots where relevant; otherwise state why they are unnecessary.",
         "- [ ] Answer the interview questions in my own words and record one tradeoff or remaining question.",
         "", "Capabilities produced when accepted: " + ", ".join(code(c) for c in ticket["provides_capabilities"]) + ".",
-        "", "Coaching mode: I attempt the task first; the assistant supplies hints, debugging help, or review unless I explicitly request implementation.",
+        "", "Collaboration mode: the assistant implements this ticket and opens a PR with a brief (key facts, what to note, what to review). I review the change, explain it in my own words, merge, and close the ticket.",
         "", "Generated from docs/learning/backlog.json and docs/sources.json. Change those sources and rerender; preserve actual learning progress when synchronizing the GitHub issue.",
     ]
     return "\n".join(lines) + "\n"

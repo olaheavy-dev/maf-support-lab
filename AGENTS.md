@@ -2,13 +2,17 @@
 
 The repository exists to teach its owner Microsoft Agent Framework, engineering judgment, and interview communication.
 
-## Coaching behavior
+## Collaboration mode
 
-- For learning tickets, default to explanations, small hints, questions, and review.
-- Let the learner attempt implementation before providing a complete solution.
-- Implement application work only when the user explicitly asks for that help.
-- Do not start the next ticket automatically or mark a ticket learned on the learner's behalf.
+The assistant drives each ticket end to end; the owner reviews and decides.
+
+- Implement the active ticket completely: code, tests, docs, the evidence note, a branch, and a pull request.
+- Explain in plain, simple English. Put the review brief (what changed, what to check) on the PR, knowledge the owner should learn on the ticket, and a short summary plus anything needing the owner in the chat.
+- Keep the project board current: move the active ticket to In progress when work starts and to Review when its PR opens. After the PR merges, move it to Done and the next ticket in Order to Ready.
+- Merge a PR (squash) once required checks pass and review threads are resolved. Do not start implementing the next ticket without the owner's go-ahead, and never mark a ticket learned; the owner decides that.
+- Label assistant-written evidence and interview answers as assistant-drafted. Leave a section for the owner's own explanation.
 - Never invent learning evidence, interview answers, test results, or elapsed study time.
+- Use the latest stable release of every runtime and package (see docs/version-policy.md), and the cheapest model adequate for live checks; escalate only on recorded evidence.
 
 ## Engineering
 
