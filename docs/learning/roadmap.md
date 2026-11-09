@@ -4,6 +4,28 @@ Work one ticket at a time in execution order. Ticket IDs are stable identifiers,
 
 The [alignment contract](alignment.md) fixes cross-ticket scope and the [capability map](capabilities.md) identifies prerequisites. Source metadata lives in backlog.json and ../sources.json; generated ticket/epic pages must be rerendered when it changes.
 
+## Learning path at a glance
+
+Each arrow means finish the preceding phase before starting the next. The ticket IDs inside each box follow execution order, including L16's later evaluation position.
+
+```mermaid
+flowchart TD
+    E01["E01: Foundation, contracts, and reproducibility<br/>L01 → L02 → L03 → L04"]
+    E02["E02: Observable .NET support workflow<br/>L05 → L06 → L07 → L08"]
+    E03["E03: Conversations, approvals, and streaming<br/>L09 → L10 → L11 → L12"]
+    E04["E04: Safety and reliability<br/>L13 → L14 → L15"]
+    E05["E05: Python implementation and application contract verification<br/>L17 → L18 → L19 → L20 → L21"]
+    E06["E06: One frontend for both implementations<br/>L22 → L23 → L24"]
+    E08["E08: Post-build Microsoft evaluation and reporting<br/>L29 → L16 → L30 → L31 → L32 → L33"]
+    E09["E09: Markdown documentation and portable Gatsby HTML<br/>L34 → L35 → L36"]
+    E07["E07: Engineering evidence and interview readiness<br/>L25 → L26 → L27 → L28"]
+    E01 --> E02 --> E03 --> E04 --> E05 --> E06 --> E08 --> E09 --> E07
+```
+
+The table below is the text alternative and includes the exact prerequisites. Formal evaluations start after L24; Gatsby documentation starts after L33. Final portfolio work refreshes the static documentation after the fault and security reviews.
+
+## Ticket execution order
+
 | Order | Ticket ID | Epic | Learning ticket | Stack | Depends on |
 | --- | --- | --- | --- | --- | --- |
 | 1 | L01 | E01 | [Audit Chapter 7 and record a verified version baseline](tickets/L01.md) | shared | None |

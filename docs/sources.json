@@ -452,6 +452,27 @@
       "kind": "official-doc",
       "checked_on": "2026-11-09",
       "note": "Cancellation is a request that work must observe; it does not roll back an already committed operation."
+    },
+    "ms-running": {
+      "title": "Agent streaming and non-streaming execution (C# and Python)",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/concepts/agents/running-agents",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Contains both C# RunStreamingAsync and Python run(stream=True), including Python stream cleanup. Use the matching language section and verify against the selected release."
+    },
+    "ms-workflow-events": {
+      "title": "Workflow streaming, lifecycle, and custom events (C# and Python)",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/concepts/workflows/events",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Use the matching SDK section. Framework events must be mapped to the project HTTP contract; a framework output event does not establish business-operation completion."
+    },
+    "py-async-cancellation": {
+      "title": "Python asyncio task cancellation and cleanup",
+      "url": "https://docs.python.org/3/library/asyncio-task.html#task-cancellation",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Official Python language/runtime guidance. Select the Python version established in L01/L17; cancellation is cooperative and does not roll back committed operations."
     }
   }
 }

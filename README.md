@@ -9,7 +9,7 @@ Repository governance and the learning roadmap are prepared. Application impleme
 ## Start here
 
 1. Read [the learning workflow](docs/learning/workflow.md).
-2. Open [the ordered roadmap](docs/learning/roadmap.md) and pick the first uncompleted, unblocked ticket.
+2. Open [the roadmap diagram](docs/learning/roadmap.md#learning-path-at-a-glance) and [ticket execution order](docs/learning/roadmap.md#ticket-execution-order), then pick the first uncompleted, unblocked ticket.
 3. Read its pinned course files and official documentation before implementing.
 4. Work on one ticket and one pull request at a time.
 5. Demonstrate the result and explain the interview questions before moving on.
