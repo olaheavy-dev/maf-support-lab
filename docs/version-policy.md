@@ -10,6 +10,8 @@ Planning snapshot checked 2026-11-09:
 | Python MAF/core | 1.25.0 | Released, Python 3.11+ |
 | Python DevUI | 1.0.0b261106 | Beta |
 
+Selection rule: use the latest stable release of every runtime, framework, and package. Use a prerelease only when no stable release of that component exists, and record the reason in the version-baseline decision. The current selection is in [0001-version-baseline](decisions/0001-version-baseline.md).
+
 These are observed release versions, not a restored-and-tested application dependency set. L01 rechecks releases and selects runtimes; L03/L04 prove compatible restores/builds and commit locks. Provider integrations have independent versions. Do not assign the core version to every package.
 
 Use official guidance for the design, release notes for migrations, and source/samples at the selected release tag to resolve API disagreements. Prove assumptions with the smallest relevant compile/import/integration check.
