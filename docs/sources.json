@@ -354,6 +354,97 @@
       "kind": "official-doc",
       "checked_on": "2026-11-09",
       "note": "Select the supported ecosystem for the manifest/lock format actually introduced."
+    },
+    "ms-evaluation": {
+      "title": "MAF agent and workflow evaluation",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/agents/evaluation",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "ms-eval-libraries": {
+      "title": "Microsoft.Extensions.AI.Evaluation package families",
+      "url": "https://learn.microsoft.com/en-us/dotnet/ai/evaluation/libraries",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "ms-eval-reporting": {
+      "title": "Microsoft evaluation caching and reporting tutorial",
+      "url": "https://learn.microsoft.com/en-us/dotnet/ai/evaluation/evaluate-with-reporting",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "net-eval-custom": {
+      "title": "Release-tagged .NET custom local evaluation sample",
+      "url": "https://github.com/microsoft/agent-framework/blob/dotnet-1.28.0/dotnet/samples/02-agents/Evaluation/Evaluation_CustomEvals/Program.cs",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "net-eval-simple": {
+      "title": "Release-tagged .NET evaluator orchestration sample",
+      "url": "https://github.com/microsoft/agent-framework/blob/dotnet-1.28.0/dotnet/samples/02-agents/Evaluation/Evaluation_SimpleEval/Program.cs",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "py-eval-source": {
+      "title": "Released Python native evaluation APIs",
+      "url": "https://github.com/microsoft/agent-framework/blob/python-1.25.0/python/packages/core/agent_framework/_evaluation.py",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "gatsby-filesystem": {
+      "title": "Gatsby filesystem sourcing",
+      "url": "https://www.gatsbyjs.com/docs/how-to/sourcing-data/sourcing-from-the-filesystem/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "gatsby-markdown": {
+      "title": "Gatsby Markdown-to-HTML pages",
+      "url": "https://www.gatsbyjs.com/docs/how-to/routing/adding-markdown-pages/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "gatsby-cli": {
+      "title": "Gatsby build and serve commands",
+      "url": "https://www.gatsbyjs.com/docs/reference/gatsby-cli/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "gatsby-prefix": {
+      "title": "Gatsby path-prefix builds and static links",
+      "url": "https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/path-prefix/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "ms-markdown": {
+      "title": "Microsoft Learn Markdown reference",
+      "url": "https://learn.microsoft.com/en-us/contribute/content/markdown-reference",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "ms-gatsby": {
+      "title": "Microsoft guide to Gatsby static output/hosting",
+      "url": "https://learn.microsoft.com/en-us/azure/static-web-apps/publish-gatsby",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "ms-static-hosting": {
+      "title": "Microsoft static website hosting concepts",
+      "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-static-website",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
     }
   }
 }

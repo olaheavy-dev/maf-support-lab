@@ -30,7 +30,7 @@ class LearningValidationTests(unittest.TestCase):
 
     def test_current_plan_is_valid(self) -> None:
         epics, tickets, _ = validate(self.root)
-        self.assertEqual((epics, tickets), (7, 28))
+        self.assertEqual((epics, tickets), (9, 36))
 
     def test_future_authorization_dependency_is_rejected(self) -> None:
         self.edit_json("docs/learning/backlog.json",
@@ -40,7 +40,7 @@ class LearningValidationTests(unittest.TestCase):
 
     def test_duplicate_capability_owner_is_rejected(self) -> None:
         self.edit_json("docs/learning/backlog.json",
-            lambda b: b["tickets"][16]["provides_capabilities"].append("apphost"))
+            lambda b: next(t for t in b["tickets"] if t["id"] == "L17")["provides_capabilities"].append("apphost"))
         with self.assertRaisesRegex(SystemExit, "Capability has multiple owners: L17"):
             validate(self.root)
 
@@ -66,6 +66,38 @@ class LearningValidationTests(unittest.TestCase):
         target = self.root / "docs/learning/epics/E02.md"
         target.write_text(target.read_text().replace("read-only", "mutating"))
         with self.assertRaisesRegex(SystemExit, "Generated document is stale: docs/learning/epics/E02.md"):
+            validate(self.root)
+
+    def test_existing_ticket_ids_survive_reordering(self) -> None:
+        backlog = json.loads((self.root / "docs/learning/backlog.json").read_text())
+        moved = next(t for t in backlog["tickets"] if t["id"] == "L16")
+        self.assertNotEqual(moved["order"], 16)
+        validate(self.root)
+
+    def test_evaluation_cannot_move_before_application_build_completion(self) -> None:
+        def move_early(backlog):
+            tickets = backlog["tickets"]
+            moved = next(t for t in tickets if t["id"] == "L29")
+            tickets.remove(moved)
+            tickets.insert(next(i for i,t in enumerate(tickets) if t["id"] == "L24"), moved)
+            for i,t in enumerate(tickets,1):
+                t["order"] = i
+                t["depends_on"] = [] if i == 1 else [tickets[i-2]["id"]]
+        self.edit_json("docs/learning/backlog.json", move_early)
+        with self.assertRaisesRegex(SystemExit, "Post-build phase before application completion: L29"):
+            validate(self.root)
+
+    def test_documentation_cannot_move_before_application_build_completion(self) -> None:
+        def move_early(backlog):
+            tickets = backlog["tickets"]
+            moved = next(t for t in tickets if t["id"] == "L34")
+            tickets.remove(moved)
+            tickets.insert(next(i for i,t in enumerate(tickets) if t["id"] == "L24"), moved)
+            for i,t in enumerate(tickets,1):
+                t["order"] = i
+                t["depends_on"] = [] if i == 1 else [tickets[i-2]["id"]]
+        self.edit_json("docs/learning/backlog.json", move_early)
+        with self.assertRaisesRegex(SystemExit, "Post-build phase before application completion: L34"):
             validate(self.root)
 
 

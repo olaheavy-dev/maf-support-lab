@@ -6,7 +6,7 @@ This document fixes scope and ownership between learning tickets. It is a planni
 
 L02 owns version-1 HTTP, conversation, operation-status, approval, error, and stream contracts. Both backend adapters implement that specification while their native SDK internals remain idiomatic. L07 and L18 may not weaken schema validation to accommodate model output.
 
-L22 verifies browser compatibility with the established specification. A discovered breaking change must update schemas, both adapters, and shared evaluations before UI work continues. L21 business/security failures cannot be waived as SDK differences.
+L22 verifies browser compatibility with the established specification. A discovered breaking change must update schemas, both adapters, and their feature/contract tests before UI work continues. L21 verifies the built application contracts; the later E08 evaluation datasets adopt that specification. Business/security failures cannot be waived as SDK differences.
 
 Both backends use the same synthetic fixture definitions and eligibility rules. Mutable state belongs to one backend and one evaluation run; resetting one must not affect the other.
 
@@ -46,7 +46,7 @@ L15 inventories provider, HTTP, and application retries and bounds total attempt
 
 The repository-checks job remains the stable required CI aggregate. Existing language checks must feed it as introduced. Python packaging/test gates join in L17; frontend gates join in L23/L24. No required offline job needs model credentials.
 
-L16 creates the endpoint-configurable shared evaluation harness and records the .NET baseline. L21 runs the same behavioral/security cases against both backends. L25 expands fault/concurrency/load evidence rather than introducing a second incompatible harness.
+L21 verifies the built backend projects using their existing integration/contract checks. L24 completes both APIs and the shared frontend and produces application_projects_built. Only then does E08 begin: L29 defines evaluation projects/datasets, L16 implements the shared deterministic runner for both targets, L30/L31 demonstrate native Microsoft .NET/Python evaluators, L32 adds budgeted quality scoring, and L33 generates reports and separate CI lanes. L25 later expands that existing runner for fault/load evidence.
 
 ## Python parity ownership
 
@@ -56,7 +56,8 @@ L16 creates the endpoint-configurable shared evaluation harness and records the 
 | Read-only agents, scoped tools, validated routing, DevUI | L05/L07/L08 | L18 |
 | Conversation isolation, approval, eligibility, durable operations, ownership matrix | L09-L11/L13 | L19 |
 | Streaming/cancellation, telemetry, boundary-validation fixtures, retry/step/output budgets | L06/L12/L14/L15 | L20 |
-| Common regression/evaluation contract | L16 | L21 for both targets |
+| Application feature/contract integration | L04 onward | L17 onward, verified together in L21 |
+| Post-build formal evaluation | L29/L16/L30 | L29/L16/L31; shared scoring/reporting in L32/L33 |
 
 L19 and L20 are porting slices across already explored concepts. Work their listed implementation steps separately; if a slice is too large, split it into linked sub-tasks before implementation while preserving the parent acceptance criteria. Do not silently omit a behavior to fit a time estimate.
 
@@ -71,3 +72,15 @@ L02 starts the threat model, L13/L14 extend it, and L26 reviews it. L26 is a fin
 L28's independent change is one read-only return-eligibility query in both implementations using the existing authoritative policy. It adds evaluation coverage without changing refund authorization or introducing another write.
 
 Stretch exercises are optional and may not introduce a prerequisite from a future ticket. Learner explanations and evidence remain the learner's work.
+
+## Post-build evaluation and Gatsby documentation
+
+Execution order is explicit in the roadmap and GitHub Project Order field. Stable IDs and issue numbers are preserved: L16 now runs after L29 and application completion, not before Python. New prerequisites are checked by capabilities and native blocking relationships.
+
+Unit/integration tests and learner notes remain alongside feature work. Formal evaluation projects, datasets, quality judges, reports, and the documentation-site project begin after both APIs and the frontend are built.
+
+Evaluation dependencies belong under evaluations/dotnet/Support.Evaluations and evaluations/python, outside production API manifests. The same captured evidence/dataset/result specification feeds both targets. Local evaluators can avoid judge calls while response generation can still call a model; fake or recorded responses keep the required lane credential-free. Quality scores never replace ownership/approval/idempotency assertions. Reporting adapters for native/custom results must be verified against actual supported APIs.
+
+E09 is explicitly Gatsby. L34 authors selected plain .md pages under docs/ and their publication manifest. L35 uses gatsby-source-filesystem and gatsby-transformer-remark to generate routes and static HTML in docs-site/public. There is no Docusaurus or MDX-only authoring requirement. The whole output folder includes HTML, CSS, JavaScript, and image assets; Node/Gatsby is a build-time requirement, not a hosting requirement.
+
+L36 copies the complete output elsewhere, checks direct/deep links through an ordinary static HTTP server, verifies root and configured-subpath builds, and packages a downloadable artifact with copy/serve instructions. This does not promise arbitrary file:// support or a single self-contained HTML file, and requires no deployment or hosting account. Documentation builds do not run agents, judges, or evaluations. L27 refreshes that artifact after final operational/security changes.

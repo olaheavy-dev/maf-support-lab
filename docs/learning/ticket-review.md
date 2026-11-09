@@ -31,3 +31,7 @@ Reviewed all seven epics and all 28 learning tickets against their predecessor s
 ## Remaining learner decisions
 
 L01 selects a compatible runtime/provider/model/package baseline. L02 writes the concrete version-1 schemas/routes and authoritative fixture policies. L11 selects a suitable supported local durable store. L23 selects the frontend stack. These are intentional learning decisions, with ownership and acceptance boundaries now explicit.
+
+## Subsequent phase expansion
+
+This report records the earlier 28-ticket alignment review. The current 36-ticket plan, including reordered formal evaluation and Gatsby documentation phases, is described in post-build-plan.md and the generated roadmap.

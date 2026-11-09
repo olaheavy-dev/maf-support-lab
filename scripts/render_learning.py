@@ -81,13 +81,13 @@ def generated_documents(backlog: dict, registry: dict, mapping: dict) -> dict[st
         for e in backlog["epics"]
     })
     lines = ["# Ordered learning roadmap", "",
-        "Work one ticket at a time. Stable ticket IDs and issue links are retained. Only the first unblocked ticket is Ready.",
+        "Work one ticket at a time in execution order. Ticket IDs are stable identifiers, not execution positions; follow the Order column and blocking links. Only the first unblocked ticket is Ready.",
         "", "The [alignment contract](alignment.md) fixes cross-ticket scope and the [capability map](capabilities.md) identifies prerequisites. Source metadata lives in backlog.json and ../sources.json; generated ticket/epic pages must be rerendered when it changes.",
-        "", "| Order | Epic | Learning ticket | Stack | Depends on |",
-        "| --- | --- | --- | --- | --- |"]
+        "", "| Order | Ticket ID | Epic | Learning ticket | Stack | Depends on |",
+        "| --- | --- | --- | --- | --- | --- |"]
     for ticket in tickets:
         deps = ", ".join(ticket["depends_on"]) or "None"
-        lines.append(f"| {ticket['id']} | {ticket['epic']} | [{ticket['title']}](tickets/{ticket['id']}.md) | {ticket['stack']} | {deps} |")
+        lines.append(f"| {ticket['order']} | {ticket['id']} | {ticket['epic']} | [{ticket['title']}](tickets/{ticket['id']}.md) | {ticket['stack']} | {deps} |")
     lines += ["", "## Epics", ""]
     for epic in backlog["epics"]:
         lines += [f"### [{epic['id']}: {epic['title']}](epics/{epic['id']}.md)", "",
