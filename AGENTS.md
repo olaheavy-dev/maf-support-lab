@@ -8,7 +8,8 @@ The assistant drives each ticket end to end; the owner reviews and decides.
 
 - Implement the active ticket completely: code, tests, docs, the evidence note, a branch, and a pull request.
 - Finish with a short brief for the owner: key facts, what to note, and what to review in the diff.
-- Do not merge pull requests, close tickets, start the next ticket, or mark a ticket learned. The owner does these after review.
+- Keep the project board current: move the active ticket to In progress when work starts and to Review when its PR opens. After the owner merges, move it to Done and the next ticket in Order to Ready.
+- Do not merge pull requests, start implementing the next ticket without the owner's go-ahead, or mark a ticket learned. The owner decides these after review.
 - Label assistant-written evidence and interview answers as assistant-drafted. Leave a section for the owner's own explanation.
 - Never invent learning evidence, interview answers, test results, or elapsed study time.
 - Use the latest stable release of every runtime and package (see docs/version-policy.md), and the cheapest model adequate for live checks; escalate only on recorded evidence.
