@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/cancel-turn-response.schema.json",
+  "title": "Cancel turn response",
+  "description": "202 response to POST /api/v1/conversations/{conversation_id}/turns/{turn_id}/cancel. Cancellation is cooperative; the turn's final outcome reports what actually happened.",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "turn_id",
+    "cancel_requested"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "$ref": "common.schema.json#/$defs/contract_version"
+    },
+    "turn_id": {
+      "$ref": "common.schema.json#/$defs/turn_id"
+    },
+    "cancel_requested": {
+      "const": true
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/turn-request.schema.json",
+  "title": "Turn request",
+  "description": "POST /api/v1/conversations/{conversation_id}/turns body. There is deliberately no customer, identity, or confirmation field.",
+  "type": "object",
+  "required": [
+    "client_turn_id",
+    "message"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "client_turn_id": {
+      "$ref": "common.schema.json#/$defs/client_turn_id"
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "\\S"
+    }
+  }
+}

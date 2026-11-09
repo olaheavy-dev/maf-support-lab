@@ -1,0 +1,96 @@
+[
+  {
+    "contract_version": "1.0",
+    "type": "turn.started",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 1,
+    "data": {
+      "client_turn_id": "3f2c8a1e-5b7d-4c9a-8e2f-1a6b9c0d4e71"
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "turn.progress",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 2,
+    "data": {
+      "stage": "triage"
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "turn.progress",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 3,
+    "data": {
+      "stage": "routed",
+      "route": {
+        "status": "routed",
+        "target": "orders"
+      }
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "turn.progress",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 4,
+    "data": {
+      "stage": "tool_call",
+      "tool": "get_order_status"
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "reply.delta",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 5,
+    "data": {
+      "text": "Order ORD-1002 shipped on October 30 "
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "reply.delta",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 6,
+    "data": {
+      "text": "and is on its way."
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "turn.final",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 7,
+    "data": {
+      "result": {
+        "contract_version": "1.0",
+        "conversation_id": "conv_7Hq2Lm9Xa1",
+        "turn_id": "turn_A1b2C3d4E5",
+        "client_turn_id": "3f2c8a1e-5b7d-4c9a-8e2f-1a6b9c0d4e71",
+        "state": "finished",
+        "outcome": "completed",
+        "route": {
+          "status": "routed",
+          "target": "orders"
+        },
+        "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "created_at": "2026-11-01T12:00:00Z",
+        "finished_at": "2026-11-01T12:00:03Z",
+        "reply": {
+          "kind": "answer",
+          "text": "Order ORD-1002 shipped on October 30 and is on its way."
+        },
+        "operations": []
+      }
+    }
+  }
+]

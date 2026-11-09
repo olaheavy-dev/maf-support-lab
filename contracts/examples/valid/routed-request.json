@@ -1,0 +1,11 @@
+{
+  "original_message": "Where is my order ORD-1002?",
+  "triage": {
+    "target": "orders",
+    "requested_action": "order_status",
+    "order_id": "ORD-1002",
+    "summary": "Customer asks where order ORD-1002 is.",
+    "customer_sentiment": "neutral",
+    "confidence": 0.92
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "target": "shipping",
+  "requested_action": "order_status",
+  "order_id": "ORD-1002",
+  "summary": "Customer asks where order ORD-1002 is.",
+  "customer_sentiment": "neutral",
+  "confidence": 0.92
+}

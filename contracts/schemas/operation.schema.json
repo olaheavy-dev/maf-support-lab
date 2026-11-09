@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/operation.schema.json",
+  "title": "Business operation status",
+  "description": "Authoritative state of a simulated write (refund, cancellation, ticket creation). Retrievable after a dropped stream or restart.",
+  "type": "object",
+  "required": ["contract_version", "operation_id", "conversation_id", "kind", "arguments", "status", "created_at", "updated_at"],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "$ref": "common.schema.json#/$defs/contract_version" },
+    "operation_id": { "$ref": "common.schema.json#/$defs/operation_id" },
+    "conversation_id": { "$ref": "common.schema.json#/$defs/conversation_id" },
+    "approval_id": { "$ref": "common.schema.json#/$defs/approval_id" },
+    "kind": { "$ref": "common.schema.json#/$defs/operation_kind" },
+    "arguments": { "type": "object" },
+    "status": { "$ref": "common.schema.json#/$defs/operation_status" },
+    "created_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "updated_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "expires_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "result": { "type": "object" },
+    "failure": {
+      "type": "object",
+      "required": ["code", "detail"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "enum": ["not_eligible", "not_found", "timeout", "internal_error"] },
+        "detail": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    }
+  },
+  "allOf": [
+    { "$ref": "common.schema.json#/$defs/kind_matches_arguments" },
+    {
+      "if": { "properties": { "status": { "const": "awaiting_approval" } } },
+      "then": { "required": ["approval_id", "expires_at"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "committed" } } },
+      "then": { "required": ["result"] },
+      "else": { "not": { "required": ["result"] } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "failed" } } },
+      "then": { "required": ["failure"] },
+      "else": { "not": { "required": ["failure"] } }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "cancel_order" }, "status": { "const": "committed" } } },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["order_id", "order_status"],
+            "additionalProperties": false,
+            "properties": {
+              "order_id": { "$ref": "common.schema.json#/$defs/order_id" },
+              "order_status": { "const": "cancelled" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "refund_order" }, "status": { "const": "committed" } } },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["refund_id", "order_id", "amount"],
+            "additionalProperties": false,
+            "properties": {
+              "refund_id": { "$ref": "common.schema.json#/$defs/refund_id" },
+              "order_id": { "$ref": "common.schema.json#/$defs/order_id" },
+              "amount": { "$ref": "common.schema.json#/$defs/money" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "create_ticket" }, "status": { "const": "committed" } } },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "object",
+            "required": ["ticket_id"],
+            "additionalProperties": false,
+            "properties": { "ticket_id": { "$ref": "common.schema.json#/$defs/ticket_id" } }
+          }
+        }
+      }
+    }
+  ]
+}

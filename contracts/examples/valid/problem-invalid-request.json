@@ -1,0 +1,15 @@
+{
+  "contract_version": "1.0",
+  "type": "https://contracts.maf-support-lab.example/v1/errors/invalid_request",
+  "title": "Invalid request",
+  "status": 400,
+  "code": "invalid_request",
+  "detail": "The request body does not match the contract.",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "errors": [
+    {
+      "pointer": "/message",
+      "message": "must contain a non-space character"
+    }
+  ]
+}

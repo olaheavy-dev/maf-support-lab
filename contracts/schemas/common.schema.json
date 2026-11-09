@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/common.schema.json",
+  "title": "Shared definitions for support contract version 1",
+  "$defs": {
+    "contract_version": {
+      "description": "Major.minor contract revision. Version-1 payloads always use major 1.",
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "timestamp": {
+      "description": "RFC 3339 timestamp in UTC with a Z suffix.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+    },
+    "conversation_id": { "type": "string", "pattern": "^conv_[A-Za-z0-9]{8,64}$" },
+    "turn_id": { "type": "string", "pattern": "^turn_[A-Za-z0-9]{8,64}$" },
+    "operation_id": { "type": "string", "pattern": "^op_[A-Za-z0-9]{8,64}$" },
+    "approval_id": { "type": "string", "pattern": "^appr_[A-Za-z0-9]{8,64}$" },
+    "client_turn_id": {
+      "description": "Client-generated UUID that makes turn submission idempotent.",
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "trace_id": {
+      "description": "W3C trace id used as a sanitized diagnostic reference.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "customer_id": { "type": "string", "pattern": "^CUST-[0-9]{4}$" },
+    "order_id": { "type": "string", "pattern": "^ORD-[0-9]{4}$" },
+    "invoice_id": { "type": "string", "pattern": "^INV-[0-9]{4}$" },
+    "article_id": { "type": "string", "pattern": "^KB-[0-9]{3}$" },
+    "ticket_id": { "type": "string", "pattern": "^TKT-[0-9]{4,8}$" },
+    "refund_id": { "type": "string", "pattern": "^RFD-[0-9]{4,8}$" },
+    "backend": {
+      "description": "Server-controlled backend alias. Never a URL.",
+      "enum": ["dotnet", "python"]
+    },
+    "money": {
+      "type": "object",
+      "required": ["amount_minor", "currency"],
+      "additionalProperties": false,
+      "properties": {
+        "amount_minor": { "description": "Amount in minor units (cents).", "type": "integer", "minimum": 0 },
+        "currency": { "enum": ["USD"] }
+      }
+    },
+    "route_target": { "enum": ["orders", "billing", "technical"] },
+    "route": {
+      "description": "Validated routing result. Model confidence is never part of authorization.",
+      "type": "object",
+      "required": ["status", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["routed", "unrouted"] },
+        "target": { "oneOf": [{ "$ref": "#/$defs/route_target" }, { "type": "null" }] },
+        "unrouted_reason": { "enum": ["invalid_model_output", "ambiguous_request"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "routed" } } },
+          "then": {
+            "properties": { "target": { "$ref": "#/$defs/route_target" } },
+            "not": { "required": ["unrouted_reason"] }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "unrouted" } } },
+          "then": { "properties": { "target": { "type": "null" } }, "required": ["unrouted_reason"] }
+        }
+      ]
+    },
+    "reply": {
+      "type": "object",
+      "required": ["kind", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "What the reply does. not_found covers unknown records and records owned by another customer alike.",
+          "enum": ["answer", "clarification", "not_found", "not_eligible", "escalation_offer", "approval_request", "approval_result", "refusal"]
+        },
+        "text": { "type": "string", "minLength": 1, "maxLength": 8000 }
+      }
+    },
+    "operation_kind": { "enum": ["cancel_order", "refund_order", "create_ticket"] },
+    "operation_status": {
+      "description": "Authoritative business-operation state, independent of any stream or connection.",
+      "enum": ["awaiting_approval", "rejected", "expired", "running", "committed", "failed"]
+    },
+    "cancel_order_arguments": {
+      "type": "object",
+      "required": ["order_id"],
+      "additionalProperties": false,
+      "properties": { "order_id": { "$ref": "#/$defs/order_id" } }
+    },
+    "refund_order_arguments": {
+      "type": "object",
+      "required": ["order_id", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "order_id": { "$ref": "#/$defs/order_id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "create_ticket_arguments": {
+      "type": "object",
+      "required": ["subject", "description", "priority"],
+      "additionalProperties": false,
+      "properties": {
+        "subject": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "priority": { "enum": ["low", "normal", "high"] },
+        "related_order_id": { "$ref": "#/$defs/order_id" }
+      }
+    },
+    "kind_matches_arguments": {
+      "description": "Binds the arguments shape to the operation kind.",
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "cancel_order" } }, "required": ["kind"] },
+          "then": { "properties": { "arguments": { "$ref": "#/$defs/cancel_order_arguments" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "refund_order" } }, "required": ["kind"] },
+          "then": { "properties": { "arguments": { "$ref": "#/$defs/refund_order_arguments" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "create_ticket" } }, "required": ["kind"] },
+          "then": { "properties": { "arguments": { "$ref": "#/$defs/create_ticket_arguments" } } }
+        }
+      ]
+    },
+    "approval": {
+      "description": "A pending, server-bound approval request. The server binds it to the principal, conversation, operation, kind, and exact arguments.",
+      "type": "object",
+      "required": ["approval_id", "operation_id", "kind", "arguments", "summary", "expires_at"],
+      "additionalProperties": false,
+      "properties": {
+        "approval_id": { "$ref": "#/$defs/approval_id" },
+        "operation_id": { "$ref": "#/$defs/operation_id" },
+        "kind": { "$ref": "#/$defs/operation_kind" },
+        "arguments": { "type": "object" },
+        "summary": { "description": "Human-readable description of the exact action.", "type": "string", "minLength": 1, "maxLength": 500 },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "allOf": [{ "$ref": "#/$defs/kind_matches_arguments" }]
+    },
+    "operation_summary": {
+      "type": "object",
+      "required": ["operation_id", "kind", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": { "$ref": "#/$defs/operation_id" },
+        "kind": { "$ref": "#/$defs/operation_kind" },
+        "status": { "$ref": "#/$defs/operation_status" }
+      }
+    },
+    "turn_error": {
+      "description": "Why a turn finished with outcome failed. This is a turn outcome, not an HTTP error.",
+      "type": "object",
+      "required": ["code", "detail"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "enum": ["model_unavailable", "tool_unavailable", "invalid_model_output", "rate_limited", "timeout", "budget_exhausted", "internal_error"] },
+        "detail": { "description": "Safe, user-presentable text. No secrets, stack traces, or raw provider payloads.", "type": "string", "minLength": 1, "maxLength": 500 },
+        "retry_after_seconds": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

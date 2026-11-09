@@ -1,0 +1,17 @@
+{
+  "contract_version": "1.0",
+  "operation_id": "op_Q9w8E7r6T5",
+  "conversation_id": "conv_7Hq2Lm9Xa1",
+  "approval_id": "appr_Z1x2C3v4B5",
+  "kind": "cancel_order",
+  "arguments": {
+    "order_id": "ORD-1003"
+  },
+  "created_at": "2026-11-01T12:00:03Z",
+  "status": "committed",
+  "updated_at": "2026-11-01T12:01:10Z",
+  "result": {
+    "order_id": "ORD-1003",
+    "order_status": "cancelled"
+  }
+}

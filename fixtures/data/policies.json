@@ -1,0 +1,33 @@
+{
+  "fixture_version": "1.0",
+  "reference_time": "2026-11-01T12:00:00Z",
+  "cancellation": {
+    "allowed_statuses": [
+      "processing"
+    ]
+  },
+  "refund": {
+    "required_status": "delivered",
+    "window_days": 30,
+    "window_measured_from": "delivered_at",
+    "eligible_refund_statuses": [
+      "none"
+    ],
+    "amount": "order_total"
+  },
+  "support_ticket": {
+    "priorities": [
+      "low",
+      "normal",
+      "high"
+    ]
+  },
+  "approval": {
+    "required_for": [
+      "cancel_order",
+      "refund_order",
+      "create_ticket"
+    ],
+    "expires_after_minutes": 15
+  }
+}

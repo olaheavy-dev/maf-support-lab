@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/routed-request.schema.json",
+  "title": "Routed request (internal)",
+  "description": "Input passed from triage to a specialist executor: the customer's original text kept beside the validated derived fields. The principal is not part of this payload; it travels only in trusted server-side context.",
+  "type": "object",
+  "required": ["original_message", "triage"],
+  "additionalProperties": false,
+  "properties": {
+    "original_message": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "triage": { "$ref": "triage-decision.schema.json" }
+  }
+}

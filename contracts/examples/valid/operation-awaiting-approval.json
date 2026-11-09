@@ -1,0 +1,15 @@
+{
+  "contract_version": "1.0",
+  "operation_id": "op_Q9w8E7r6T5",
+  "conversation_id": "conv_7Hq2Lm9Xa1",
+  "approval_id": "appr_Z1x2C3v4B5",
+  "kind": "refund_order",
+  "arguments": {
+    "order_id": "ORD-1001",
+    "reason": "The headphones crackle."
+  },
+  "created_at": "2026-11-01T12:00:03Z",
+  "status": "awaiting_approval",
+  "updated_at": "2026-11-01T12:00:03Z",
+  "expires_at": "2026-11-01T12:15:03Z"
+}

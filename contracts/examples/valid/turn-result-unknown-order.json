@@ -1,0 +1,19 @@
+{
+  "contract_version": "1.0",
+  "conversation_id": "conv_7Hq2Lm9Xa1",
+  "turn_id": "turn_A1b2C3d4E5",
+  "client_turn_id": "3f2c8a1e-5b7d-4c9a-8e2f-1a6b9c0d4e71",
+  "state": "finished",
+  "outcome": "completed",
+  "route": {
+    "status": "routed",
+    "target": "orders"
+  },
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "created_at": "2026-11-01T12:00:00Z",
+  "finished_at": "2026-11-01T12:00:03Z",
+  "reply": {
+    "kind": "not_found",
+    "text": "I couldn't find order ORD-9999 on your account. Please check the order id."
+  }
+}

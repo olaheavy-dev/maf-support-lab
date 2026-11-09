@@ -1,0 +1,9 @@
+{
+  "contract_version": "1.0",
+  "type": "https://contracts.maf-support-lab.example/v1/errors/turn_in_progress",
+  "title": "Turn in progress",
+  "status": 409,
+  "code": "turn_in_progress",
+  "detail": "Another turn is still running in this conversation.",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+}

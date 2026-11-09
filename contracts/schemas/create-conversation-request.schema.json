@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/create-conversation-request.schema.json",
+  "title": "Create conversation request",
+  "description": "POST /api/v1/conversations body. Empty by design: the owner is the server-side principal and the backend is fixed by the server alias.",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 0
+}

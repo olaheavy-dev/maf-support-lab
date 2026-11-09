@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/triage-decision.schema.json",
+  "title": "Triage decision (internal)",
+  "description": "Structured output produced by the triage model. Both backends validate model output against this full schema before routing. Passing validation means the shape is valid, not that the content is correct or authorized. Confidence is model-generated and uncalibrated; it is never used for authorization.",
+  "type": "object",
+  "required": ["target", "requested_action", "order_id", "summary", "customer_sentiment", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "target": { "$ref": "common.schema.json#/$defs/route_target" },
+    "requested_action": {
+      "enum": ["order_status", "cancel_order", "refund_order", "invoice", "payment_history", "troubleshooting", "create_ticket", "other"]
+    },
+    "order_id": {
+      "description": "Order id mentioned by the customer, or null. A claim to verify, not an authorized reference.",
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/order_id" }, { "type": "null" }]
+    },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "customer_sentiment": { "enum": ["frustrated", "neutral", "positive"] },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}
