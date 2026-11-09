@@ -1,0 +1,291 @@
+{
+  "repository": "https://github.com/sunkanmi-olawuwo/maf-support-lab",
+  "project": {
+    "closed": false,
+    "fields": {
+      "totalCount": 13
+    },
+    "id": "PVT_kwHOBS6C3c4Bq5Ct",
+    "items": {
+      "totalCount": 0
+    },
+    "number": 2,
+    "owner": {
+      "login": "sunkanmi-olawuwo",
+      "type": "User"
+    },
+    "public": false,
+    "readme": "",
+    "shortDescription": "",
+    "title": "MAF Support Lab - Learning Roadmap",
+    "url": "https://github.com/users/sunkanmi-olawuwo/projects/2"
+  },
+  "issues": {
+    "E01": {
+      "number": 1,
+      "id": 6293248189,
+      "node_id": "I_kwDOVoiBds8AAAABdxtYvQ",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/1"
+    },
+    "E02": {
+      "number": 2,
+      "id": 6293248410,
+      "node_id": "I_kwDOVoiBds8AAAABdxtZmg",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/2"
+    },
+    "E03": {
+      "number": 3,
+      "id": 6293248583,
+      "node_id": "I_kwDOVoiBds8AAAABdxtaRw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/3"
+    },
+    "E04": {
+      "number": 4,
+      "id": 6293248750,
+      "node_id": "I_kwDOVoiBds8AAAABdxta7g",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/4"
+    },
+    "E05": {
+      "number": 5,
+      "id": 6293248912,
+      "node_id": "I_kwDOVoiBds8AAAABdxtbkA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/5"
+    },
+    "E06": {
+      "number": 6,
+      "id": 6293249183,
+      "node_id": "I_kwDOVoiBds8AAAABdxtcnw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/6"
+    },
+    "E07": {
+      "number": 7,
+      "id": 6293249395,
+      "node_id": "I_kwDOVoiBds8AAAABdxtdcw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/7"
+    },
+    "L01": {
+      "number": 8,
+      "id": 6293249755,
+      "node_id": "I_kwDOVoiBds8AAAABdxte2w",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/8",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L02": {
+      "number": 9,
+      "id": 6293250404,
+      "node_id": "I_kwDOVoiBds8AAAABdxthZA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/9",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L03": {
+      "number": 10,
+      "id": 6293251390,
+      "node_id": "I_kwDOVoiBds8AAAABdxtlPg",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/10",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L04": {
+      "number": 11,
+      "id": 6293252195,
+      "node_id": "I_kwDOVoiBds8AAAABdxtoYw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/11",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L05": {
+      "number": 12,
+      "id": 6293253073,
+      "node_id": "I_kwDOVoiBds8AAAABdxtr0Q",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/12",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L06": {
+      "number": 13,
+      "id": 6293253858,
+      "node_id": "I_kwDOVoiBds8AAAABdxtu4g",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/13",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L07": {
+      "number": 14,
+      "id": 6293254660,
+      "node_id": "I_kwDOVoiBds8AAAABdxtyBA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/14",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L08": {
+      "number": 15,
+      "id": 6293255579,
+      "node_id": "I_kwDOVoiBds8AAAABdxt1mw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/15",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L09": {
+      "number": 16,
+      "id": 6293256340,
+      "node_id": "I_kwDOVoiBds8AAAABdxt4lA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/16",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L10": {
+      "number": 17,
+      "id": 6293257269,
+      "node_id": "I_kwDOVoiBds8AAAABdxt8NQ",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/17",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L11": {
+      "number": 18,
+      "id": 6293258228,
+      "node_id": "I_kwDOVoiBds8AAAABdxt_9A",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/18",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L12": {
+      "number": 19,
+      "id": 6293258979,
+      "node_id": "I_kwDOVoiBds8AAAABdxuC4w",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/19",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L13": {
+      "number": 20,
+      "id": 6293260117,
+      "node_id": "I_kwDOVoiBds8AAAABdxuHVQ",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/20",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L14": {
+      "number": 21,
+      "id": 6293261028,
+      "node_id": "I_kwDOVoiBds8AAAABdxuK5A",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/21",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L15": {
+      "number": 22,
+      "id": 6293262046,
+      "node_id": "I_kwDOVoiBds8AAAABdxuO3g",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/22",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L16": {
+      "number": 23,
+      "id": 6293263000,
+      "node_id": "I_kwDOVoiBds8AAAABdxuSmA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/23",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L17": {
+      "number": 24,
+      "id": 6293263861,
+      "node_id": "I_kwDOVoiBds8AAAABdxuV9Q",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/24",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L18": {
+      "number": 25,
+      "id": 6293264874,
+      "node_id": "I_kwDOVoiBds8AAAABdxuZ6g",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/25",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L19": {
+      "number": 26,
+      "id": 6293265833,
+      "node_id": "I_kwDOVoiBds8AAAABdxudqQ",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/26",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L20": {
+      "number": 27,
+      "id": 6293266759,
+      "node_id": "I_kwDOVoiBds8AAAABdxuhRw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/27",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L21": {
+      "number": 28,
+      "id": 6293267746,
+      "node_id": "I_kwDOVoiBds8AAAABdxulIg",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/28",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L22": {
+      "number": 29,
+      "id": 6293268619,
+      "node_id": "I_kwDOVoiBds8AAAABdxuoiw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/29",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L23": {
+      "number": 30,
+      "id": 6293269481,
+      "node_id": "I_kwDOVoiBds8AAAABdxur6Q",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/30",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L24": {
+      "number": 31,
+      "id": 6293270568,
+      "node_id": "I_kwDOVoiBds8AAAABdxuwKA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/31",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L25": {
+      "number": 32,
+      "id": 6293271614,
+      "node_id": "I_kwDOVoiBds8AAAABdxu0Pg",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/32",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L26": {
+      "number": 33,
+      "id": 6293272561,
+      "node_id": "I_kwDOVoiBds8AAAABdxu38Q",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/33",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L27": {
+      "number": 34,
+      "id": 6293273415,
+      "node_id": "I_kwDOVoiBds8AAAABdxu7Rw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/34",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L28": {
+      "number": 35,
+      "id": 6293274379,
+      "node_id": "I_kwDOVoiBds8AAAABdxu_Cw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/35",
+      "parent_linked": true,
+      "dependencies_linked": true
+    }
+  }
+}
