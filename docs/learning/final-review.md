@@ -25,6 +25,8 @@ The review found no remaining planning blockers after this correction. Learner d
 
 ## Review follow-up verification
 
-Repository validation passes for nine epics, 42 learning tickets, and 69 source entries; all 13 regression checks pass. A live publication audit verified all 51 planning issue bodies/titles, native parent/blocking relationship groups, Python epic child order, and all 42 project cards with their execution Order and positions. Existing issue states, assignees, labels, comment counts, and project statuses were preserved against a pre-change snapshot. L01 remains Ready; all later learning tickets remain Backlog.
+Repository validation passes for nine epics, 42 learning tickets, and 69 source entries; all 14 regression checks pass. A live publication audit verified all 51 planning issue bodies/titles, native parent/blocking relationship groups, Python epic child order, and all 42 project cards with their execution Order and positions. Existing issue states, assignees, labels, comment counts, and project statuses were preserved against a pre-change snapshot. L01 remains Ready; all later learning tickets remain Backlog.
 
 These results verify planning metadata and publication coherence. No application work or learner evidence was completed.
+
+The Gatsby feasibility ADR is numbered 0004 in L35. Validation now rejects unnumbered decision-record deliverables (apart from a README index), preventing a record from bypassing ADR ordering. Stable ticket IDs and all execution dependencies remain unchanged.
