@@ -41,3 +41,9 @@ See [sources](docs/sources.json), [the initial audit](docs/course-audit.md), and
 - Preserve source attribution; link to course material rather than copying entire course projects.
 
 See [contribution guidance](CONTRIBUTING.md) and [repository settings](docs/repository-settings.md).
+
+## GitHub learning board
+
+[Project board](https://github.com/users/sunkanmi-olawuwo/projects/2) · [First ticket: L01](https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/8) · [All issues](https://github.com/sunkanmi-olawuwo/maf-support-lab/issues)
+
+The board contains 28 learning tickets; seven parent epics are linked through native sub-issues. L01 is Ready; later tickets are blocked by their predecessor.
