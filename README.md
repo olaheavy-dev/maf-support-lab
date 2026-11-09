@@ -42,6 +42,8 @@ See [sources](docs/sources.json), [the initial audit](docs/course-audit.md), and
 
 See [contribution guidance](CONTRIBUTING.md) and [repository settings](docs/repository-settings.md).
 
+Ticket scope and parity requirements are defined in the [alignment contract](docs/learning/alignment.md). The [ticket review](docs/learning/ticket-review.md) records the corrections and verification limits; the [capability map](docs/learning/capabilities.md) identifies which earlier tasks supply each prerequisite.
+
 ## GitHub learning board
 
 [Project board](https://github.com/users/sunkanmi-olawuwo/projects/2) · [First ticket: L01](https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/8) · [All issues](https://github.com/sunkanmi-olawuwo/maf-support-lab/issues)

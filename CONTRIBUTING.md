@@ -25,10 +25,12 @@ Initial repository-only validation:
 
     python3 scripts/validate_repository.py
 
-The bootstrap check validates the learning metadata, pinned source references, and templates. It does not build applications that do not yet exist. L04 adds real application checks as soon as those projects exist.
+The repository check validates prerequisite capabilities, issue mapping, full generated learning documents, source metadata, and templates; regression checks exercise planning failures found during review. It does not build applications that do not yet exist. L04 adds real application checks as soon as those projects exist.
 
 Offline checks must not need model API credentials. Live-model evaluations are opt-in and publish model/deployment, package versions, usage availability, and evaluation limitations.
 
 ## Source usage
 
 Link to course files at the recorded commit. Mark whether a source teaches the feature or is only a comparison point. Never imply the course implements Aspire, CI, authentication, durable storage, or the planned frontend when it does not.
+
+Planning changes are made in docs/learning/backlog.json and docs/sources.json, then rendered with python3 scripts/render_learning.py. Follow docs/learning/alignment.md and synchronize the existing GitHub issues without discarding learner evidence or progress.

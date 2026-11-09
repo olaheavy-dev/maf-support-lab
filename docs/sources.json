@@ -326,6 +326,34 @@
       "kind": "official-release",
       "checked_on": "2026-11-09",
       "note": ""
+    },
+    "ms-integration-tests": {
+      "title": "ASP.NET Core integration testing",
+      "url": "https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-10.0",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Use the version selector matching the runtime selected in L01; the planning link targets .NET 10."
+    },
+    "ms-http-resilience": {
+      "title": ".NET HTTP resilience patterns",
+      "url": "https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Inspect provider SDK retry behavior too; do not stack retry handlers blindly."
+    },
+    "aspire-telemetry": {
+      "title": "Aspire OpenTelemetry configuration",
+      "url": "https://aspire.dev/fundamentals/telemetry/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Aspire receives telemetry; applications still need appropriate instrumentation and export."
+    },
+    "gh-dependabot": {
+      "title": "Dependabot supported ecosystem and configuration options",
+      "url": "https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Select the supported ecosystem for the manifest/lock format actually introduced."
     }
   }
 }
