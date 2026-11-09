@@ -55,6 +55,8 @@ def validate(root: Path = ROOT) -> tuple[int, int, int]:
                     f"Evaluation deliverable before application completion: {ident}")
         for target in ticket["deliverables"]:
             adr = re.fullmatch(r"docs/decisions/([0-9]{4})-[^/]+\.md", target)
+            if target.startswith("docs/decisions/") and PurePosixPath(target).suffix == ".md" and PurePosixPath(target).name != "README.md":
+                require(adr is not None, f"Decision record must have a numbered ADR filename: {ident}")
             if adr:
                 number = int(adr.group(1))
                 if number in numbered_adrs:

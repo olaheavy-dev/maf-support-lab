@@ -2185,7 +2185,7 @@
       ],
       "source_note": "The course repositories provide documented application behavior only. Gatsby's own filesystem/Markdown/CLI docs provide the site implementation; the Microsoft guide is a hosting/output reference, not a deployment requirement.",
       "implementation": [
-        "Before scaffolding, check Gatsby maintenance/security and release activity, selected Gatsby/plugin package engine requirements, and the supported Node release lifecycle. Record dated source links and a go/no-go decision in docs/decisions/gatsby-build-feasibility.md; prove a clean Markdown build on a supported Node version before committing to the dependency set.",
+        "Before scaffolding, check Gatsby maintenance/security and release activity, selected Gatsby/plugin package engine requirements, and the supported Node release lifecycle. Record dated source links and a go/no-go decision in docs/decisions/0004-gatsby-build-feasibility.md; prove a clean Markdown build on a supported Node version before committing to the dependency set.",
         "Create docs-site/ with verified compatible Gatsby/Node/plugin versions and a dependency lock; source L34's selected .md files from docs/ using gatsby-source-filesystem and gatsby-transformer-remark.",
         "Create static page routes, a documentation layout/navigation, code formatting, images, and accessible headings/links; define path-prefix behavior explicitly.",
         "Run gatsby build to emit HTML plus CSS/JavaScript/images into docs-site/public. Keep the content present in generated HTML and require no runtime agent/API/model service or Gatsby SSR/functions."
@@ -2217,7 +2217,7 @@
         "docs-site/package.json",
         "docs-site/",
         ".gitignore",
-        "docs/decisions/gatsby-build-feasibility.md"
+        "docs/decisions/0004-gatsby-build-feasibility.md"
       ],
       "scope_exclusions": [
         "Docusaurus, MDX-only content, or a dynamic documentation backend",

@@ -38,6 +38,12 @@ class LearningValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "Evaluation deliverable before application completion: L14"):
             validate(self.root)
 
+    def test_unnumbered_decision_record_is_rejected(self) -> None:
+        self.edit_json("docs/learning/backlog.json",
+            lambda b: next(t for t in b["tickets"] if t["id"] == "L35").update(deliverables=["docs/decisions/gatsby-build-feasibility.md"]))
+        with self.assertRaisesRegex(SystemExit, "Decision record must have a numbered ADR filename: L35"):
+            validate(self.root)
+
     def test_numbered_adr_authoring_order_is_enforced(self) -> None:
         def reverse_adrs(backlog):
             for ticket in backlog["tickets"]:
