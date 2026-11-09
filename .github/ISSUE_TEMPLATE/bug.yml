@@ -1,0 +1,17 @@
+name: Bug report
+description: Reproduce incorrect behavior without including secrets or private telemetry.
+title: "[Bug] "
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction, expected behavior, and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Runtime, package versions, and sanitized evidence
+    validations:
+      required: true

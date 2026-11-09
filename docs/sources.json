@@ -1,0 +1,331 @@
+{
+  "checked_on": "2026-11-09",
+  "course_commits": {
+    "dotnet": "014ca9f4ee3764d18b259246310941a07b13541b",
+    "python": "ebd05e88679a93113fe2a3223092be125752e4ba"
+  },
+  "sources": {
+    "dn-program": {
+      "title": ".NET Chapter 7 composition root",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Program.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-orchestrator": {
+      "title": ".NET support orchestrator",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/SupportOrchestrator.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-refund": {
+      "title": ".NET refund/approval workflow",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Workflows/RefundWorkflowRunner.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-triage": {
+      "title": ".NET triage contract",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Models/TriageDecision.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-specialist": {
+      "title": ".NET specialist executor",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Executors/SpecialistExecutor.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-parser": {
+      "title": ".NET triage parser",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Executors/TriageDecisionParser.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-orders": {
+      "title": ".NET order tools",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Tools/OrderTools.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-billing": {
+      "title": ".NET billing tools",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Tools/BillingTools.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-technical": {
+      "title": ".NET technical support tools",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Tools/TechnicalTools.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-input": {
+      "title": ".NET input validation",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Security/InputValidator.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-injection": {
+      "title": ".NET injection heuristic",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Security/InjectionDetector.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-filter": {
+      "title": ".NET output filtering",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport/Security/ContentFilter.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-packages": {
+      "title": ".NET course dependency versions",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/Directory.Packages.props",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "dn-tracing": {
+      "title": ".NET Chapter 6 observability examples",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/blob/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter06.Console/Demos.cs",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-app": {
+      "title": "Python Chapter 7 agent/workflow setup",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/blob/ebd05e88679a93113fe2a3223092be125752e4ba/chapter_07/app.py",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-executors": {
+      "title": "Python workflow executors",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/blob/ebd05e88679a93113fe2a3223092be125752e4ba/chapter_07/executors.py",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-models": {
+      "title": "Python support contracts",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/blob/ebd05e88679a93113fe2a3223092be125752e4ba/chapter_07/models.py",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-security": {
+      "title": "Python security and buffering middleware",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/blob/ebd05e88679a93113fe2a3223092be125752e4ba/chapter_07/security.py",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-tools": {
+      "title": "Python support tools and approvals",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/blob/ebd05e88679a93113fe2a3223092be125752e4ba/chapter_07/tools.py",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-config": {
+      "title": "Python provider configuration",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/blob/ebd05e88679a93113fe2a3223092be125752e4ba/common/config.py",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-tracing": {
+      "title": "Python Chapter 6 tracing",
+      "url": "https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/blob/ebd05e88679a93113fe2a3223092be125752e4ba/chapter_06/demo_00_tracing_agent_calls_with_opentelemetry.py",
+      "kind": "course",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "ms-overview": {
+      "title": "Microsoft Agent Framework overview",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/overview",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-first": {
+      "title": "Your first agent",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/get-started/your-first-agent",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-tools": {
+      "title": "Tools overview",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/agents/tools/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-structured": {
+      "title": "Structured outputs",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/agents/structured-outputs",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-workflows": {
+      "title": "Workflow quickstart",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/get-started/workflows",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-multiturn": {
+      "title": "Multi-turn conversations",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/get-started/multi-turn",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-memory": {
+      "title": "Memory and persistence",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/get-started/memory",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-approval": {
+      "title": "Function tools with approval",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/agents/tools/tool-approval",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-hitl": {
+      "title": "Workflow human-in-the-loop",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/workflows/human-in-the-loop",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-checkpoints": {
+      "title": "Workflow checkpoints",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/workflows/checkpoints",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-otel": {
+      "title": "Agent observability",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/agents/observability",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-workflow-otel": {
+      "title": "Workflow observability",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/workflows/observability",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-safety": {
+      "title": "Agent safety",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/concepts/agents/safety",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "ms-devui": {
+      "title": "DevUI tracing",
+      "url": "https://learn.microsoft.com/en-us/agent-framework/integrations/by-component/ui/devui/tracing",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "aspire-python": {
+      "title": "Aspire official Python integration",
+      "url": "https://aspire.dev/integrations/frameworks/python/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "aspire-apphost": {
+      "title": "Aspire AppHost",
+      "url": "https://aspire.dev/get-started/app-host/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "aspire-dashboard": {
+      "title": "Standalone Aspire dashboard",
+      "url": "https://aspire.dev/dashboard/standalone/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "aspire-samples": {
+      "title": "Aspire samples, including frontend/Python",
+      "url": "https://aspire.dev/reference/samples/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "gh-rules": {
+      "title": "GitHub rulesets",
+      "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Live documentation: recheck against the selected release before implementation."
+    },
+    "net-release": {
+      "title": ".NET MAF 1.28.0 migration notes",
+      "url": "https://github.com/microsoft/agent-framework/releases/tag/dotnet-1.28.0",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-release": {
+      "title": "Python MAF 1.25.0 migration notes",
+      "url": "https://github.com/microsoft/agent-framework/releases/tag/python-1.25.0",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "net-devui-sample": {
+      "title": "Release-tagged .NET DevUI sample",
+      "url": "https://github.com/microsoft/agent-framework/blob/dotnet-1.28.0/dotnet/samples/02-agents/DevUI/DevUI_Step01_BasicUsage/Program.cs",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "net-otel-sample": {
+      "title": "Release-tagged .NET telemetry sample",
+      "url": "https://github.com/microsoft/agent-framework/blob/dotnet-1.28.0/dotnet/samples/02-agents/AgentOpenTelemetry/Program.cs",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-devui-source": {
+      "title": "Released Python DevUI serve implementation",
+      "url": "https://github.com/microsoft/agent-framework/blob/python-1.25.0/python/packages/devui/agent_framework_devui/__init__.py",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": ""
+    },
+    "py-otel-source": {
+      "title": "Released Python observability implementation",
+      "url": "https://github.com/microsoft/agent-framework/blob/python-1.25.0/python/packages/core/agent_framework/observability.py",
+      "kind": "official-release",
+      "checked_on": "2026-11-09",
+      "note": ""
+    }
+  }
+}

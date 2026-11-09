@@ -1,0 +1,1145 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-11-09",
+  "epics": [
+    {
+      "id": "E01",
+      "title": "Foundation, contracts, and reproducibility",
+      "outcome": "Explain the architecture, freeze a verified baseline, and start a buildable .NET/Aspire skeleton.",
+      "exit_criteria": "A fresh checkout restores, builds, and starts the skeleton; the API and synthetic data contracts are documented."
+    },
+    {
+      "id": "E02",
+      "title": "Observable .NET support workflow",
+      "outcome": "Implement the Chapter 7 request path with working tools, routing, DevUI, and telemetry.",
+      "exit_criteria": "Demonstrate orders, billing, and technical requests and follow a request from HTTP entry through model/tool spans."
+    },
+    {
+      "id": "E03",
+      "title": "Conversations, approvals, and streaming",
+      "outcome": "Preserve conversation state and safely pause/resume side-effecting work.",
+      "exit_criteria": "Demonstrate a follow-up, approval rejection, approved refund, restart/resume, cancellation, and streamed error."
+    },
+    {
+      "id": "E04",
+      "title": "Safety, reliability, and measurement",
+      "outcome": "Enforce business boundaries and measure behavior and resource use.",
+      "exit_criteria": "Show unauthorized access rejection, bounded failure handling, and a baseline evaluation with honest cost/quality limits."
+    },
+    {
+      "id": "E05",
+      "title": "Python implementation and behavioral parity",
+      "outcome": "Rebuild the complete behavior idiomatically in Python and compare SDK choices.",
+      "exit_criteria": "The shared evaluation runs against both backends with isolated state and comparable telemetry."
+    },
+    {
+      "id": "E06",
+      "title": "One frontend for both implementations",
+      "outcome": "Add a browser experience over the shared backend contract.",
+      "exit_criteria": "Select a backend when starting a conversation, chat, approve/reject an operation, and diagnose a failure."
+    },
+    {
+      "id": "E07",
+      "title": "Engineering evidence and interview readiness",
+      "outcome": "Demonstrate the system, defend decisions, and state its operational limits.",
+      "exit_criteria": "Complete a fault demonstration, publish a reproducible runbook, and answer a recorded or written mock interview."
+    }
+  ],
+  "tickets": [
+    {
+      "id": "L01",
+      "order": 1,
+      "epic": "E01",
+      "title": "Audit Chapter 7 and record a verified version baseline",
+      "stack": "shared",
+      "depends_on": [],
+      "course_refs": [
+        "dn-program",
+        "dn-packages",
+        "py-app",
+        "py-config"
+      ],
+      "official_refs": [
+        "ms-overview",
+        "net-release",
+        "py-release"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Recheck releases, runtime support, provider requirements, and prerelease dependencies.",
+        "Map the .NET and Python request paths and confirm the audit findings.",
+        "Write docs/decisions/0001-version-baseline.md with candidate versions, source links, and an explicit verification plan."
+      ],
+      "acceptance": [
+        "The decision distinguishes observed versions from restore/build-tested versions.",
+        "Explain which security/refund path is actually hosted and identify one documentation/source disagreement."
+      ],
+      "learning_outcomes": [
+        "Separate framework concepts from provider/hosting integrations.",
+        "Read migration notes and resolve stale course examples."
+      ],
+      "interview_questions": [
+        "How do you establish that a tutorial is compatible with the SDK you selected?",
+        "Why can core be released while DevUI or hosting remains prerelease?"
+      ],
+      "stretch": "Find one additional assumption in the capstone and prove or disprove it from tagged source."
+    },
+    {
+      "id": "L02",
+      "order": 2,
+      "epic": "E01",
+      "title": "Define shared support contracts and synthetic fixtures",
+      "stack": "shared",
+      "depends_on": [
+        "L01"
+      ],
+      "course_refs": [
+        "dn-triage",
+        "dn-orders",
+        "dn-billing",
+        "py-models",
+        "py-tools"
+      ],
+      "official_refs": [
+        "ms-structured",
+        "ms-safety"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Define schemas for requests, triage, responses, approvals, errors, and planned stream events under contracts/.",
+        "Seed synthetic customers, orders, policies, and an evaluation scenario format under fixtures/ and evaluations/.",
+        "Record ownership and state-isolation rules; preserve original user text beside derived routing fields."
+      ],
+      "acceptance": [
+        "Examples include a valid request, missing order, unknown order, denied operation, and invalid route.",
+        "Schema checks reject invalid categories/ranges; fixtures contain no real personal data."
+      ],
+      "learning_outcomes": [
+        "Distinguish schema validity, factual validity, and business authorization.",
+        "Design a language-neutral observable contract."
+      ],
+      "interview_questions": [
+        "Why does structured output not guarantee a correct or authorized operation?",
+        "What should be shared between equivalent C# and Python implementations?"
+      ],
+      "stretch": "Add an ambiguous request and describe the expected clarification behavior."
+    },
+    {
+      "id": "L03",
+      "order": 3,
+      "epic": "E01",
+      "title": "Scaffold .NET support API and C# Aspire AppHost",
+      "stack": "dotnet",
+      "depends_on": [
+        "L02"
+      ],
+      "course_refs": [
+        "dn-program",
+        "py-app"
+      ],
+      "official_refs": [
+        "ms-first",
+        "aspire-apphost",
+        "aspire-python"
+      ],
+      "source_note": "The course composition roots are comparison points; Chapter 7 does not implement Aspire.",
+      "implementation": [
+        "Create apphost/ and src/dotnet/ with the selected compatible SDK/package versions.",
+        "Add configuration validation and a health endpoint; keep support behavior unimplemented.",
+        "Launch the API through Aspire and document exact local prerequisites and startup commands."
+      ],
+      "acceptance": [
+        "A clean checkout restores/builds and starts the API through AppHost.",
+        "Health is visible; missing provider configuration yields an actionable startup message without leaking a key."
+      ],
+      "learning_outcomes": [
+        "Separate process orchestration from agent workflow orchestration.",
+        "Understand composition roots, configuration, and health."
+      ],
+      "interview_questions": [
+        "What does Aspire manage, and what remains the application's responsibility?",
+        "Where should provider credentials and service endpoints be configured?"
+      ],
+      "stretch": "Change the local service port and prove the AppHost-provided endpoint still works."
+    },
+    {
+      "id": "L04",
+      "order": 4,
+      "epic": "E01",
+      "title": "Add reproducible builds and meaningful offline CI",
+      "stack": "dotnet",
+      "depends_on": [
+        "L03"
+      ],
+      "course_refs": [
+        "dn-packages",
+        "dn-program"
+      ],
+      "official_refs": [
+        "ms-first",
+        "ms-safety",
+        "gh-rules"
+      ],
+      "source_note": "The course dependency manifest motivates reproducibility; CI is an extension beyond the capstone.",
+      "implementation": [
+        "Commit the runtime selector, central package versions, and dependency locks established by a successful restore.",
+        "Extend CI to build the AppHost/API and run meaningful contract/configuration tests using fakes.",
+        "Keep a stable always-reported required aggregate check and document offline versus live verification."
+      ],
+      "acceptance": [
+        "A clean CI run needs no model credential and fails for a deliberate contract/configuration regression.",
+        "Branch protection requires the aggregate result; a skipped path does not create a permanently pending check."
+      ],
+      "learning_outcomes": [
+        "Reproducibility and dependency locking.",
+        "Design CI around real failure modes and required-check behavior."
+      ],
+      "interview_questions": [
+        "How do you test an agent application without paying for model calls on every PR?",
+        "Why can path-filtered required workflows block merges?"
+      ],
+      "stretch": "Reproduce a failed CI check locally from the documented command."
+    },
+    {
+      "id": "L05",
+      "order": 5,
+      "epic": "E02",
+      "title": "Build the first .NET order-status agent and DevUI",
+      "stack": "dotnet",
+      "depends_on": [
+        "L04"
+      ],
+      "course_refs": [
+        "dn-program",
+        "dn-orders"
+      ],
+      "official_refs": [
+        "ms-first",
+        "ms-tools",
+        "net-devui-sample"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Create one support agent with a typed order-status tool backed by synthetic fixtures.",
+        "Expose the same core behavior through the support API and development-only DevUI.",
+        "Provide deterministic tool tests plus a separately invoked live smoke check."
+      ],
+      "acceptance": [
+        "Known and unknown orders produce factual outcomes and no invented status.",
+        "DevUI discovers the agent; tool execution is observable and the startup command is documented."
+      ],
+      "learning_outcomes": [
+        "Understand the model/tool invocation loop.",
+        "Keep agent construction reusable across API and development tooling."
+      ],
+      "interview_questions": [
+        "When should a model call a tool rather than answer from its prompt?",
+        "How does DevUI relate to your application API?"
+      ],
+      "stretch": "Remove the order ID and require a clarification without calling the lookup tool."
+    },
+    {
+      "id": "L06",
+      "order": 6,
+      "epic": "E02",
+      "title": "Export traces, metrics, and structured logs to Aspire",
+      "stack": "dotnet",
+      "depends_on": [
+        "L05"
+      ],
+      "course_refs": [
+        "dn-program",
+        "dn-tracing"
+      ],
+      "official_refs": [
+        "ms-otel",
+        "ms-workflow-otel",
+        "net-otel-sample",
+        "net-release"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Instrument the HTTP request, agent/model calls, and tools with correlated spans.",
+        "Configure explicit metric and log export and resource names/version.",
+        "Keep sensitive capture opt-in; add request/error counts and latency measurement."
+      ],
+      "acceptance": [
+        "A success and a failure appear with correlated logs and useful span status.",
+        "Actual metric samples arrive in the dashboard; identify sources/meters and avoid counting one model call twice."
+      ],
+      "learning_outcomes": [
+        "Separate instrumentation, providers, exporters, and the telemetry backend.",
+        "Distinguish traces, logs, counters, and distributions."
+      ],
+      "interview_questions": [
+        "Why does seeing a trace not prove metrics are configured?",
+        "How do you correlate a request while avoiding sensitive data in telemetry?"
+      ],
+      "stretch": "Break the OTLP endpoint and explain the failure from application/exporter diagnostics."
+    },
+    {
+      "id": "L07",
+      "order": 7,
+      "epic": "E02",
+      "title": "Implement validated triage and deterministic routing",
+      "stack": "dotnet",
+      "depends_on": [
+        "L06"
+      ],
+      "course_refs": [
+        "dn-triage",
+        "dn-parser",
+        "dn-program"
+      ],
+      "official_refs": [
+        "ms-structured",
+        "ms-workflows"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Produce a typed triage decision with an allowed route and validated ranges.",
+        "Build explicit conditional routes and a fallback for invalid/ambiguous decisions.",
+        "Pass original request context and validated entities alongside the routing decision."
+      ],
+      "acceptance": [
+        "Orders, billing, and technical fixtures take the expected route.",
+        "Malformed JSON, invalid category, and incomplete requests produce controlled fallback/clarification."
+      ],
+      "learning_outcomes": [
+        "Use LLM classification inside deterministic control flow.",
+        "Understand generated confidence is not calibrated correctness."
+      ],
+      "interview_questions": [
+        "What should be deterministic in an agent workflow?",
+        "How would you detect and improve poor routing?"
+      ],
+      "stretch": "Add an out-of-domain request without introducing another specialist."
+    },
+    {
+      "id": "L08",
+      "order": 8,
+      "epic": "E02",
+      "title": "Complete .NET billing and technical specialists",
+      "stack": "dotnet",
+      "depends_on": [
+        "L07"
+      ],
+      "course_refs": [
+        "dn-program",
+        "dn-billing",
+        "dn-technical",
+        "dn-specialist"
+      ],
+      "official_refs": [
+        "ms-tools",
+        "ms-workflows",
+        "ms-safety"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Implement read-only billing and technical tools over fixture-backed services.",
+        "Give each specialist only its required tools and preserve source identifiers in answers.",
+        "Add scenario checks for invoice lookup, knowledge search, and ticket creation."
+      ],
+      "acceptance": [
+        "All three domains work through the public support path.",
+        "Unknown records and failed searches are handled; a technical request cannot invoke a billing mutation."
+      ],
+      "learning_outcomes": [
+        "Design scoped capabilities and factual tool-backed answers.",
+        "Understand single-agent versus specialist tradeoffs."
+      ],
+      "interview_questions": [
+        "When do specialist agents justify additional model calls?",
+        "How do you prevent a specialist from exceeding its intended capabilities?"
+      ],
+      "stretch": "Compare one request with a single-agent baseline and record the call-count tradeoff."
+    },
+    {
+      "id": "L09",
+      "order": 9,
+      "epic": "E03",
+      "title": "Add per-conversation sessions and preserve context",
+      "stack": "dotnet",
+      "depends_on": [
+        "L08"
+      ],
+      "course_refs": [
+        "dn-specialist",
+        "dn-orchestrator",
+        "py-executors"
+      ],
+      "official_refs": [
+        "ms-multiturn",
+        "ms-memory"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Map public conversation IDs to isolated agent/workflow state.",
+        "Support follow-ups using original user context and validated order/customer fields.",
+        "Define bounded history behavior and test concurrent conversations."
+      ],
+      "acceptance": [
+        "An order follow-up works without repeating the ID.",
+        "Two conversations with different customers never see each other's history; model-generated summaries do not become authority."
+      ],
+      "learning_outcomes": [
+        "Separate agent object lifetime from conversation state.",
+        "Understand history, session state, and context limits."
+      ],
+      "interview_questions": [
+        "Can a reusable agent be shared while conversations remain isolated?",
+        "What belongs in conversation history versus application state?"
+      ],
+      "stretch": "Simulate simultaneous requests to one conversation and define the conflict policy."
+    },
+    {
+      "id": "L10",
+      "order": 10,
+      "epic": "E03",
+      "title": "Require bound approval for refunds and cancellations",
+      "stack": "dotnet",
+      "depends_on": [
+        "L09"
+      ],
+      "course_refs": [
+        "dn-orders",
+        "dn-refund",
+        "dn-billing",
+        "py-tools"
+      ],
+      "official_refs": [
+        "ms-approval",
+        "ms-hitl",
+        "ms-safety"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Wrap mutating tools in the current framework approval mechanism.",
+        "Expose pending action details and submit approval/rejection against the exact pending operation.",
+        "Enforce eligibility and customer access in the tool/service; eliminate model-supplied confirmation authority."
+      ],
+      "acceptance": [
+        "A denied or absent approval produces zero business mutations.",
+        "Approving a different action or changed arguments fails; the successful operation returns factual state."
+      ],
+      "learning_outcomes": [
+        "Separate user intent, human approval, and business authorization.",
+        "Understand the approval pause/resume lifecycle."
+      ],
+      "interview_questions": [
+        "Why is a customerConfirmed argument supplied by the model insufficient?",
+        "What data must an approval be bound to?"
+      ],
+      "stretch": "Reject an action and verify the agent does not immediately repeat the same request."
+    },
+    {
+      "id": "L11",
+      "order": 11,
+      "epic": "E03",
+      "title": "Persist pending approvals and prevent duplicate operations",
+      "stack": "dotnet",
+      "depends_on": [
+        "L10"
+      ],
+      "course_refs": [
+        "dn-refund",
+        "dn-orchestrator",
+        "dn-billing"
+      ],
+      "official_refs": [
+        "ms-checkpoints",
+        "ms-memory",
+        "ms-approval"
+      ],
+      "source_note": "The course refund runner illustrates approval flow, not durable restart/resume or idempotency.",
+      "implementation": [
+        "Persist conversation/pending-operation state and choose the appropriate checkpoint/session mechanism.",
+        "Use stable workflow/agent identities where required for restoration.",
+        "Add a durable operation key and state transition so an approved retry cannot refund twice."
+      ],
+      "acceptance": [
+        "Restart between request and approval; resume the intended operation.",
+        "Duplicate approval/submission changes business state once; unknown or expired approval IDs are rejected."
+      ],
+      "learning_outcomes": [
+        "Distinguish workflow durability from side-effect idempotency.",
+        "Understand restart/replay and stable identities."
+      ],
+      "interview_questions": [
+        "Does checkpointing guarantee exactly-once external side effects?",
+        "What state must survive an approval wait and process restart?"
+      ],
+      "stretch": "Crash immediately after the fake refund commits and before the response is sent."
+    },
+    {
+      "id": "L12",
+      "order": 12,
+      "epic": "E03",
+      "title": "Implement streaming, cancellation, and terminal events",
+      "stack": "dotnet",
+      "depends_on": [
+        "L11"
+      ],
+      "course_refs": [
+        "dn-specialist",
+        "dn-orchestrator",
+        "py-security"
+      ],
+      "official_refs": [
+        "ms-structured",
+        "ms-workflows",
+        "ms-safety"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Implement the shared event contract for progress, output, approval, error, and completion.",
+        "Propagate request cancellation through model/tool calls.",
+        "Choose buffered versus incremental filtering explicitly and measure time to first output."
+      ],
+      "acceptance": [
+        "A successful stream has one terminal outcome and no hidden error after completion.",
+        "Client disconnect and tool failure stop or terminate predictably; partial structured output is not treated as a complete decision."
+      ],
+      "learning_outcomes": [
+        "Understand asynchronous streaming and cancellation propagation.",
+        "Recognize filtering/latency tradeoffs."
+      ],
+      "interview_questions": [
+        "How does transport streaming differ from actual model-token streaming?",
+        "How do you handle an error after an HTTP stream has begun?"
+      ],
+      "stretch": "Disconnect the client while a slow tool runs and inspect the trace."
+    },
+    {
+      "id": "L13",
+      "order": 13,
+      "epic": "E04",
+      "title": "Enforce customer access and conversation ownership",
+      "stack": "dotnet",
+      "depends_on": [
+        "L12"
+      ],
+      "course_refs": [
+        "dn-orders",
+        "dn-billing",
+        "dn-input",
+        "py-tools"
+      ],
+      "official_refs": [
+        "ms-safety",
+        "ms-memory"
+      ],
+      "source_note": "Course tools expose synthetic records without real access control; this ticket is an application-boundary extension.",
+      "implementation": [
+        "Introduce a clearly documented local/test identity boundary.",
+        "Enforce order and conversation ownership in services using trusted request context.",
+        "Test cross-customer access and keep identity out of model-controlled authority."
+      ],
+      "acceptance": [
+        "A customer cannot read another customer's order or resume their conversation.",
+        "An invented customer ID in tool arguments cannot override the authenticated/test principal."
+      ],
+      "learning_outcomes": [
+        "Distinguish authentication, authorization, and model context.",
+        "Apply resource-level access controls to agent tools."
+      ],
+      "interview_questions": [
+        "Where should authorization run in a tool-calling application?",
+        "Why does knowing an order ID not establish permission to access it?"
+      ],
+      "stretch": "Attempt cross-customer access through both the direct tool/service test and agent-facing API."
+    },
+    {
+      "id": "L14",
+      "order": 14,
+      "epic": "E04",
+      "title": "Validate tool boundaries and exercise prompt injection",
+      "stack": "dotnet",
+      "depends_on": [
+        "L13"
+      ],
+      "course_refs": [
+        "dn-injection",
+        "dn-filter",
+        "dn-input",
+        "py-security"
+      ],
+      "official_refs": [
+        "ms-safety",
+        "ms-tools"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Validate tool argument types, ranges, allowlists, and output handling.",
+        "Exercise direct and tool-result injection using synthetic adversarial data.",
+        "Treat phrase filters as heuristics; enforce allowed actions before mutation."
+      ],
+      "acceptance": [
+        "A malicious tool result cannot authorize a privileged operation.",
+        "False-positive/negative examples are documented; outputs are safely handled and traces contain no sensitive test payload by default."
+      ],
+      "learning_outcomes": [
+        "Understand direct versus indirect prompt injection.",
+        "Separate detection heuristics from enforceable business controls."
+      ],
+      "interview_questions": [
+        "Why are regex filters insufficient for prompt injection?",
+        "What happens when an LLM follows an instruction embedded in a tool result?"
+      ],
+      "stretch": "Create a paraphrased attack that bypasses the course phrase matcher and prove the operation gate still holds."
+    },
+    {
+      "id": "L15",
+      "order": 15,
+      "epic": "E04",
+      "title": "Add bounded timeouts, retries, and graceful failure",
+      "stack": "dotnet",
+      "depends_on": [
+        "L14"
+      ],
+      "course_refs": [
+        "dn-orchestrator",
+        "dn-refund",
+        "dn-program"
+      ],
+      "official_refs": [
+        "ms-safety",
+        "ms-tools",
+        "ms-otel"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Set explicit model/tool budgets and propagate cancellation.",
+        "Retry only eligible transient failures within a bound; protect writes using operation state.",
+        "Represent unavailable services and invalid model output without fabricated success."
+      ],
+      "acceptance": [
+        "A deterministic fault fixture triggers the expected timeout/retry behavior.",
+        "Retries are bounded and visible; mutating operations are not duplicated; safe error responses retain a trace reference."
+      ],
+      "learning_outcomes": [
+        "Classify transient failures versus invalid requests.",
+        "Understand resilience costs and retry amplification."
+      ],
+      "interview_questions": [
+        "Which operations are safe to retry and why?",
+        "How can retries increase latency and model spend?"
+      ],
+      "stretch": "Combine a transient failure with cancellation and show the work stops."
+    },
+    {
+      "id": "L16",
+      "order": 16,
+      "epic": "E04",
+      "title": "Establish behavioral, latency, and usage baselines",
+      "stack": "shared",
+      "depends_on": [
+        "L15"
+      ],
+      "course_refs": [
+        "dn-tracing",
+        "dn-orchestrator",
+        "py-tracing"
+      ],
+      "official_refs": [
+        "ms-otel",
+        "ms-safety"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Run at least 20 shared scenarios covering success, ambiguity, invalid state, denial, and failures.",
+        "Report routing/tool/action outcomes and latency; collect provider-reported input/output usage.",
+        "Label cost estimates and unknown usage accurately; record model, versions, run count, and limitations."
+      ],
+      "acceptance": [
+        "The evaluation produces a machine-readable result and a concise human report.",
+        "Offline deterministic checks and live-model evaluations are clearly separated; no exact-response-string equality is required."
+      ],
+      "learning_outcomes": [
+        "Separate correctness evaluations from operational metrics.",
+        "Understand variability, sample size, and cost estimation."
+      ],
+      "interview_questions": [
+        "How would you evaluate an agent beyond answer quality?",
+        "Why is self-reported model confidence not a substitute for labelled evaluation?"
+      ],
+      "stretch": "Change one prompt and compare behavior/cost with an unchanged evaluation set."
+    },
+    {
+      "id": "L17",
+      "order": 17,
+      "epic": "E05",
+      "title": "Scaffold Python packaging, health, and Aspire integration",
+      "stack": "python",
+      "depends_on": [
+        "L16"
+      ],
+      "course_refs": [
+        "py-app",
+        "py-config",
+        "dn-program"
+      ],
+      "official_refs": [
+        "ms-first",
+        "aspire-python",
+        "ms-overview",
+        "py-release"
+      ],
+      "source_note": "The Python course setup is a reference for configuration; Aspire packaging and CI are extensions.",
+      "implementation": [
+        "Create an idiomatic src/python package with pyproject.toml and uv.lock.",
+        "Implement configuration/health and add the process to the C# AppHost using the official integration.",
+        "Add import/lint/meaningful configuration checks to CI."
+      ],
+      "acceptance": [
+        "Both backends start from AppHost and Python can also run independently.",
+        "A clean locked sync/import check passes without provider secrets; state directories remain separate."
+      ],
+      "learning_outcomes": [
+        "Understand Python package/import structure and environment locking.",
+        "Compare hosting/configuration conventions across languages."
+      ],
+      "interview_questions": [
+        "What is the role of uv.lock versus pyproject.toml?",
+        "How does Aspire launch a Python service while its logic stays independent?"
+      ],
+      "stretch": "Launch only Python outside Aspire using the documented configuration."
+    },
+    {
+      "id": "L18",
+      "order": 18,
+      "epic": "E05",
+      "title": "Implement Python agents, typed tools, and triage",
+      "stack": "python",
+      "depends_on": [
+        "L17"
+      ],
+      "course_refs": [
+        "py-app",
+        "py-executors",
+        "py-models",
+        "py-tools"
+      ],
+      "official_refs": [
+        "ms-tools",
+        "ms-structured",
+        "ms-workflows"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Implement the same three specialist domains with idiomatic Python typing and models.",
+        "Preserve original requests and validated fields through routing.",
+        "Reuse shared fixture/scenario contracts while keeping Python tool/service implementation independent."
+      ],
+      "acceptance": [
+        "The same known/unknown record and routing checks pass against Python.",
+        "Invalid schema/category output reaches the controlled fallback."
+      ],
+      "learning_outcomes": [
+        "Compare C# response types/executors with Python models/handlers.",
+        "Understand the common model/tool/workflow concepts."
+      ],
+      "interview_questions": [
+        "Which differences are SDK conventions and which change observable behavior?",
+        "Where should Python validate model-generated values?"
+      ],
+      "stretch": "Implement an ambiguous routing scenario without consulting the C# code."
+    },
+    {
+      "id": "L19",
+      "order": 19,
+      "epic": "E05",
+      "title": "Implement Python sessions, approval persistence, and idempotency",
+      "stack": "python",
+      "depends_on": [
+        "L18"
+      ],
+      "course_refs": [
+        "py-tools",
+        "py-executors",
+        "py-models"
+      ],
+      "official_refs": [
+        "ms-approval",
+        "ms-memory",
+        "ms-checkpoints",
+        "py-release"
+      ],
+      "source_note": "The course always_require tools are useful; durable storage and business idempotency are added here.",
+      "implementation": [
+        "Implement per-conversation sessions and framework-bound pending approvals.",
+        "Persist the required state and stable workflow identity.",
+        "Port the operation-level idempotency/authorization behavior through Python services."
+      ],
+      "acceptance": [
+        "Approval denial, changed arguments, cross-conversation replay, and restart/resume cases pass.",
+        "Two repeated submissions produce one simulated business mutation."
+      ],
+      "learning_outcomes": [
+        "Understand Python session-bound approval and durable state.",
+        "Separate language parity from line-by-line translation."
+      ],
+      "interview_questions": [
+        "How does the current Python SDK bind an approval to a pending request?",
+        "Why should session state be isolated even when an agent definition is reusable?"
+      ],
+      "stretch": "Attempt a replay from a second conversation and inspect the rejection."
+    },
+    {
+      "id": "L20",
+      "order": 20,
+      "epic": "E05",
+      "title": "Implement Python streaming and correlated telemetry",
+      "stack": "python",
+      "depends_on": [
+        "L19"
+      ],
+      "course_refs": [
+        "py-security",
+        "py-tracing",
+        "py-app"
+      ],
+      "official_refs": [
+        "ms-otel",
+        "ms-devui",
+        "py-devui-source",
+        "py-otel-source"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Implement the shared streaming/cancellation/error behavior.",
+        "Configure one telemetry setup with explicit service identity and exports.",
+        "Reconcile DevUI instrumentation with sensitive-data settings and avoid unintended duplicate providers/handlers."
+      ],
+      "acceptance": [
+        "Python traces, logs, and metrics arrive in Aspire and meaningful events match the API contract.",
+        "Measure first-output latency and demonstrate whether middleware buffers; cancellation behaves as specified."
+      ],
+      "learning_outcomes": [
+        "Understand async streams and middleware buffering.",
+        "Compare .NET and Python telemetry configuration and lifecycle ownership."
+      ],
+      "interview_questions": [
+        "Why can a streamed API still buffer the entire answer?",
+        "How do provider setup and logger propagation cause duplicate telemetry?"
+      ],
+      "stretch": "Toggle the safe development telemetry setting and verify exactly what changes."
+    },
+    {
+      "id": "L21",
+      "order": 21,
+      "epic": "E05",
+      "title": "Run cross-language parity checks and document SDK decisions",
+      "stack": "shared",
+      "depends_on": [
+        "L20"
+      ],
+      "course_refs": [
+        "dn-program",
+        "dn-specialist",
+        "py-app",
+        "py-executors"
+      ],
+      "official_refs": [
+        "ms-overview",
+        "ms-structured",
+        "ms-approval"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Run the same evaluation set against both backend endpoints with reset isolated state.",
+        "Classify differences as defect, intentional SDK difference, or model variability.",
+        "Write docs/decisions/0002-sdk-comparison.md covering tools, state, workflows, approvals, streaming, and diagnostics."
+      ],
+      "acceptance": [
+        "Parity is assessed by routes, actions, schemas, and state outcomes.",
+        "Known differences and live-evaluation limits are explicit; deterministic regression checks join CI."
+      ],
+      "learning_outcomes": [
+        "Evaluate behavioral equivalence without requiring identical prose.",
+        "Defend idiomatic implementation choices."
+      ],
+      "interview_questions": [
+        "How do you prove two probabilistic implementations meet one specification?",
+        "What differences would influence your choice of SDK for a team?"
+      ],
+      "stretch": "Demonstrate a defect in one backend that the shared suite detects."
+    },
+    {
+      "id": "L22",
+      "order": 22,
+      "epic": "E06",
+      "title": "Finalize the frontend-facing protocol and stream/approval lifecycle",
+      "stack": "frontend",
+      "depends_on": [
+        "L21"
+      ],
+      "course_refs": [
+        "dn-program",
+        "py-app",
+        "dn-refund"
+      ],
+      "official_refs": [
+        "ms-hitl",
+        "ms-approval",
+        "aspire-apphost",
+        "aspire-samples"
+      ],
+      "source_note": "Chapter 7 hosting/approval behavior motivates the protocol; the course does not provide this frontend.",
+      "implementation": [
+        "Validate the existing contracts against a minimal browser client and record protocol decisions.",
+        "Define session/backend binding, reconnect behavior, approval payloads, and terminal errors.",
+        "Add contract-level backend checks before implementing UI components."
+      ],
+      "acceptance": [
+        "Example traces/messages cover chat, pending approval, rejection, timeout, and disconnection.",
+        "Backend selection is fixed per conversation and the browser never receives provider credentials."
+      ],
+      "learning_outcomes": [
+        "Design a frontend around asynchronous workflow state.",
+        "Distinguish developer tools from a product interface."
+      ],
+      "interview_questions": [
+        "What does the browser need to render a paused workflow?",
+        "How do you keep sessions coherent when two equivalent backends exist?"
+      ],
+      "stretch": "Specify how a refreshed browser discovers a pending approval."
+    },
+    {
+      "id": "L23",
+      "order": 23,
+      "epic": "E06",
+      "title": "Build shared chat UI with backend selection",
+      "stack": "frontend",
+      "depends_on": [
+        "L22"
+      ],
+      "course_refs": [
+        "dn-program",
+        "py-app"
+      ],
+      "official_refs": [
+        "ms-multiturn",
+        "ms-safety",
+        "aspire-samples",
+        "aspire-apphost"
+      ],
+      "source_note": "Course composition roots are comparison references; this UI is original project work.",
+      "implementation": [
+        "Choose and document a modest frontend stack; implement chat and new-conversation backend selection.",
+        "Render progress, streamed output, safe errors, and the current backend.",
+        "Register the frontend in AppHost with runtime endpoint configuration."
+      ],
+      "acceptance": [
+        "One UI completes order-status conversations against either backend.",
+        "Backend selection cannot silently move an existing conversation; no provider key is shipped to the browser."
+      ],
+      "learning_outcomes": [
+        "Consume a common API while keeping implementation choices behind it.",
+        "Understand frontend configuration and session identity."
+      ],
+      "interview_questions": [
+        "Why choose the backend at conversation creation?",
+        "Which configuration is safe to expose to a browser?"
+      ],
+      "stretch": "Exercise the same prompt on both backends and compare results without changing UI code."
+    },
+    {
+      "id": "L24",
+      "order": 24,
+      "epic": "E06",
+      "title": "Add approval UI, recovery states, and trace references",
+      "stack": "frontend",
+      "depends_on": [
+        "L23"
+      ],
+      "course_refs": [
+        "dn-refund",
+        "py-tools",
+        "py-app"
+      ],
+      "official_refs": [
+        "ms-approval",
+        "ms-hitl",
+        "ms-safety"
+      ],
+      "source_note": "Course approval tools teach the backend concept; browser state/recovery is an extension.",
+      "implementation": [
+        "Display exact pending-action details with approve/reject controls.",
+        "Handle refresh, duplicate clicks, expired operations, and disconnected streams.",
+        "Display a support-safe trace reference for failures without exposing telemetry payloads."
+      ],
+      "acceptance": [
+        "Rejecting an action results in zero mutation; duplicate approval cannot repeat it.",
+        "The UI recovers pending state and presents meaningful error/empty/loading states."
+      ],
+      "learning_outcomes": [
+        "Turn workflow pause/resume into an understandable user interaction.",
+        "Understand server authority and resilient UI state."
+      ],
+      "interview_questions": [
+        "Why must disabling an approval button not be the only duplicate-operation control?",
+        "What should the UI show when approval succeeds but the response connection fails?"
+      ],
+      "stretch": "Refresh immediately after approval submission and verify the final state."
+    },
+    {
+      "id": "L25",
+      "order": 25,
+      "epic": "E07",
+      "title": "Run fault, concurrency, and bounded load exercises",
+      "stack": "shared",
+      "depends_on": [
+        "L24"
+      ],
+      "course_refs": [
+        "dn-orchestrator",
+        "dn-tracing",
+        "py-security"
+      ],
+      "official_refs": [
+        "ms-otel",
+        "ms-safety",
+        "ms-checkpoints"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Exercise concurrent conversations, slow providers, tool faults, restart/resume, and cancellations.",
+        "Measure bounded load with fake providers before any explicitly budgeted live run.",
+        "Record bottlenecks, resource limits, and one evidence-backed improvement."
+      ],
+      "acceptance": [
+        "No cross-conversation leakage or duplicate mutation occurs in deterministic exercises.",
+        "A report states workload, sample counts, latency/error distributions, and limitations."
+      ],
+      "learning_outcomes": [
+        "Understand throughput, backpressure, and state contention.",
+        "Use telemetry to diagnose rather than guess."
+      ],
+      "interview_questions": [
+        "What fails first when traffic increases in this design?",
+        "How would you distinguish model latency from tool or application latency?"
+      ],
+      "stretch": "Demonstrate one regression and show the signal that reveals it."
+    },
+    {
+      "id": "L26",
+      "order": 26,
+      "epic": "E07",
+      "title": "Review dependencies, security checks, and operational limits",
+      "stack": "shared",
+      "depends_on": [
+        "L25"
+      ],
+      "course_refs": [
+        "dn-packages",
+        "dn-injection",
+        "py-security",
+        "py-config"
+      ],
+      "official_refs": [
+        "ms-safety",
+        "ms-memory",
+        "gh-rules"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Review dependency/secret protections and add appropriate language security/code-analysis checks for existing code.",
+        "Verify credential handling, access boundaries, sensitive telemetry policy, and data retention assumptions.",
+        "Update the threat model and list unresolved production requirements with owners/follow-up tasks."
+      ],
+      "acceptance": [
+        "A documented review covers both backends and the browser surface.",
+        "CI/security checks run on the actual code; the repository does not claim production readiness without evidence."
+      ],
+      "learning_outcomes": [
+        "Understand defense in depth and the limits of automation.",
+        "Communicate residual risk concretely."
+      ],
+      "interview_questions": [
+        "What would you require before connecting this demo to real refunds or customer data?",
+        "Which controls are enforced by MAF and which belong to the application?"
+      ],
+      "stretch": "Trace one trust boundary from browser input to a mutating tool."
+    },
+    {
+      "id": "L27",
+      "order": 27,
+      "epic": "E07",
+      "title": "Publish the architecture, runbook, and portfolio demonstration",
+      "stack": "shared",
+      "depends_on": [
+        "L26"
+      ],
+      "course_refs": [
+        "dn-program",
+        "py-app",
+        "dn-tracing"
+      ],
+      "official_refs": [
+        "ms-overview",
+        "ms-otel",
+        "aspire-apphost"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Write a fresh-checkout runbook, architecture diagram, version table, and troubleshooting guide.",
+        "Prepare a short demonstration covering success, denial, a fault, and cross-language comparison.",
+        "Link sanitized evidence, decisions, and evaluation results; credit course inspiration."
+      ],
+      "acceptance": [
+        "Another developer can follow the documented startup and verification steps.",
+        "The demonstration accurately separates implemented behavior, mock dependencies, and remaining work."
+      ],
+      "learning_outcomes": [
+        "Explain a system clearly with evidence and limitations.",
+        "Turn implementation work into a defensible portfolio narrative."
+      ],
+      "interview_questions": [
+        "Walk me through an end-to-end request and its failure path.",
+        "What did you change from the course and why?"
+      ],
+      "stretch": "Ask someone to follow the runbook without verbal guidance and record the gaps."
+    },
+    {
+      "id": "L28",
+      "order": 28,
+      "epic": "E07",
+      "title": "Complete a mock interview and independent change exercise",
+      "stack": "shared",
+      "depends_on": [
+        "L27"
+      ],
+      "course_refs": [
+        "dn-orchestrator",
+        "py-executors",
+        "dn-tracing"
+      ],
+      "official_refs": [
+        "ms-overview",
+        "ms-approval",
+        "ms-otel"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Answer the accumulated ticket questions in your own words using the evidence notes.",
+        "Demonstrate diagnosis of an injected fault from traces/metrics/logs.",
+        "Implement a small new requirement independently, then review its design and tests."
+      ],
+      "acceptance": [
+        "Document answers, weak areas, and follow-up practice honestly.",
+        "Explain SDK selection, workflows, approvals, state, telemetry, evaluation, and deployment gaps without reading generated answers."
+      ],
+      "learning_outcomes": [
+        "Synthesize implementation knowledge and engineering judgment.",
+        "Communicate tradeoffs under interview-style constraints."
+      ],
+      "interview_questions": [
+        "Why did you choose this architecture, and when would you simplify it?",
+        "What would you change for a production service handling real customer actions?"
+      ],
+      "stretch": "Add a read-only return-eligibility query and justify its tool, policy, evaluation, and observability design."
+    }
+  ]
+}
