@@ -46,7 +46,7 @@ Ticket scope and parity requirements are defined in the [alignment contract](doc
 
 ## GitHub learning board
 
-[Project board](https://github.com/users/sunkanmi-olawuwo/projects/2) · [First ticket: L01](https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/8) · [All issues](https://github.com/sunkanmi-olawuwo/maf-support-lab/issues)
+[Project board](https://github.com/orgs/olaheavy-dev/projects/4) · [First ticket: L01](https://github.com/olaheavy-dev/maf-support-lab/issues/8) · [All issues](https://github.com/olaheavy-dev/maf-support-lab/issues)
 
 The board contains 42 learning tickets and nine parent epics linked through native sub-issues. Follow the execution Order field and blocking links; stable ticket IDs do not change when a task moves. L01 is Ready; later tickets are blocked by their execution predecessor.
 

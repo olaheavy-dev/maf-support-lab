@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO_URL = "https://github.com/sunkanmi-olawuwo/maf-support-lab"
+REPO_URL = "https://github.com/olaheavy-dev/maf-support-lab"
 
 
 def code(text: str) -> str:
