@@ -10,7 +10,7 @@ For each ticket:
 
 1. Read the source files and current documentation for that task.
 2. Before coding, explain the request lifecycle and the smallest intended change.
-3. Attempt the implementation yourself. Ask the assistant for hints, a design review, or debugging help.
+3. The assistant implements the ticket and opens a PR with a brief: key facts, what to note, and what to review.
 4. Verify observable success and meaningful failure paths.
 5. Write a short evidence note and answer the interview questions aloud.
 6. Review and merge the PR, then select the next ticket.

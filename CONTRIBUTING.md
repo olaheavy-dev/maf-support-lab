@@ -8,7 +8,7 @@ Backlog -> Ready -> In progress -> Review -> Done.
 
 Only one implementation ticket is In progress. A ticket becomes Ready when its prerequisites are complete and its references/version assumptions have been checked.
 
-1. Read the task and attempt a short design explanation.
+1. Read the task. The assistant implements it; review its brief and explain the design in your own words.
 2. Create a branch named feat/lNN-short-description, fix/lNN-short-description, or docs/lNN-short-description.
 3. Implement the smallest complete behavior.
 4. Run the relevant checks, including failure cases.
