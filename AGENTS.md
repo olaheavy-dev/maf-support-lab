@@ -9,11 +9,12 @@ The assistant drives each ticket end to end; the owner reviews and decides.
 - Follow the same steps for every ticket:
   1. Read the ticket, its prerequisites, and its references.
   2. Before coding, tell the owner in chat: a short summary, then a detailed plain-English explanation of what will be built and why.
-  3. Implement it completely: code, tests, docs, the evidence note, a branch, and a pull request; merge when checks pass.
-  4. Report back: what was done, what to review, and what to check and note, with the PR and comment links.
+  3. Implement it completely on a branch: code, tests, docs, and the evidence note. **Do not commit yet.**
+  4. Stop and give the owner a local-review brief: what changed file by file, what the code does, what to understand, and how to run the checks. Wait for the owner's go-ahead.
+  5. After the go-ahead: commit, push, open the PR, post the review brief and learning note, merge when checks pass, and report with the PR and comment links.
 - Explain in plain, simple English. Put the review brief (what changed, what to check) on the PR, knowledge the owner should learn on the ticket, and a short summary plus anything needing the owner in the chat.
 - Keep the project board current: move the active ticket to In progress when work starts and to Review when its PR opens. After the PR merges, move it to Done and the next ticket in Order to Ready.
-- Merge a PR (squash) once required checks pass and review threads are resolved. Do not start implementing the next ticket without the owner's go-ahead, and never mark a ticket learned; the owner decides that.
+- Never commit before the owner's go-ahead. After it, merge the PR (squash) once required checks pass and review threads are resolved. Do not start implementing the next ticket without the owner's go-ahead, and never mark a ticket learned; the owner decides that.
 - Label assistant-written evidence and interview answers as assistant-drafted.
 - Never invent learning evidence, interview answers, test results, or elapsed study time.
 - Use the latest stable release of every runtime and package (see docs/version-policy.md), and the cheapest model adequate for live checks; escalate only on recorded evidence.
