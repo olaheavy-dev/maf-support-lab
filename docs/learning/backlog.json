@@ -706,7 +706,9 @@
         "ms-structured",
         "ms-workflows",
         "ms-safety",
-        "ms-cooperative-cancellation"
+        "ms-cooperative-cancellation",
+        "ms-running",
+        "ms-workflow-events"
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
@@ -1000,7 +1002,9 @@
       "official_refs": [
         "ms-tools",
         "ms-structured",
-        "ms-workflows"
+        "ms-workflows",
+        "ms-devui",
+        "py-devui-source"
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
@@ -1060,7 +1064,9 @@
         "ms-memory",
         "ms-checkpoints",
         "ms-safety",
-        "py-release"
+        "py-release",
+        "ms-multiturn",
+        "ms-hitl"
       ],
       "source_note": "Course always_require tools and executors illustrate the concept. This ticket ports the established .NET state/authorization/idempotency design; it is larger than a single new-concept exercise and should be worked in the three listed slices.",
       "implementation": [
@@ -1123,7 +1129,11 @@
         "ms-tools",
         "py-devui-source",
         "py-otel-source",
-        "aspire-telemetry"
+        "aspire-telemetry",
+        "ms-running",
+        "ms-workflow-events",
+        "ms-workflow-otel",
+        "py-async-cancellation"
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [

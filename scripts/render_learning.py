@@ -83,7 +83,22 @@ def generated_documents(backlog: dict, registry: dict, mapping: dict) -> dict[st
     lines = ["# Ordered learning roadmap", "",
         "Work one ticket at a time in execution order. Ticket IDs are stable identifiers, not execution positions; follow the Order column and blocking links. Only the first unblocked ticket is Ready.",
         "", "The [alignment contract](alignment.md) fixes cross-ticket scope and the [capability map](capabilities.md) identifies prerequisites. Source metadata lives in backlog.json and ../sources.json; generated ticket/epic pages must be rerendered when it changes.",
-        "", "| Order | Ticket ID | Epic | Learning ticket | Stack | Depends on |",
+        "", "## Learning path at a glance", "",
+        "Each arrow means finish the preceding phase before starting the next. The ticket IDs inside each box follow execution order, including L16's later evaluation position.",
+        "", "```mermaid", "flowchart TD"]
+    phase_ids = []
+    ordered_epics = sorted(backlog["epics"], key=lambda e: min(t["order"] for t in tickets if t["epic"] == e["id"]))
+    for epic in ordered_epics:
+        phase_tickets = sorted((t for t in tickets if t["epic"] == epic["id"]), key=lambda t: t["order"])
+        sequence = " → ".join(t["id"] for t in phase_tickets)
+        label = f"{epic['id']}: {epic['title']}<br/>{sequence}"
+        lines.append(f"    {epic['id']}[{json.dumps(label, ensure_ascii=False)}]")
+        phase_ids.append(epic["id"])
+    lines.append("    " + " --> ".join(phase_ids))
+    lines += ["```", "",
+        "The table below is the text alternative and includes the exact prerequisites. Formal evaluations start after L24; Gatsby documentation starts after L33. Final portfolio work refreshes the static documentation after the fault and security reviews.",
+        "", "## Ticket execution order", "",
+        "| Order | Ticket ID | Epic | Learning ticket | Stack | Depends on |",
         "| --- | --- | --- | --- | --- | --- |"]
     for ticket in tickets:
         deps = ", ".join(ticket["depends_on"]) or "None"
