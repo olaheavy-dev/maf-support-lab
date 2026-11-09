@@ -30,7 +30,27 @@ class LearningValidationTests(unittest.TestCase):
 
     def test_current_plan_is_valid(self) -> None:
         epics, tickets, _ = validate(self.root)
-        self.assertEqual((epics, tickets), (9, 36))
+        self.assertEqual((epics, tickets), (9, 42))
+
+    def test_prebuild_evaluation_deliverable_is_rejected(self) -> None:
+        self.edit_json("docs/learning/backlog.json",
+            lambda b: next(t for t in b["tickets"] if t["id"] == "L14")["deliverables"].append("evaluations/datasets/"))
+        with self.assertRaisesRegex(SystemExit, "Evaluation deliverable before application completion: L14"):
+            validate(self.root)
+
+    def test_numbered_adr_authoring_order_is_enforced(self) -> None:
+        def reverse_adrs(backlog):
+            for ticket in backlog["tickets"]:
+                ticket["deliverables"] = [p.replace("0002-state-and-idempotency", "0004-state-and-idempotency") for p in ticket["deliverables"]]
+        self.edit_json("docs/learning/backlog.json", reverse_adrs)
+        with self.assertRaisesRegex(SystemExit, "Numbered ADR introduced out of order: L21"):
+            validate(self.root)
+
+    def test_adr_number_cannot_name_two_different_decisions(self) -> None:
+        self.edit_json("docs/learning/backlog.json",
+            lambda b: next(t for t in b["tickets"] if t["id"] == "L21")["deliverables"].append("docs/decisions/0002-other-decision.md"))
+        with self.assertRaisesRegex(SystemExit, "ADR number reused for a different decision: L21"):
+            validate(self.root)
 
     def test_future_authorization_dependency_is_rejected(self) -> None:
         self.edit_json("docs/learning/backlog.json",

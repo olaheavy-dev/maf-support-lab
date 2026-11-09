@@ -90,7 +90,8 @@ def generated_documents(backlog: dict, registry: dict, mapping: dict) -> dict[st
     ordered_epics = sorted(backlog["epics"], key=lambda e: min(t["order"] for t in tickets if t["epic"] == e["id"]))
     for epic in ordered_epics:
         phase_tickets = sorted((t for t in tickets if t["epic"] == epic["id"]), key=lambda t: t["order"])
-        sequence = " → ".join(t["id"] for t in phase_tickets)
+        ids = [t["id"] for t in phase_tickets]
+        sequence = "<br/>".join(" → ".join(ids[i:i+4]) for i in range(0, len(ids), 4))
         label = f"{epic['id']}: {epic['title']}<br/>{sequence}"
         lines.append(f"    {epic['id']}[{json.dumps(label, ensure_ascii=False)}]")
         phase_ids.append(epic["id"])

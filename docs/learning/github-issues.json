@@ -289,49 +289,113 @@
       "number": 40,
       "id": 6293966498,
       "node_id": "I_kwDOVoiBds8AAAABdyZOog",
-      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/40"
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/40",
+      "parent_linked": true,
+      "dependencies_linked": true
     },
     "L30": {
       "number": 41,
       "id": 6293966999,
       "node_id": "I_kwDOVoiBds8AAAABdyZQlw",
-      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/41"
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/41",
+      "parent_linked": true,
+      "dependencies_linked": true
     },
     "L31": {
       "number": 42,
       "id": 6293967422,
       "node_id": "I_kwDOVoiBds8AAAABdyZSPg",
-      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/42"
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/42",
+      "parent_linked": true,
+      "dependencies_linked": true
     },
     "L32": {
       "number": 43,
       "id": 6293967809,
       "node_id": "I_kwDOVoiBds8AAAABdyZTwQ",
-      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/43"
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/43",
+      "parent_linked": true,
+      "dependencies_linked": true
     },
     "L33": {
       "number": 44,
       "id": 6293968220,
       "node_id": "I_kwDOVoiBds8AAAABdyZVXA",
-      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/44"
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/44",
+      "parent_linked": true,
+      "dependencies_linked": true
     },
     "L34": {
       "number": 45,
       "id": 6293968566,
       "node_id": "I_kwDOVoiBds8AAAABdyZWtg",
-      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/45"
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/45",
+      "parent_linked": true,
+      "dependencies_linked": true
     },
     "L35": {
       "number": 46,
       "id": 6293969024,
       "node_id": "I_kwDOVoiBds8AAAABdyZYgA",
-      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/46"
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/46",
+      "parent_linked": true,
+      "dependencies_linked": true
     },
     "L36": {
       "number": 47,
       "id": 6293969373,
       "node_id": "I_kwDOVoiBds8AAAABdyZZ3Q",
-      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/47"
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/47",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L37": {
+      "number": 51,
+      "id": 6296209327,
+      "node_id": "I_kwDOVoiBds8AAAABd0iHrw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/51",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L38": {
+      "number": 52,
+      "id": 6296209642,
+      "node_id": "I_kwDOVoiBds8AAAABd0iI6g",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/52",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L39": {
+      "number": 53,
+      "id": 6296209864,
+      "node_id": "I_kwDOVoiBds8AAAABd0iJyA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/53",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L40": {
+      "number": 54,
+      "id": 6296210155,
+      "node_id": "I_kwDOVoiBds8AAAABd0iK6w",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/54",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L41": {
+      "number": 55,
+      "id": 6296210386,
+      "node_id": "I_kwDOVoiBds8AAAABd0iL0g",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/55",
+      "parent_linked": true,
+      "dependencies_linked": true
+    },
+    "L42": {
+      "number": 56,
+      "id": 6296210707,
+      "node_id": "I_kwDOVoiBds8AAAABd0iNEw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/56",
+      "parent_linked": true,
+      "dependencies_linked": true
     }
   }
 }

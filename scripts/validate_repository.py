@@ -27,6 +27,8 @@ def validate(root: Path = ROOT) -> tuple[int, int, int]:
     require(len(epics) == len(backlog["epics"]), "Duplicate epic identifiers")
     seen: set[str] = set()
     available: set[str] = set()
+    numbered_adrs: dict[int, str] = {}
+    latest_adr_number = 0
     for order, ticket in enumerate(backlog["tickets"], 1):
         ident = ticket["id"]
         require(re.fullmatch(r"L[0-9]{2,}", ident) is not None, f"Invalid stable ticket ID: {ident}")
@@ -48,6 +50,19 @@ def validate(root: Path = ROOT) -> tuple[int, int, int]:
         for target in ticket["deliverables"]:
             require(not PurePosixPath(target).is_absolute() and ".." not in PurePosixPath(target).parts,
                     f"Deliverable must be repository-relative: {ident}")
+        if "application_projects_built" not in available:
+            require(not any(PurePosixPath(p).parts[:1] == ("evaluations",) for p in ticket["deliverables"]),
+                    f"Evaluation deliverable before application completion: {ident}")
+        for target in ticket["deliverables"]:
+            adr = re.fullmatch(r"docs/decisions/([0-9]{4})-[^/]+\.md", target)
+            if adr:
+                number = int(adr.group(1))
+                if number in numbered_adrs:
+                    require(numbered_adrs[number] == target, f"ADR number reused for a different decision: {ident}")
+                else:
+                    require(number > latest_adr_number, f"Numbered ADR introduced out of order: {ident}")
+                    numbered_adrs[number] = target
+                    latest_adr_number = number
         missing = set(ticket["requires_capabilities"]) - available
         require(not missing, f"Unavailable prerequisite capabilities: {ident}: {sorted(missing)}")
         provided = ticket["provides_capabilities"]

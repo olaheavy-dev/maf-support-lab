@@ -4,7 +4,7 @@ This document fixes scope and ownership between learning tickets. It is a planni
 
 ## One public specification
 
-L02 owns version-1 HTTP, conversation, operation-status, approval, error, and stream contracts. Both backend adapters implement that specification while their native SDK internals remain idiomatic. L07 and L18 may not weaken schema validation to accommodate model output.
+L02 owns version-1 HTTP, conversation, operation-status, approval, error, and stream contracts. Both backend adapters implement that specification while their native SDK internals remain idiomatic. L07 and L18 may not weaken schema validation to accommodate model output. L02 is an initial specification, not an unchangeable prediction of native SDK behavior. L10 and L12 are explicit approval/streaming feasibility checkpoints. A justified revision updates schemas, examples, contracts/README.md revision history, and every already implemented adapter/test in the same PR, with rationale and compatibility/version impact. Later implementations use that agreed revision; no revision may weaken ownership, exact-argument approval, or factual operation-state guarantees.
 
 L22 verifies browser compatibility with the established specification. A discovered breaking change must update schemas, both adapters, and their feature/contract tests before UI work continues. L21 verifies the built application contracts; the later E08 evaluation datasets adopt that specification. Business/security failures cannot be waived as SDK differences.
 
@@ -16,9 +16,9 @@ L03 creates a server-owned fixed development principal and a trusted test-host i
 
 The baseline is a local development system with synthetic users. An arbitrary client header or model argument cannot establish identity. Production identity-provider integration remains an explicit future requirement.
 
-L05-L09 and L18 are read-only. Unresolved technical requests may suggest escalation but cannot create a ticket yet. L10 introduces simulated refund, cancellation, and support-ticket creation with bound native approval for all three; L19 implements the same rule in Python. This deliberately consistent learning baseline can later be refined through an explicit risk-policy change.
+L05-L09 and L18 are read-only. Unresolved technical requests may suggest escalation but cannot create a ticket yet. L10 introduces simulated refund, cancellation, and support-ticket creation with bound native approval for all three; L37 implements the same rule in Python. This deliberately consistent learning baseline can later be refined through an explicit risk-policy change.
 
-L10 uses in-memory business state; its acceptance makes no restart guarantee. L11 adds durable native state, expiry, status lookup, stable identities, and atomic operation/business-state records for every write. Python ports this design in L19.
+L10 uses in-memory business state; its acceptance makes no restart guarantee. L11 adds durable native state, expiry, status lookup, stable identities, and atomic operation/business-state records for every write. Python ports this design in L38, following L19 sessions and L37 approvals.
 
 Session history, workflow checkpoints, pending approval records, and business operation records have distinct responsibilities. Persist the state actually needed by the selected SDK execution path; do not assume saving chat text restores a pending workflow.
 
@@ -26,7 +26,7 @@ The local simulated store must prevent a repeated approved operation from mutati
 
 ## Keep stream and business outcomes separate
 
-L02 defines the exact schemas; L12 and L20 implement them. Each turn has one final outcome: completed, awaiting_approval, failed, or cancelled. Emit one terminal event only while the connection remains usable; a disconnected client may never receive that event. Pending/final business-operation state remains authoritative and retrievable.
+L02 defines the initial schemas; L12 and L20 implement the current agreed revision after the L10/L12 feasibility checks. Each turn has one final outcome: completed, awaiting_approval, failed, or cancelled. Emit one terminal event only while the connection remains usable; a disconnected client may never receive that event. Pending/final business-operation state remains authoritative and retrievable.
 
 Awaiting approval is a pause, not successful business execution. A resumed approval is a later request bound to the same owning native session/operation. Business operation states and their enum spellings are defined once in L02, including pending, rejected/expired, running, committed, and failed cases.
 
@@ -42,7 +42,7 @@ L06 proves HTTP/agent/model/tool traces, logs, and actual metric samples reach A
 
 Use bounded metric dimensions such as route, tool, and outcome. Conversation/operation identifiers belong in appropriately protected traces/logs, not unbounded metric labels. Configure telemetry ownership once and avoid double-counting the same provider usage. Missing usage is unknown, not zero; pricing-based estimates are separate from provider bills.
 
-L15 inventories provider, HTTP, and application retries and bounds total attempts, tool/agent steps, output size, and turn duration. Python must port these controls in L20; they cannot be deferred beyond parity.
+L15 inventories provider, HTTP, and application retries and bounds total attempts, tool/agent steps, output size, and turn duration. Python must port these controls in L42; they cannot be deferred beyond parity.
 
 The repository-checks job remains the stable required CI aggregate. Existing language checks must feed it as introduced. Python packaging/test gates join in L17; frontend gates join in L23/L24. No required offline job needs model credentials.
 
@@ -54,12 +54,18 @@ L21 verifies the built backend projects using their existing integration/contrac
 | --- | --- | --- |
 | Host, fake mode, trusted development principal | L03-L05 | L17 |
 | Read-only agents, scoped tools, validated routing, DevUI | L05/L07/L08 | L18 |
-| Conversation isolation, approval, eligibility, durable operations, ownership matrix | L09-L11/L13 | L19 |
-| Streaming/cancellation, telemetry, boundary-validation fixtures, retry/step/output budgets | L06/L12/L14/L15 | L20 |
+| Conversation isolation | L09 | L19 |
+| Approval and eligibility | L10 | L37 |
+| Durable native state and atomic operation records | L11 | L38 |
+| Customer/conversation/operation access matrix | L13 | L39 |
+| Streaming and cooperative cancellation | L12 | L20 |
+| OTLP traces, logs, and metrics in Aspire | L06/L07 | L40 |
+| Injection and tool/output boundaries | L14 | L41 |
+| Retry, timeout, step, and output budgets | L15 | L42 |
 | Application feature/contract integration | L04 onward | L17 onward, verified together in L21 |
 | Post-build formal evaluation | L29/L16/L30 | L29/L16/L31; shared scoring/reporting in L32/L33 |
 
-L19 and L20 are porting slices across already explored concepts. Work their listed implementation steps separately; if a slice is too large, split it into linked sub-tasks before implementation while preserving the parent acceptance criteria. Do not silently omit a behavior to fit a time estimate.
+The Python sequence is L19 -> L37 -> L38 -> L39 -> L20 -> L40 -> L41 -> L42, with one focused learning issue per slice and a native blocking chain. Existing L19/L20 issue IDs remain stable; their other capabilities move to the named tickets. L21 cannot start until every Python parity capability is present.
 
 ## Frontend and final review
 
@@ -81,6 +87,6 @@ Unit/integration tests and learner notes remain alongside feature work. Formal e
 
 Evaluation dependencies belong under evaluations/dotnet/Support.Evaluations and evaluations/python, outside production API manifests. The same captured evidence/dataset/result specification feeds both targets. Local evaluators can avoid judge calls while response generation can still call a model; fake or recorded responses keep the required lane credential-free. Quality scores never replace ownership/approval/idempotency assertions. Reporting adapters for native/custom results must be verified against actual supported APIs.
 
-E09 is explicitly Gatsby. L34 authors selected plain .md pages under docs/ and their publication manifest. L35 uses gatsby-source-filesystem and gatsby-transformer-remark to generate routes and static HTML in docs-site/public. There is no Docusaurus or MDX-only authoring requirement. The whole output folder includes HTML, CSS, JavaScript, and image assets; Node/Gatsby is a build-time requirement, not a hosting requirement.
+E09 is explicitly Gatsby. L35 first records a dated maintenance/security, supported Node, and plugin compatibility check plus a clean-build feasibility result; an unsupported combination requires a scope decision rather than a silent framework substitution. L34 authors selected plain .md pages under docs/ and their publication manifest. L35 uses gatsby-source-filesystem and gatsby-transformer-remark to generate routes and static HTML in docs-site/public. There is no Docusaurus or MDX-only authoring requirement. The whole output folder includes HTML, CSS, JavaScript, and image assets; Node/Gatsby is a build-time requirement, not a hosting requirement.
 
 L36 copies the complete output elsewhere, checks direct/deep links through an ordinary static HTTP server, verifies root and configured-subpath builds, and packages a downloadable artifact with copy/serve instructions. This does not promise arbitrary file:// support or a single self-contained HTML file, and requires no deployment or hosting account. Documentation builds do not run agents, judges, or evaluations. L27 refreshes that artifact after final operational/security changes.

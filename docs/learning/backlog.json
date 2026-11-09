@@ -142,12 +142,14 @@
         "Define the version-1 HTTP request/response, conversation, operation-status, approval, error, and planned streaming schemas in contracts/; decide the transport mapping now and record it in contracts/README.md.",
         "Define one final turn outcome: completed, awaiting_approval, failed, or cancelled. Emit its terminal stream event only while the transport remains usable; a disconnect may prevent delivery. Specify authoritative operation-status lookup and approval resumption separately.",
         "Seed synthetic customers, orders, refund/cancellation eligibility rules, and feature-test scenario inputs; define reset/isolation rules for each backend and evaluation run.",
-        "Draft trust boundaries and operation-risk rules in docs/threat-model.md. Preserve original user text beside derived fields and keep principal/ownership authority outside model arguments."
+        "Draft trust boundaries and operation-risk rules in docs/threat-model.md. Preserve original user text beside derived fields and keep principal/ownership authority outside model arguments.",
+        "Treat version 1 as the initial shared specification, with approval and streaming assumptions explicitly provisional until the native SDK checks at L10/L12. Define a revision policy in contracts/README.md: document rationale, compatibility/version impact, schema and example changes, and update implemented adapters/tests in the same change; later implementations consume the current agreed revision."
       ],
       "acceptance": [
         "Contract examples cover success, missing/unknown order, invalid route, forbidden access, approval denial, operation-status lookup, stream pause/error, and duplicate submission.",
         "Schema checks reject invalid routes/ranges and incompatible envelopes. HTTP routes, event shapes, error codes, state ownership, and versioning rules are documented before either backend implements them.",
-        "Fixtures contain two synthetic customers with distinct orders and eligibility outcomes; feature tests can reset their own state. Formal evaluation datasets and projects are introduced after the application projects are built."
+        "Fixtures contain two synthetic customers with distinct orders and eligibility outcomes; feature tests can reset their own state. Formal evaluation datasets and projects are introduced after the application projects are built.",
+        "The contract revision policy names L10 and L12 as early refinement checkpoints. A breaking discovery requires an explicit version change and updated examples/tests; security and factual operation-state guarantees cannot be weakened to fit an SDK."
       ],
       "learning_outcomes": [
         "Distinguish schema validity, factual validity, and business authorization.",
@@ -171,7 +173,8 @@
       "deliverables": [
         "contracts/",
         "fixtures/",
-        "docs/threat-model.md"
+        "docs/threat-model.md",
+        "contracts/README.md"
       ],
       "scope_exclusions": [
         "Backend implementation",
@@ -599,11 +602,13 @@
       "implementation": [
         "Introduce simulated refund, cancellation, and support-ticket creation tools over in-memory fixture state; use the native framework approval mechanism for all three in this learning baseline.",
         "Adapt native pending requests/responses to the L02 approval and operation-status contract, binding principal, conversation, operation identity, tool, and exact arguments. Rejection must not trigger an immediate repeat request.",
-        "Enforce eligibility and customer access inside services using the L03/L05/L09 trusted boundaries; remove model-supplied confirmation authority. Durable storage/idempotency is the next ticket."
+        "Enforce eligibility and customer access inside services using the L03/L05/L09 trusted boundaries; remove model-supplied confirmation authority. Durable storage/idempotency is the next ticket.",
+        "Check the approval contract against a minimal native SDK example. If a mismatch warrants a contract revision, update schemas, request/event examples, contracts/README.md revision history, and every already implemented adapter/test in the same PR; record rationale and compatibility/version impact. Future Python/UI tickets consume that agreed revision."
       ],
       "acceptance": [
         "For refund, cancellation, and ticket creation: absent/denied approval produces zero mutation, and an approved eligible operation changes simulated state and returns its factual result.",
-        "Changed arguments, wrong operation, wrong principal/conversation, and ineligible actions cannot reuse approval. Tests prove the native approval gate and service authorization both apply."
+        "Changed arguments, wrong operation, wrong principal/conversation, and ineligible actions cannot reuse approval. Tests prove the native approval gate and service authorization both apply.",
+        "Native behavior and the current agreed contract are reconciled without bypassing ownership, exact-argument approval, or factual operation-state rules. Record the check and either its no-change result or a versioned revision; schema/example and adapter regression checks agree before closing."
       ],
       "learning_outcomes": [
         "Separate user intent, human approval, and business authorization.",
@@ -624,7 +629,9 @@
       ],
       "deliverables": [
         "src/dotnet/Support.Api/",
-        "src/dotnet/Support.Api.Tests/"
+        "src/dotnet/Support.Api.Tests/",
+        "contracts/",
+        "contracts/README.md"
       ],
       "scope_exclusions": [
         "Real external business actions",
@@ -652,7 +659,7 @@
       ],
       "source_note": "The course refund runner illustrates approval flow, not durable restart/resume or idempotency.",
       "implementation": [
-        "Choose a supported local durable store and document session serialization versus workflow checkpoint responsibilities in docs/decisions/0003-state-and-idempotency.md.",
+        "Choose a supported local durable store and document session serialization versus workflow checkpoint responsibilities in docs/decisions/0002-state-and-idempotency.md.",
         "Persist pending approvals/expiry, operation status, required native session/checkpoint state, and stable workflow/agent identities. Protect restore/status access using the owning principal and conversation.",
         "Use a durable operation key plus atomic simulated business-state/operation-record changes for refunds, cancellations, and ticket creation; isolate state by backend and evaluation run."
       ],
@@ -681,7 +688,7 @@
       "deliverables": [
         "src/dotnet/Support.Api/",
         "src/dotnet/Support.Api.Tests/",
-        "docs/decisions/0003-state-and-idempotency.md"
+        "docs/decisions/0002-state-and-idempotency.md"
       ],
       "scope_exclusions": [
         "Exactly-once guarantees for arbitrary external providers",
@@ -714,11 +721,13 @@
       "implementation": [
         "Implement L02's chosen event contract for progress/deltas and a single terminal event while the connection remains usable. A disconnected client may receive no terminal event; retain factual pending/final operation state for status lookup.",
         "Persist pending/final operation status so a new request or status lookup can resolve a disconnected approval/write; do not promise replay of model tokens unless separately implemented.",
-        "Propagate cooperative cancellation, check it at the defined pre-commit boundary, and stop launching new work when observed. Choose output buffering explicitly and measure first-output/full-response latency; cancellation notification and write completion can race."
+        "Propagate cooperative cancellation, check it at the defined pre-commit boundary, and stop launching new work when observed. Choose output buffering explicitly and measure first-output/full-response latency; cancellation notification and write completion can race.",
+        "Check the streaming contract against a minimal native SDK example. If a mismatch warrants a contract revision, update schemas, request/event examples, contracts/README.md revision history, and every already implemented adapter/test in the same PR; record rationale and compatibility/version impact. Future Python/UI tickets consume that agreed revision."
       ],
       "acceptance": [
         "Connected successful, paused, failed, and cancelled turns follow the event contract with one terminal event. A transport disconnect may prevent final-event delivery; partial structured data never drives routing and awaiting approval is not business completion.",
-        "Deterministic tests cover cancellation observed before commit (no new mutation), after commit (committed status preserved), and a lost response/terminal event (status lookup and duplicate protection recover the result). A raw client disconnect is not asserted to instantly stop or roll back a write."
+        "Deterministic tests cover cancellation observed before commit (no new mutation), after commit (committed status preserved), and a lost response/terminal event (status lookup and duplicate protection recover the result). A raw client disconnect is not asserted to instantly stop or roll back a write.",
+        "Native behavior and the current agreed contract are reconciled without bypassing ownership, exact-argument approval, or factual operation-state rules. Record the check and either its no-change result or a versioned revision; schema/example and adapter regression checks agree before closing."
       ],
       "learning_outcomes": [
         "Understand asynchronous streaming and cancellation propagation.",
@@ -742,7 +751,8 @@
       "deliverables": [
         "src/dotnet/Support.Api/",
         "src/dotnet/Support.Api.Tests/",
-        "contracts/"
+        "contracts/",
+        "contracts/README.md"
       ],
       "scope_exclusions": [
         "Rollback of a committed action on disconnect",
@@ -853,12 +863,12 @@
       ],
       "deliverables": [
         "src/dotnet/Support.Api.Tests/",
-        "evaluations/",
         "docs/threat-model.md"
       ],
       "scope_exclusions": [
         "Claiming complete prompt-injection prevention",
-        "Experimental security middleware as a cross-language requirement"
+        "Experimental security middleware as a cross-language requirement",
+        "Formal evaluation projects or datasets before L29"
       ]
     },
     {
@@ -1010,11 +1020,11 @@
       "implementation": [
         "Port L05/L07/L08's read-only orders, billing, and technical behavior using idiomatic Python types, validated models, workflow executors, and a controllable fake client.",
         "Enforce principal-scoped record access, preserve original requests/validated fields, and use the unchanged version-1 contract and shared fixtures.",
-        "Expose development-only Python DevUI for agent/workflow inspection; register no mutating tools until L19 implements the approval gate."
+        "Expose development-only Python DevUI for agent/workflow inspection; register no mutating tools until L37 implements the approval gate."
       ],
       "acceptance": [
         "The shared known/unknown/missing record and route checks pass; invalid output reaches the same controlled fallback and cross-customer reads are denied.",
-        "All read-only specialists are discoverable in DevUI; no mutating tool can run. Each entry point uses the same guarded services; Python OTLP verification belongs to L20."
+        "All read-only specialists are discoverable in DevUI; no mutating tool can run. Each entry point uses the same guarded services; Python OTLP verification belongs to L40."
       ],
       "learning_outcomes": [
         "Compare C# response types/executors with Python models/handlers.",
@@ -1041,7 +1051,7 @@
         "src/python/tests/"
       ],
       "scope_exclusions": [
-        "Any business mutation before L19",
+        "Any business mutation before L37",
         "Weakening the shared schemas to fit the SDK"
       ]
     },
@@ -1049,10 +1059,66 @@
       "id": "L19",
       "order": 18,
       "epic": "E05",
-      "title": "Implement Python sessions, approval persistence, and idempotency",
+      "title": "Implement isolated Python conversation sessions",
       "stack": "python",
       "depends_on": [
         "L18"
+      ],
+      "course_refs": [
+        "py-app",
+        "py-executors",
+        "py-models"
+      ],
+      "official_refs": [
+        "ms-multiturn",
+        "ms-memory",
+        "ms-safety",
+        "py-release"
+      ],
+      "source_note": "Use the pinned course files to compare behavior; implement this focused Python slice with the selected released SDK and the current agreed shared contract. Course helpers do not replace application ownership, approval, or durability controls.",
+      "implementation": [
+        "Port L09 using native Python sessions: bind each conversation to the server-owned principal and preserve multi-turn context without global mutable history.",
+        "Define same-conversation concurrency behavior and keep independent customers, conversations, and backend namespaces isolated. Reuse the trusted L17 boundary.",
+        "Add focused fake-mode tests for follow-ups, wrong-owner conversation lookup, independent sessions, and concurrent turns. Keep all tools read-only until L37."
+      ],
+      "acceptance": [
+        "Follow-up requests use the correct native session; a second customer or conversation cannot retrieve its history or reuse its identifier.",
+        "Concurrent turns follow the documented serialization/conflict policy without mixed history. Tests pass without model credentials and mutating tools remain unavailable."
+      ],
+      "learning_outcomes": [
+        "Understand native Python sessions and history ownership.",
+        "Separate reusable agent definitions from per-conversation mutable state."
+      ],
+      "interview_questions": [
+        "Why can a reusable agent definition still require an isolated session per conversation?",
+        "How do concurrent turns corrupt history, and what policy prevents that?"
+      ],
+      "stretch": "Introduce one local regression in this slice and explain why its focused check fails.",
+      "requires_capabilities": [
+        "python_readonly_specialists",
+        "python_dev_identity",
+        "dotnet_sessions"
+      ],
+      "provides_capabilities": [
+        "python_sessions"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/"
+      ],
+      "scope_exclusions": [
+        "Mutating tools, introduced in L37",
+        "Restart durability and the comprehensive access matrix, introduced in L38/L39"
+      ]
+    },
+    {
+      "id": "L37",
+      "order": 19,
+      "epic": "E05",
+      "title": "Add bound Python approvals for simulated mutations",
+      "stack": "python",
+      "depends_on": [
+        "L19"
       ],
       "course_refs": [
         "py-tools",
@@ -1061,131 +1127,404 @@
       ],
       "official_refs": [
         "ms-approval",
-        "ms-memory",
-        "ms-checkpoints",
+        "ms-hitl",
         "ms-safety",
-        "py-release",
-        "ms-multiturn",
-        "ms-hitl"
+        "py-release"
       ],
-      "source_note": "Course always_require tools and executors illustrate the concept. This ticket ports the established .NET state/authorization/idempotency design; it is larger than a single new-concept exercise and should be worked in the three listed slices.",
+      "source_note": "Use the pinned course files to compare behavior; implement this focused Python slice with the selected released SDK and the current agreed shared contract. Course helpers do not replace application ownership, approval, or durability controls.",
       "implementation": [
-        "Port L09-L11's conversation isolation, pending approvals, durable restore/status lookup, and all three simulated write types with the same eligibility rules.",
-        "Bind native Python approval requests to the owning session and exact proposed operation; preserve that state across restart without using unbound approval responses.",
-        "Apply the .NET baseline's customer/service authorization, atomic local-store operation records, expiry policy, and backend/run namespaces; use idiomatic Python resource cleanup."
+        "Port L10 with native Python approval for simulated refund, cancellation, and support-ticket creation over in-memory business state.",
+        "Bind a pending approval to the principal, conversation, operation identity, tool, and exact arguments. Apply existing eligibility and customer checks inside guarded services.",
+        "Map native pause/resume to the current agreed contract; reject wrong-owner, changed-argument, denied, and cross-conversation approval responses. Do not immediately repropose a denied action."
       ],
       "acceptance": [
-        "Follow-up, same-conversation concurrency, approval denial/change/replay, wrong-owner status lookup, expiry, restart/resume, and every write type pass the same expected business invariants.",
-        "Duplicate approval/submission and a crash after commit yield one mutation and factual final status; restoration uses matching native state and stable identities."
+        "All three write types require native approval and eligibility. Missing or denied approval causes zero mutation; approval produces the factual simulated outcome.",
+        "Wrong principal/conversation/operation or changed arguments cannot reuse approval. Native approval and service authorization checks run independently; no restart/atomic-store guarantee is claimed yet."
       ],
       "learning_outcomes": [
-        "Understand Python session-bound approval and durable state.",
-        "Separate language parity from line-by-line translation.",
-        "Prove the same authorization, durable-operation, and duplicate-submission invariants with native Python sessions."
+        "Understand native Python approval request/response binding.",
+        "Separate human consent from authoritative business authorization."
       ],
       "interview_questions": [
-        "How does the current Python SDK bind an approval to a pending request?",
-        "Why should session state be isolated even when an agent definition is reusable?"
+        "What makes an approval apply to one exact proposed operation?",
+        "Why must an approved action still pass eligibility and ownership checks?"
       ],
-      "stretch": "Attempt a replay from a second conversation and inspect the rejection.",
+      "stretch": "Introduce one local regression in this slice and explain why its focused check fails.",
       "requires_capabilities": [
-        "python_readonly_specialists",
-        "python_dev_identity",
-        "dotnet_durable_operations"
+        "python_sessions",
+        "dotnet_approved_mutations",
+        "support_contract_v1"
       ],
       "provides_capabilities": [
-        "python_sessions",
-        "python_approved_mutations",
-        "python_durable_operations",
-        "python_access_regressions"
+        "python_approved_mutations"
       ],
       "deliverables": [
         "src/python/support_agent/",
         "src/python/tests/"
       ],
       "scope_exclusions": [
-        "Unbound approval responses",
-        "Reinterpreting eligibility or ownership rules"
+        "Durable restart and atomic duplicate protection, introduced in L38",
+        "Unbound approval responses or real external business actions"
+      ]
+    },
+    {
+      "id": "L38",
+      "order": 20,
+      "epic": "E05",
+      "title": "Persist Python approvals and atomic operation records",
+      "stack": "python",
+      "depends_on": [
+        "L37"
+      ],
+      "course_refs": [
+        "py-tools",
+        "py-executors",
+        "py-models"
+      ],
+      "official_refs": [
+        "ms-memory",
+        "ms-checkpoints",
+        "ms-approval",
+        "py-release"
+      ],
+      "source_note": "Use the pinned course files to compare behavior; implement this focused Python slice with the selected released SDK and the current agreed shared contract. Course helpers do not replace application ownership, approval, or durability controls.",
+      "implementation": [
+        "Port the supported local-store design recorded in ADR 0002. Persist the native session/workflow state required to restore pending approvals, stable identities, expiry, and authoritative status.",
+        "Atomically record the business-state change and operation result for each simulated refund, cancellation, and ticket creation. Separate workflow checkpoints from side-effect duplicate protection.",
+        "Add controlled crash/restart, duplicate/concurrent submission, expired-approval, and commit-before-response-loss checks. Isolate backend/run namespaces and close owned resources."
+      ],
+      "acceptance": [
+        "A pending approval can be restored to matching native state after restart; wrong-owner status/restore is rejected and expired approval cannot mutate state.",
+        "Every write type remains single-mutation under duplicate/concurrent submission and crash after commit; retried status lookup reports the persisted factual outcome.",
+        "Document the local atomic-store guarantee and its limits for arbitrary external providers; feature tests use isolated fake data without model credentials."
+      ],
+      "learning_outcomes": [
+        "Distinguish native workflow/session restoration from operation idempotency.",
+        "Understand atomic local transactions and response-loss recovery."
+      ],
+      "interview_questions": [
+        "Why does checkpointing not guarantee exactly-once external side effects?",
+        "What must survive a process restart while a user is deciding on approval?"
+      ],
+      "stretch": "Crash immediately after a simulated cancellation commits and prove recovery returns its recorded outcome.",
+      "requires_capabilities": [
+        "python_approved_mutations",
+        "python_sessions",
+        "dotnet_durable_operations",
+        "synthetic_fixtures"
+      ],
+      "provides_capabilities": [
+        "python_durable_operations"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/",
+        "docs/decisions/0002-state-and-idempotency.md"
+      ],
+      "scope_exclusions": [
+        "Exactly-once guarantees for arbitrary external providers",
+        "Sharing mutable state or databases between backends"
+      ]
+    },
+    {
+      "id": "L39",
+      "order": 21,
+      "epic": "E05",
+      "title": "Verify Python customer and operation ownership boundaries",
+      "stack": "python",
+      "depends_on": [
+        "L38"
+      ],
+      "course_refs": [
+        "py-tools",
+        "py-security",
+        "py-models"
+      ],
+      "official_refs": [
+        "ms-safety",
+        "ms-memory",
+        "ms-approval"
+      ],
+      "source_note": "Use the pinned course files to compare behavior; implement this focused Python slice with the selected released SDK and the current agreed shared contract. Course helpers do not replace application ownership, approval, or durability controls.",
+      "implementation": [
+        "Port L13 as a focused adversarial matrix over the existing Python read, conversation, approval, resume, and operation-status entry points.",
+        "Use two server-owned test principals to exercise direct HTTP calls, model-attempted calls, forged identifiers, and cross-customer/cross-conversation access for every write type.",
+        "Strengthen an existing guard where a test exposes a gap and update the threat model; do not defer authorization until this ticket or treat a model argument/header as identity."
+      ],
+      "acceptance": [
+        "The matrix demonstrates owner success and non-owner rejection for reads, history, pending actions, resume, and final status; denied access leaks no protected fixture details.",
+        "Unauthorized or mismatched approvals cause zero mutation for all three writes. A deliberate missing-guard regression fails a credential-free focused check."
+      ],
+      "learning_outcomes": [
+        "Prove authorization across every route to existing business state.",
+        "Distinguish a trusted test identity hook from a user-controlled identity claim."
+      ],
+      "interview_questions": [
+        "Why does checking ownership only in the HTTP handler leave tool calls exposed?",
+        "Which read paths can leak a business operation after a write is protected?"
+      ],
+      "stretch": "Introduce one local regression in this slice and explain why its focused check fails.",
+      "requires_capabilities": [
+        "python_durable_operations",
+        "python_readonly_specialists",
+        "dotnet_access_regressions"
+      ],
+      "provides_capabilities": [
+        "python_access_regressions"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/",
+        "docs/threat-model.md"
+      ],
+      "scope_exclusions": [
+        "Introducing the first Python identity/ownership guard",
+        "Production identity-provider integration"
       ]
     },
     {
       "id": "L20",
-      "order": 19,
+      "order": 22,
       "epic": "E05",
-      "title": "Complete Python streaming, telemetry, and resilience",
+      "title": "Implement Python streaming and cooperative cancellation",
       "stack": "python",
       "depends_on": [
-        "L19"
+        "L39"
       ],
       "course_refs": [
         "py-security",
+        "py-app",
+        "py-executors"
+      ],
+      "official_refs": [
+        "ms-running",
+        "ms-workflow-events",
+        "py-async-cancellation",
+        "ms-safety"
+      ],
+      "source_note": "Use the pinned course files to compare behavior; implement this focused Python slice with the selected released SDK and the current agreed shared contract. Course helpers do not replace application ownership, approval, or durability controls.",
+      "implementation": [
+        "Port L12 using native Python asynchronous streams and the current agreed event contract; distinguish model deltas, workflow progress, approval pauses, and final turn outcomes.",
+        "Propagate cooperative cancellation and close owned streams/clients deterministically. Check cancellation at the defined pre-commit boundary and preserve factual committed operation status.",
+        "Choose buffering explicitly and measure first-output/full-response latency. Cover a lost terminal event with authoritative status lookup; do not promise model-token replay or instant provider cancellation."
+      ],
+      "acceptance": [
+        "Connected success, awaiting-approval, failure, and cancellation follow the shared terminal-event contract. A disconnected transport may deliver no final event.",
+        "Controlled tests cover cancellation observed before commit, cancellation after commit, and commit followed by response loss; status lookup and duplicate protection preserve the actual outcome.",
+        "Streams and resource-owning clients close on early exit/error/shutdown. A client disconnect alone is not asserted to prevent or roll back a write."
+      ],
+      "learning_outcomes": [
+        "Understand Python asynchronous streaming and buffering.",
+        "Separate transport delivery, cooperative cancellation, and business-operation state."
+      ],
+      "interview_questions": [
+        "Why can an API described as streaming still buffer the entire answer?",
+        "What should happen when cancellation arrives after a refund has committed?"
+      ],
+      "stretch": "Disconnect while a slow simulated tool runs and reconcile its factual result through status lookup.",
+      "requires_capabilities": [
+        "python_durable_operations",
+        "python_access_regressions",
+        "dotnet_streaming"
+      ],
+      "provides_capabilities": [
+        "python_streaming"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/"
+      ],
+      "scope_exclusions": [
+        "OTLP exporter implementation, assigned to L40",
+        "Model-token replay or rollback of committed operations"
+      ]
+    },
+    {
+      "id": "L40",
+      "order": 23,
+      "epic": "E05",
+      "title": "Export Python traces, logs, and metrics to Aspire over OTLP",
+      "stack": "python",
+      "depends_on": [
+        "L20"
+      ],
+      "course_refs": [
         "py-tracing",
-        "py-app"
+        "py-app",
+        "py-security"
       ],
       "official_refs": [
         "ms-otel",
+        "ms-workflow-otel",
         "ms-devui",
-        "ms-safety",
-        "ms-tools",
         "py-devui-source",
         "py-otel-source",
         "aspire-telemetry",
-        "ms-running",
-        "ms-workflow-events",
-        "ms-workflow-otel",
-        "py-async-cancellation"
+        "aspire-python"
       ],
-      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "source_note": "Use the pinned course files to compare behavior; implement this focused Python slice with the selected released SDK and the current agreed shared contract. Course helpers do not replace application ownership, approval, or durability controls.",
       "implementation": [
-        "Port L12's event/cancellation/operation-status behavior, preserving the same completed/awaiting_approval/failed/cancelled distinction and buffering policy.",
-        "Export traces/logs/metrics with explicit Python service identity and bounded labels; reconcile DevUI's sensitive-capture behavior and avoid duplicate provider/handler setup.",
-        "Port L14/L15's tested boundary-validation cases, model/tool/step/output budgets, retry ownership, failure envelopes, and secret-safe output handling."
+        "Configure Python-owned trace/log/metric providers and OTLP exporters, using AppHost-provided endpoint, protocol, headers, and service identity as supported by the selected Aspire integration. Document independent-run configuration and keep credentials out of committed files.",
+        "Correlate HTTP, workflow, agent/model, and tool spans and logs; emit actual counters/latency distributions with bounded labels. Document instrumentation/source/meter ownership and shutdown flushing.",
+        "Reconcile DevUI capture/export behavior to avoid duplicate providers, handlers, exporters, or usage accounting. Keep sensitive capture opt-in and distinguish unavailable usage from zero."
       ],
       "acceptance": [
-        "Python follows the same tested outcomes for pause/resume, cancellation observed before versus after commit, a dropped terminal event, timeout, rate-limit, step-budget, and injection boundaries. A client disconnect alone does not prove the write was cancelled.",
-        "All three signals arrive in Aspire; first-output latency/buffering is measured, usage accounting is not duplicated, and resource-owning clients/credentials close at host shutdown."
+        "Fake-mode success and failure from Python appear in the same Aspire dashboard as .NET with distinct service identity, correlated traces/logs, and actual metric samples.",
+        "The endpoint/protocol/configuration source and lifecycle ownership are documented; no endpoint secret or sensitive fixture payload is committed, and duplicate telemetry/accounting checks pass."
       ],
       "learning_outcomes": [
-        "Understand async streams and middleware buffering.",
-        "Compare .NET and Python telemetry configuration and lifecycle ownership.",
-        "Carry boundary checks and end-to-end retry/step budgets into the second SDK rather than relying on provider defaults."
+        "Distinguish instrumentation, SDK providers, exporters, OTLP transport, and the receiving dashboard.",
+        "Compare .NET ServiceDefaults with Python telemetry configuration and resource cleanup."
       ],
       "interview_questions": [
-        "Why can a streamed API still buffer the entire answer?",
-        "How do provider setup and logger propagation cause duplicate telemetry?",
-        "How can different provider defaults break cross-language retry or cancellation guarantees?"
+        "Why does Aspire launching Python not prove its traces, logs, and metrics are instrumented?",
+        "How do a wrong OTLP protocol or duplicate providers affect what the dashboard shows?"
       ],
-      "stretch": "Toggle the safe development telemetry setting and verify exactly what changes.",
+      "stretch": "Break the OTLP endpoint or protocol in local configuration and diagnose the exporter failure.",
       "requires_capabilities": [
-        "python_durable_operations",
+        "python_streaming",
         "python_devui",
-        "dotnet_resilience",
+        "apphost",
+        "dotnet_otel"
+      ],
+      "provides_capabilities": [
+        "python_otel"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/",
+        "apphost/",
+        "docs/observability.md"
+      ],
+      "scope_exclusions": [
+        "Assuming Python inherits C# telemetry providers",
+        "Unbounded metric labels or always-on sensitive capture"
+      ]
+    },
+    {
+      "id": "L41",
+      "order": 24,
+      "epic": "E05",
+      "title": "Exercise Python prompt-injection and tool-validation boundaries",
+      "stack": "python",
+      "depends_on": [
+        "L40"
+      ],
+      "course_refs": [
+        "py-security",
+        "py-tools",
+        "dn-injection",
+        "dn-filter"
+      ],
+      "official_refs": [
+        "ms-safety",
+        "ms-tools"
+      ],
+      "source_note": "Use the pinned course files to compare behavior; implement this focused Python slice with the selected released SDK and the current agreed shared contract. Course helpers do not replace application ownership, approval, or durability controls.",
+      "implementation": [
+        "Port L14 direct-user and tool-result injection cases using Python feature fixtures; attempt a cross-customer read, unauthorized write, and changed approved arguments.",
+        "Validate tool argument and output/rendering boundaries independently of model behavior; preserve the distinction between instructions and untrusted user/tool data.",
+        "Record heuristic false positives/bypasses and prove enforceable ownership/approval/eligibility gates still reject the tested actions; update the threat model."
+      ],
+      "acceptance": [
+        "A fake model that obeys the injected instruction still cannot bypass the tested ownership, exact-argument approval, and tool-validation controls.",
+        "Feature tests and secret-safe output/telemetry checks pass; the documented coverage does not claim complete prompt-injection prevention."
+      ],
+      "learning_outcomes": [
+        "Understand direct and indirect injection across SDK boundaries.",
+        "Separate detection heuristics from enforceable application controls."
+      ],
+      "interview_questions": [
+        "How can a tool result become an instruction-injection source?",
+        "What remains protected when phrase matching misses an attack?"
+      ],
+      "stretch": "Introduce one local regression in this slice and explain why its focused check fails.",
+      "requires_capabilities": [
+        "python_access_regressions",
+        "python_approved_mutations",
+        "python_otel",
         "dotnet_injection_regressions"
       ],
       "provides_capabilities": [
-        "python_streaming",
-        "python_otel",
-        "python_resilience",
         "python_injection_regressions"
       ],
       "deliverables": [
         "src/python/support_agent/",
         "src/python/tests/",
-        "docs/observability.md"
+        "docs/threat-model.md"
       ],
       "scope_exclusions": [
-        "Deferring Python security/retry behavior beyond parity",
-        "Shared global conversation state or duplicate telemetry setup"
+        "Formal evaluation projects/datasets before L29",
+        "Claiming complete prompt-injection prevention"
+      ]
+    },
+    {
+      "id": "L42",
+      "order": 25,
+      "epic": "E05",
+      "title": "Bound Python retries, timeouts, and execution budgets",
+      "stack": "python",
+      "depends_on": [
+        "L41"
+      ],
+      "course_refs": [
+        "py-app",
+        "py-tools",
+        "py-security",
+        "dn-orchestrator"
+      ],
+      "official_refs": [
+        "ms-safety",
+        "ms-tools",
+        "ms-otel",
+        "py-async-cancellation"
+      ],
+      "source_note": "Use the pinned course files to compare behavior; implement this focused Python slice with the selected released SDK and the current agreed shared contract. Course helpers do not replace application ownership, approval, or durability controls.",
+      "implementation": [
+        "Port L15 by inventorying Python provider/client/application retries, choosing one documented retry owner per failure, and bounding total attempts and turn duration.",
+        "Enforce model/tool/step/output budgets and cooperative timeout handling with safe error envelopes. Do not blindly retry side-effecting tools; use the existing persisted operation identity/status.",
+        "Add deterministic slow-client, rate-limit, transient/permanent-failure, retry-exhaustion, and budget cases; verify attempts and latency in telemetry without live model calls."
+      ],
+      "acceptance": [
+        "Tests prove bounded attempts, duration, tool/step/output limits, safe terminal failure, and factual status after a timeout races with a commit.",
+        "Duplicate retries never repeat a committed local mutation, provider defaults cannot silently multiply the chosen budget, and clients/streams close on failure/shutdown."
+      ],
+      "learning_outcomes": [
+        "Understand retry amplification and end-to-end resource budgets.",
+        "Compare provider defaults while preserving the shared business/cancellation guarantees."
+      ],
+      "interview_questions": [
+        "How do SDK retries and application retries multiply request attempts?",
+        "When is retrying a tool unsafe even if the model request can be retried?"
+      ],
+      "stretch": "Introduce one local regression in this slice and explain why its focused check fails.",
+      "requires_capabilities": [
+        "python_streaming",
+        "python_otel",
+        "python_injection_regressions",
+        "python_durable_operations",
+        "dotnet_resilience"
+      ],
+      "provides_capabilities": [
+        "python_resilience"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/"
+      ],
+      "scope_exclusions": [
+        "Deferring retry/budget controls beyond L21 contract verification",
+        "Unbounded retries or assumptions that timeout rolls back writes"
       ]
     },
     {
       "id": "L21",
-      "order": 20,
+      "order": 26,
       "epic": "E05",
       "title": "Verify cross-language application contracts and document SDK decisions",
       "stack": "shared",
       "depends_on": [
-        "L20"
+        "L42"
       ],
       "course_refs": [
         "dn-program",
@@ -1200,9 +1539,9 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Use the feature-level integration tests already added to each project to verify both APIs implement version-1 schemas, ownership, approvals, durable state, streaming, and safe failures.",
+        "Use the feature-level integration tests already added to each project to verify both APIs implement the current agreed contract revision and schemas, ownership, approvals, durable state, streaming, and safe failures.",
         "Add focused cross-backend contract probes using existing synthetic feature fixtures; do not build the formal evaluation harness, judge pipeline, or comparative benchmark yet.",
-        "Write docs/decisions/0002-sdk-comparison.md covering native SDK choices, resource lifecycle, known implementation differences, and the compatibility evidence from builds/tests."
+        "Write docs/decisions/0003-sdk-comparison.md covering native SDK choices, resource lifecycle, known implementation differences, and the compatibility evidence from builds/tests."
       ],
       "acceptance": [
         "Both backends build and their deterministic feature/contract integration checks pass without model credentials; a known contract or ownership regression fails.",
@@ -1234,7 +1573,7 @@
         "src/dotnet/Support.Api.Tests/",
         "src/python/tests/",
         ".github/workflows/repository-checks.yml",
-        "docs/decisions/0002-sdk-comparison.md"
+        "docs/decisions/0003-sdk-comparison.md"
       ],
       "scope_exclusions": [
         "Formal evaluation projects, judges, and benchmark reports before project completion",
@@ -1243,7 +1582,7 @@
     },
     {
       "id": "L22",
-      "order": 21,
+      "order": 27,
       "epic": "E06",
       "title": "Verify browser compatibility with the established API contract",
       "stack": "frontend",
@@ -1263,7 +1602,7 @@
       ],
       "source_note": "Course hosting and approval behavior motivates the probes. L02 owns the API; L21 verifies the built backend contracts. This ticket precedes formal evaluation.",
       "implementation": [
-        "Use a minimal disposable browser probe to verify L02's version-1 contract after both backend projects pass L21; record browser integration decisions without redefining behavior.",
+        "Use a minimal disposable browser probe to verify the current agreed contract revision, initially defined in L02 and checked at L10/L12 after both backend projects pass L21; record browser integration decisions without redefining behavior.",
         "Verify conversation/backend binding, relative frontend API addressing via the server/dev proxy, stream decoding, pending-status lookup after refresh, and safe error rendering.",
         "Keep backend aliases/endpoints server-controlled. A breaking discovery must update schemas, both adapters, and their integration tests before UI work continues; formal evaluations will adopt the corrected contract later."
       ],
@@ -1293,13 +1632,13 @@
         "docs/decisions/"
       ],
       "scope_exclusions": [
-        "Redesigning the API after parity",
+        "Unversioned API redesign or weakening shared business/security guarantees",
         "A complete frontend or product authentication"
       ]
     },
     {
       "id": "L23",
-      "order": 22,
+      "order": 28,
       "epic": "E06",
       "title": "Build shared chat UI with backend selection",
       "stack": "frontend",
@@ -1358,7 +1697,7 @@
     },
     {
       "id": "L24",
-      "order": 23,
+      "order": 29,
       "epic": "E06",
       "title": "Add approval UI, recovery states, and trace references",
       "stack": "frontend",
@@ -1406,17 +1745,17 @@
       ],
       "deliverables": [
         "frontend/",
-        "frontend/tests/",
-        "evaluations/"
+        "frontend/tests/"
       ],
       "scope_exclusions": [
         "Client-only authorization/idempotency",
-        "Exposing raw trace or provider payloads"
+        "Exposing raw trace or provider payloads",
+        "Formal evaluation projects or datasets before L29"
       ]
     },
     {
       "id": "L29",
-      "order": 24,
+      "order": 30,
       "epic": "E08",
       "title": "Set up post-build evaluation projects, datasets, and result contracts",
       "stack": "shared",
@@ -1476,7 +1815,7 @@
     },
     {
       "id": "L16",
-      "order": 25,
+      "order": 31,
       "epic": "E08",
       "title": "Build the shared deterministic behavior evaluation runner",
       "stack": "shared",
@@ -1539,7 +1878,7 @@
     },
     {
       "id": "L30",
-      "order": 26,
+      "order": 32,
       "epic": "E08",
       "title": "Integrate Microsoft .NET evaluation APIs with local checks",
       "stack": "dotnet",
@@ -1594,7 +1933,7 @@
     },
     {
       "id": "L31",
-      "order": 27,
+      "order": 33,
       "epic": "E08",
       "title": "Integrate native Python local agent and workflow evaluations",
       "stack": "python",
@@ -1650,7 +1989,7 @@
     },
     {
       "id": "L32",
-      "order": 28,
+      "order": 34,
       "epic": "E08",
       "title": "Add budgeted model-based quality evaluation for both backends",
       "stack": "shared",
@@ -1708,7 +2047,7 @@
     },
     {
       "id": "L33",
-      "order": 29,
+      "order": 35,
       "epic": "E08",
       "title": "Generate Microsoft evaluation reports and separate CI lanes",
       "stack": "shared",
@@ -1768,7 +2107,7 @@
     },
     {
       "id": "L34",
-      "order": 30,
+      "order": 36,
       "epic": "E09",
       "title": "Author canonical Markdown documentation for the completed system",
       "stack": "docs",
@@ -1825,7 +2164,7 @@
     },
     {
       "id": "L35",
-      "order": 31,
+      "order": 37,
       "epic": "E09",
       "title": "Build Gatsby Markdown-to-static-HTML documentation",
       "stack": "docs",
@@ -1840,10 +2179,13 @@
         "gatsby-filesystem",
         "gatsby-markdown",
         "gatsby-cli",
-        "ms-gatsby"
+        "ms-gatsby",
+        "gatsby-releases",
+        "node-support"
       ],
       "source_note": "The course repositories provide documented application behavior only. Gatsby's own filesystem/Markdown/CLI docs provide the site implementation; the Microsoft guide is a hosting/output reference, not a deployment requirement.",
       "implementation": [
+        "Before scaffolding, check Gatsby maintenance/security and release activity, selected Gatsby/plugin package engine requirements, and the supported Node release lifecycle. Record dated source links and a go/no-go decision in docs/decisions/gatsby-build-feasibility.md; prove a clean Markdown build on a supported Node version before committing to the dependency set.",
         "Create docs-site/ with verified compatible Gatsby/Node/plugin versions and a dependency lock; source L34's selected .md files from docs/ using gatsby-source-filesystem and gatsby-transformer-remark.",
         "Create static page routes, a documentation layout/navigation, code formatting, images, and accessible headings/links; define path-prefix behavior explicitly.",
         "Run gatsby build to emit HTML plus CSS/JavaScript/images into docs-site/public. Keep the content present in generated HTML and require no runtime agent/API/model service or Gatsby SSR/functions."
@@ -1851,11 +2193,13 @@
       "acceptance": [
         "A clean locked build converts every selected Markdown page into navigable static HTML; a representative page's content remains readable with JavaScript disabled.",
         "The generated public folder includes all referenced assets and is ignored by Git. Node/Gatsby is needed to build, while ordinary static hosting suffices to read the output.",
-        "The Microsoft Azure guide is a reference for Gatsby's static output shape only; creating an Azure resource or deploying a live site is outside this ticket."
+        "The Microsoft Azure guide is a reference for Gatsby's static output shape only; creating an Azure resource or deploying a live site is outside this ticket.",
+        "The feasibility note records exact Gatsby/Node/plugin versions, dated maintenance/support evidence, and clean install/build results. If no supported compatible set works, record the blocker and seek a scope decision; do not silently use an EOL runtime or substitute another framework."
       ],
       "learning_outcomes": [
         "Understand Gatsby filesystem nodes, Markdown transformation, static page generation, and optional browser hydration.",
-        "Separate build-time dependencies from static hosting requirements."
+        "Separate build-time dependencies from static hosting requirements.",
+        "Assess ecosystem maintenance and runtime compatibility from primary evidence and an executable build."
       ],
       "interview_questions": [
         "What does gatsby build produce, and which files must be copied?",
@@ -1872,7 +2216,8 @@
       "deliverables": [
         "docs-site/package.json",
         "docs-site/",
-        ".gitignore"
+        ".gitignore",
+        "docs/decisions/gatsby-build-feasibility.md"
       ],
       "scope_exclusions": [
         "Docusaurus, MDX-only content, or a dynamic documentation backend",
@@ -1881,7 +2226,7 @@
     },
     {
       "id": "L36",
-      "order": 32,
+      "order": 38,
       "epic": "E09",
       "title": "Validate and package copyable Gatsby static documentation",
       "stack": "docs",
@@ -1938,7 +2283,7 @@
     },
     {
       "id": "L25",
-      "order": 33,
+      "order": 39,
       "epic": "E07",
       "title": "Run fault, concurrency, and bounded load exercises",
       "stack": "shared",
@@ -1994,7 +2339,7 @@
     },
     {
       "id": "L26",
-      "order": 34,
+      "order": 40,
       "epic": "E07",
       "title": "Review dependencies, security checks, and operational limits",
       "stack": "shared",
@@ -2052,7 +2397,7 @@
     },
     {
       "id": "L27",
-      "order": 35,
+      "order": 41,
       "epic": "E07",
       "title": "Publish the architecture, runbook, and portfolio demonstration",
       "stack": "shared",
@@ -2113,7 +2458,7 @@
     },
     {
       "id": "L28",
-      "order": 36,
+      "order": 42,
       "epic": "E07",
       "title": "Complete a mock interview and independent change exercise",
       "stack": "shared",
