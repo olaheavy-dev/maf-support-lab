@@ -2,7 +2,9 @@
 
 ## Work one ticket at a time
 
-Use the numeric L01-L28 sequence as the default path. Dependencies are recorded in the roadmap and GitHub issues. Later work remains Backlog; the first unblocked ticket is Ready.
+Follow the roadmap's execution Order column and GitHub blocking relationships. Stable LNN ticket IDs and issue numbers survive reordering; they are not execution positions. Later work remains Backlog; the first unblocked ticket is Ready.
+
+Build both support APIs and the shared frontend through L24 before starting E08 formal evaluations or E09 Gatsby documentation. Feature tests and learner notes/decisions remain part of each implementation ticket. The formal sequence is projects -> evaluation datasets/runner -> Microsoft native evaluation -> budgeted quality scoring -> reporting -> Markdown/Gatsby static artifacts -> final operational/interview work.
 
 For each ticket:
 

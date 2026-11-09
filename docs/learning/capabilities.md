@@ -20,16 +20,24 @@ A capability is available only after its owning ticket meets its acceptance crit
 | [L13](tickets/L13.md) | [L03](tickets/L03.md), [L09](tickets/L09.md), [L11](tickets/L11.md) | `dotnet_access_regressions` |
 | [L14](tickets/L14.md) | [L13](tickets/L13.md), [L10](tickets/L10.md) | `dotnet_injection_regressions` |
 | [L15](tickets/L15.md) | [L11](tickets/L11.md), [L12](tickets/L12.md), [L06](tickets/L06.md) | `dotnet_resilience` |
-| [L16](tickets/L16.md) | [L13](tickets/L13.md), [L14](tickets/L14.md), [L15](tickets/L15.md) | `evaluation_harness`, `dotnet_baseline` |
 | [L17](tickets/L17.md) | [L03](tickets/L03.md), [L02](tickets/L02.md) | `python_host`, `offline_ci_python`, `python_dev_identity` |
 | [L18](tickets/L18.md) | [L17](tickets/L17.md), [L02](tickets/L02.md) | `python_readonly_specialists`, `python_triage`, `python_devui` |
 | [L19](tickets/L19.md) | [L18](tickets/L18.md), [L17](tickets/L17.md), [L11](tickets/L11.md) | `python_sessions`, `python_approved_mutations`, `python_durable_operations`, `python_access_regressions` |
 | [L20](tickets/L20.md) | [L19](tickets/L19.md), [L18](tickets/L18.md), [L15](tickets/L15.md), [L14](tickets/L14.md) | `python_streaming`, `python_otel`, `python_resilience`, `python_injection_regressions` |
-| [L21](tickets/L21.md) | [L16](tickets/L16.md), [L19](tickets/L19.md), [L20](tickets/L20.md) | `backend_parity` |
+| [L21](tickets/L21.md) | [L13](tickets/L13.md), [L14](tickets/L14.md), [L15](tickets/L15.md), [L19](tickets/L19.md), [L20](tickets/L20.md) | `backend_contract_verified` |
 | [L22](tickets/L22.md) | [L02](tickets/L02.md), [L21](tickets/L21.md) | `browser_conformance` |
 | [L23](tickets/L23.md) | [L22](tickets/L22.md), [L03](tickets/L03.md) | `frontend_chat` |
-| [L24](tickets/L24.md) | [L23](tickets/L23.md), [L11](tickets/L11.md), [L19](tickets/L19.md) | `frontend_approvals` |
-| [L25](tickets/L25.md) | [L21](tickets/L21.md), [L24](tickets/L24.md), [L16](tickets/L16.md) | `fault_load_evidence` |
+| [L24](tickets/L24.md) | [L23](tickets/L23.md), [L11](tickets/L11.md), [L19](tickets/L19.md) | `frontend_approvals`, `application_projects_built` |
+| [L29](tickets/L29.md) | [L24](tickets/L24.md), [L02](tickets/L02.md), [L01](tickets/L01.md) | `evaluation_projects`, `evaluation_specification` |
+| [L16](tickets/L16.md) | [L24](tickets/L24.md), [L29](tickets/L29.md), [L15](tickets/L15.md), [L20](tickets/L20.md) | `evaluation_harness`, `dotnet_baseline`, `python_baseline`, `backend_parity` |
+| [L30](tickets/L30.md) | [L16](tickets/L16.md), [L29](tickets/L29.md), [L01](tickets/L01.md) | `dotnet_native_evaluation` |
+| [L31](tickets/L31.md) | [L16](tickets/L16.md), [L30](tickets/L30.md), [L17](tickets/L17.md) | `python_native_evaluation` |
+| [L32](tickets/L32.md) | [L30](tickets/L30.md), [L31](tickets/L31.md), [L16](tickets/L16.md) | `quality_evaluation_lane` |
+| [L33](tickets/L33.md) | [L32](tickets/L32.md), [L16](tickets/L16.md) | `evaluation_reports` |
+| [L34](tickets/L34.md) | [L24](tickets/L24.md), [L33](tickets/L33.md) | `markdown_documentation` |
+| [L35](tickets/L35.md) | [L34](tickets/L34.md), [L01](tickets/L01.md) | `gatsby_static_docs` |
+| [L36](tickets/L36.md) | [L35](tickets/L35.md) | `portable_docs_artifact` |
+| [L25](tickets/L25.md) | [L16](tickets/L16.md), [L24](tickets/L24.md), [L33](tickets/L33.md) | `fault_load_evidence` |
 | [L26](tickets/L26.md) | [L25](tickets/L25.md), [L02](tickets/L02.md), [L04](tickets/L04.md), [L17](tickets/L17.md) | `security_review` |
-| [L27](tickets/L27.md) | [L21](tickets/L21.md), [L25](tickets/L25.md), [L26](tickets/L26.md) | `portfolio_runbook` |
-| [L28](tickets/L28.md) | [L27](tickets/L27.md), [L21](tickets/L21.md) | `interview_evidence` |
+| [L27](tickets/L27.md) | [L16](tickets/L16.md), [L25](tickets/L25.md), [L26](tickets/L26.md), [L36](tickets/L36.md) | `portfolio_runbook` |
+| [L28](tickets/L28.md) | [L27](tickets/L27.md), [L16](tickets/L16.md) | `interview_evidence` |

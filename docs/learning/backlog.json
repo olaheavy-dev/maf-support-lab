@@ -1,48 +1,69 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "checked_on": "2026-11-09",
   "epics": [
     {
       "id": "E01",
       "title": "Foundation, contracts, and reproducibility",
       "outcome": "Explain the architecture, freeze a verified baseline, and start a buildable .NET/Aspire skeleton.",
-      "exit_criteria": "A fresh checkout restores, builds, and starts the skeleton; the API and synthetic data contracts are documented."
+      "exit_criteria": "A fresh checkout restores, builds, and starts the skeleton; the API and synthetic data contracts are documented.",
+      "phase": "application"
     },
     {
       "id": "E02",
       "title": "Observable .NET support workflow",
       "outcome": "Implement the read-only Chapter 7 support path with guarded tools, routing, DevUI, and telemetry.",
-      "exit_criteria": "Demonstrate read-only orders, billing, and technical requests with correlated workflow/model/tool telemetry; mutating tools remain unregistered until E03."
+      "exit_criteria": "Demonstrate read-only orders, billing, and technical requests with correlated workflow/model/tool telemetry; mutating tools remain unregistered until E03.",
+      "phase": "application"
     },
     {
       "id": "E03",
       "title": "Conversations, approvals, and streaming",
       "outcome": "Preserve conversation state and safely pause/resume side-effecting work.",
-      "exit_criteria": "Demonstrate isolated follow-ups, bound approval/rejection for all simulated writes, restart/resume, duplicate protection, and the shared streaming terminal outcomes."
+      "exit_criteria": "Demonstrate isolated follow-ups, bound approval/rejection for all simulated writes, restart/resume, duplicate protection, and the shared streaming terminal outcomes.",
+      "phase": "application"
     },
     {
       "id": "E04",
-      "title": "Safety, reliability, and measurement",
-      "outcome": "Strengthen and verify established business boundaries, bound failures, and measure behavior/resource use.",
-      "exit_criteria": "Show unauthorized access rejection, bounded failure handling, and a baseline evaluation with honest cost/quality limits."
+      "title": "Safety and reliability",
+      "outcome": "Strengthen established ownership/tool boundaries and bound .NET failures before implementing the Python project.",
+      "exit_criteria": "Feature-level ownership, injection-boundary, cancellation, retry, and resource-budget checks pass. The formal evaluation harness is deferred until all application projects are built.",
+      "phase": "application"
     },
     {
       "id": "E05",
-      "title": "Python implementation and behavioral parity",
-      "outcome": "Rebuild the complete behavior idiomatically in Python and compare SDK choices.",
-      "exit_criteria": "Both backends pass the same deterministic contracts, ownership, approval, durable-state, streaming, resilience, and injection-boundary scenarios with isolated state and comparable telemetry."
+      "title": "Python implementation and application contract verification",
+      "outcome": "Build the equivalent Python support API, then verify the completed backend projects through their integration/contract checks.",
+      "exit_criteria": "Both backend projects build and pass their feature/contract tests for ownership, approvals, durable state, streaming, and resilience. This is the prerequisite for the frontend, not the formal evaluation phase.",
+      "phase": "application"
     },
     {
       "id": "E06",
       "title": "One frontend for both implementations",
       "outcome": "Verify browser compatibility with the established backend contract and add one shared frontend.",
-      "exit_criteria": "Select a backend when starting a conversation, chat, approve/reject an operation, and diagnose a failure."
+      "exit_criteria": "Select a backend when starting a conversation, chat, approve/reject an operation, and diagnose a failure. The two APIs and shared frontend build and run with their feature tests passing, establishing application_projects_built.",
+      "phase": "application"
+    },
+    {
+      "id": "E08",
+      "title": "Post-build Microsoft evaluation and reporting",
+      "outcome": "After the .NET, Python, and frontend projects are built, create shared evaluation datasets/runners, integrate native Microsoft evaluation APIs, and report deterministic and budgeted judge results.",
+      "exit_criteria": "Both targets run the same versioned behavior datasets; native .NET/Python evaluations are demonstrated; model-based scores are separated from business gates; reproducible reports and CI artifacts exist.",
+      "phase": "evaluation"
+    },
+    {
+      "id": "E09",
+      "title": "Markdown documentation and portable Gatsby HTML",
+      "outcome": "After the application projects and evaluation reporting exist, author plain Markdown and render it with Gatsby into a portable static HTML/assets folder.",
+      "exit_criteria": "One canonical Markdown source feeds a locked Gatsby build. The complete public folder can be copied and served by an ordinary static server with correct routes/assets and no application backend, model service, or Gatsby runtime.",
+      "phase": "documentation"
     },
     {
       "id": "E07",
       "title": "Engineering evidence and interview readiness",
-      "outcome": "Demonstrate the system, defend decisions, and state its operational limits.",
-      "exit_criteria": "Complete a fault demonstration, publish a reproducible runbook, and answer a recorded or written mock interview."
+      "outcome": "Use the completed applications, evaluations, and static documentation to demonstrate engineering evidence and interview readiness.",
+      "exit_criteria": "Complete a fault demonstration, publish a reproducible runbook, and answer a recorded or written mock interview.",
+      "phase": "final"
     }
   ],
   "tickets": [
@@ -120,13 +141,13 @@
       "implementation": [
         "Define the version-1 HTTP request/response, conversation, operation-status, approval, error, and planned streaming schemas in contracts/; decide the transport mapping now and record it in contracts/README.md.",
         "Define one terminal transport outcome per turn: completed, awaiting_approval, failed, or cancelled. Awaiting approval is a pause, not a completed business action. Specify refresh/status lookup and how subsequent approval resumes work.",
-        "Seed synthetic customers, orders, refund/cancellation eligibility rules, and scenario inputs; define reset/isolation rules for each backend and evaluation run.",
+        "Seed synthetic customers, orders, refund/cancellation eligibility rules, and feature-test scenario inputs; define reset/isolation rules for each backend and evaluation run.",
         "Draft trust boundaries and operation-risk rules in docs/threat-model.md. Preserve original user text beside derived fields and keep principal/ownership authority outside model arguments."
       ],
       "acceptance": [
         "Contract examples cover success, missing/unknown order, invalid route, forbidden access, approval denial, operation-status lookup, stream pause/error, and duplicate submission.",
         "Schema checks reject invalid routes/ranges and incompatible envelopes. HTTP routes, event shapes, error codes, state ownership, and versioning rules are documented before either backend implements them.",
-        "Fixtures contain two synthetic customers with distinct orders and eligibility outcomes; each backend/run can reset its own mutable state without resetting the other."
+        "Fixtures contain two synthetic customers with distinct orders and eligibility outcomes; feature tests can reset their own state. Formal evaluation datasets and projects are introduced after the application projects are built."
       ],
       "learning_outcomes": [
         "Distinguish schema validity, factual validity, and business authorization.",
@@ -150,7 +171,6 @@
       "deliverables": [
         "contracts/",
         "fixtures/",
-        "evaluations/",
         "docs/threat-model.md"
       ],
       "scope_exclusions": [
@@ -895,69 +915,13 @@
       ]
     },
     {
-      "id": "L16",
-      "order": 16,
-      "epic": "E04",
-      "title": "Establish behavioral, latency, and usage baselines",
-      "stack": "shared",
-      "depends_on": [
-        "L15"
-      ],
-      "course_refs": [
-        "dn-tracing",
-        "dn-orchestrator",
-        "py-tracing"
-      ],
-      "official_refs": [
-        "ms-otel",
-        "ms-safety"
-      ],
-      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
-      "implementation": [
-        "Create the endpoint-configurable evaluation runner and at least 20 shared scenarios for reads, routing, ambiguity, ownership, all write approvals, restart, cancellation, and failures.",
-        "Run the .NET baseline now. Keep the same runner/fixtures ready for Python in L21, but do not claim Python parity before it exists. Reset only the selected backend/run state.",
-        "Report routing/tool/action invariants, latency, and provider-reported usage. Mark unavailable usage unknown, distinguish cached-token categories where reported, and label rate-based cost estimates separately from billed cost.",
-        "Separate deterministic fake-mode CI gates from opt-in repeated live runs; record configuration, model/deployment, sample count, thresholds, and limitations."
-      ],
-      "acceptance": [
-        "A deliberately incorrect route, missing ownership check, or duplicate write fails the deterministic runner, which emits machine-readable and human-readable results.",
-        "The recorded baseline identifies .NET as its target; unavailable usage is not zero and nested telemetry is not double-counted. Natural-language wording is not compared by exact equality."
-      ],
-      "learning_outcomes": [
-        "Separate correctness evaluations from operational metrics.",
-        "Understand variability, sample size, and cost estimation."
-      ],
-      "interview_questions": [
-        "How would you evaluate an agent beyond answer quality?",
-        "Why is self-reported model confidence not a substitute for labelled evaluation?"
-      ],
-      "stretch": "Change one prompt and compare behavior/cost with an unchanged evaluation set.",
-      "requires_capabilities": [
-        "dotnet_access_regressions",
-        "dotnet_injection_regressions",
-        "dotnet_resilience"
-      ],
-      "provides_capabilities": [
-        "evaluation_harness",
-        "dotnet_baseline"
-      ],
-      "deliverables": [
-        "evaluations/",
-        "docs/evaluations/"
-      ],
-      "scope_exclusions": [
-        "Claiming Python parity before L21",
-        "Treating estimated cost as billing or unknown usage as zero"
-      ]
-    },
-    {
       "id": "L17",
-      "order": 17,
+      "order": 16,
       "epic": "E05",
       "title": "Scaffold Python packaging, health, and Aspire integration",
       "stack": "python",
       "depends_on": [
-        "L16"
+        "L15"
       ],
       "course_refs": [
         "py-app",
@@ -971,7 +935,7 @@
         "py-release",
         "gh-dependabot"
       ],
-      "source_note": "The Python course setup is a reference for configuration; Aspire packaging and CI are extensions.",
+      "source_note": "The Python course setup is a reference for configuration; Aspire packaging and CI are extensions. Python implementation follows L15 directly; formal evaluations are deferred until the .NET, Python, and frontend projects are built.",
       "implementation": [
         "Create src/python/ with pyproject.toml/uv.lock, a host/configuration shell, and the same fixed server-owned development-principal/test-host boundary as .NET.",
         "Support fake-mode startup without credentials, live-mode configuration validation, health, and independent local execution; register the Python process in the C# AppHost.",
@@ -1018,7 +982,7 @@
     },
     {
       "id": "L18",
-      "order": 18,
+      "order": 17,
       "epic": "E05",
       "title": "Implement Python read-only agents, tools, and triage",
       "stack": "python",
@@ -1077,7 +1041,7 @@
     },
     {
       "id": "L19",
-      "order": 19,
+      "order": 18,
       "epic": "E05",
       "title": "Implement Python sessions, approval persistence, and idempotency",
       "stack": "python",
@@ -1138,7 +1102,7 @@
     },
     {
       "id": "L20",
-      "order": 20,
+      "order": 19,
       "epic": "E05",
       "title": "Complete Python streaming, telemetry, and resilience",
       "stack": "python",
@@ -1204,9 +1168,9 @@
     },
     {
       "id": "L21",
-      "order": 21,
+      "order": 20,
       "epic": "E05",
-      "title": "Run cross-language parity checks and document SDK decisions",
+      "title": "Verify cross-language application contracts and document SDK decisions",
       "stack": "shared",
       "depends_on": [
         "L20"
@@ -1224,26 +1188,27 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Run L16's unchanged endpoint-configurable deterministic suite against each backend with isolated/reset state; include identity, all writes, durable restore, streaming, retry budgets, and safe failures.",
-        "Classify differences as defects, internal SDK choices that preserve the contract, or measured live-model variability. Business/security contract violations must be fixed rather than accepted as SDK differences.",
-        "Write docs/decisions/0002-sdk-comparison.md covering tools, sessions/checkpoints, routing, approvals, cancellation, resource lifecycle, telemetry, and resilience; record package/provider/model settings."
+        "Use the feature-level integration tests already added to each project to verify both APIs implement version-1 schemas, ownership, approvals, durable state, streaming, and safe failures.",
+        "Add focused cross-backend contract probes using existing synthetic feature fixtures; do not build the formal evaluation harness, judge pipeline, or comparative benchmark yet.",
+        "Write docs/decisions/0002-sdk-comparison.md covering native SDK choices, resource lifecycle, known implementation differences, and the compatibility evidence from builds/tests."
       ],
       "acceptance": [
-        "Both implementations pass the same deterministic contract/business/security gates in CI without credentials. Optional live comparisons report configuration, repetitions, and variance.",
-        "Equivalent routes/actions/state are required while prose may vary; every intentionally different internal SDK choice is documented and preserves the shared public contract."
+        "Both backends build and their deterministic feature/contract integration checks pass without model credentials; a known contract or ownership regression fails.",
+        "Internal SDK differences preserve business/API behavior. Model-quality, statistical comparison, and formal evaluation claims wait for E08."
       ],
       "learning_outcomes": [
-        "Evaluate behavioral equivalence without requiring identical prose.",
-        "Defend idiomatic implementation choices."
+        "Verify the same application contract through two idiomatic implementations.",
+        "Separate feature integration tests from a later formal evaluation and judge pipeline."
       ],
       "interview_questions": [
         "How do you prove two probabilistic implementations meet one specification?",
         "What differences would influence your choice of SDK for a team?"
       ],
-      "stretch": "Demonstrate a defect in one backend that the shared suite detects.",
+      "stretch": "Introduce a deliberate contract regression in a local branch and show that the existing integration checks catch it without building an evaluation harness.",
       "requires_capabilities": [
-        "evaluation_harness",
-        "dotnet_baseline",
+        "dotnet_access_regressions",
+        "dotnet_injection_regressions",
+        "dotnet_resilience",
         "python_access_regressions",
         "python_resilience",
         "python_streaming",
@@ -1251,21 +1216,22 @@
         "python_injection_regressions"
       ],
       "provides_capabilities": [
-        "backend_parity"
+        "backend_contract_verified"
       ],
       "deliverables": [
-        "evaluations/",
+        "src/dotnet/Support.Api.Tests/",
+        "src/python/tests/",
         ".github/workflows/repository-checks.yml",
         "docs/decisions/0002-sdk-comparison.md"
       ],
       "scope_exclusions": [
-        "Accepting business/security violations as SDK differences",
-        "Exact natural-language equality"
+        "Formal evaluation projects, judges, and benchmark reports before project completion",
+        "Accepting business/security contract failures as SDK differences"
       ]
     },
     {
       "id": "L22",
-      "order": 22,
+      "order": 21,
       "epic": "E06",
       "title": "Verify browser compatibility with the established API contract",
       "stack": "frontend",
@@ -1283,11 +1249,11 @@
         "aspire-apphost",
         "aspire-samples"
       ],
-      "source_note": "Course hosting/approval behavior motivates the browser probes. L02 owns the API design; this ticket verifies browser compatibility rather than finalizing a new protocol after parity.",
+      "source_note": "Course hosting and approval behavior motivates the probes. L02 owns the API; L21 verifies the built backend contracts. This ticket precedes formal evaluation.",
       "implementation": [
-        "Use a minimal disposable browser probe to verify L02's existing version-1 contract after both backends pass L21; record browser-specific integration decisions without redefining backend behavior.",
+        "Use a minimal disposable browser probe to verify L02's version-1 contract after both backend projects pass L21; record browser integration decisions without redefining behavior.",
         "Verify conversation/backend binding, relative frontend API addressing via the server/dev proxy, stream decoding, pending-status lookup after refresh, and safe error rendering.",
-        "Keep backend aliases/endpoints server-controlled. Any discovered breaking contract change requires updating schemas, both adapters, and the shared evaluations before UI work proceeds."
+        "Keep backend aliases/endpoints server-controlled. A breaking discovery must update schemas, both adapters, and their integration tests before UI work continues; formal evaluations will adopt the corrected contract later."
       ],
       "acceptance": [
         "The same browser probes pass for chat, stream pause/error, approval/rejection, refreshed pending status, and disconnect recovery against either backend.",
@@ -1304,7 +1270,7 @@
       "stretch": "Specify how a refreshed browser discovers a pending approval.",
       "requires_capabilities": [
         "support_contract_v1",
-        "backend_parity"
+        "backend_contract_verified"
       ],
       "provides_capabilities": [
         "browser_conformance"
@@ -1321,7 +1287,7 @@
     },
     {
       "id": "L23",
-      "order": 23,
+      "order": 22,
       "epic": "E06",
       "title": "Build shared chat UI with backend selection",
       "stack": "frontend",
@@ -1380,7 +1346,7 @@
     },
     {
       "id": "L24",
-      "order": 24,
+      "order": 23,
       "epic": "E06",
       "title": "Add approval UI, recovery states, and trace references",
       "stack": "frontend",
@@ -1405,7 +1371,8 @@
       ],
       "acceptance": [
         "For refund, cancellation, and ticket creation, denial yields no mutation and duplicate clicks/refresh cannot repeat the write.",
-        "The UI correctly distinguishes awaiting approval, submitted/running, committed, rejected, failed, expired, and forbidden outcomes as defined by the contract; failures remain diagnosable."
+        "The UI correctly distinguishes awaiting approval, submitted/running, committed, rejected, failed, expired, and forbidden outcomes as defined by the contract; failures remain diagnosable.",
+        "The .NET API, Python API, and shared frontend build and run through AppHost with feature/contract tests passing. This completes the build prerequisite for E08 evaluation and E09 documentation."
       ],
       "learning_outcomes": [
         "Turn workflow pause/resume into an understandable user interaction.",
@@ -1422,7 +1389,8 @@
         "python_durable_operations"
       ],
       "provides_capabilities": [
-        "frontend_approvals"
+        "frontend_approvals",
+        "application_projects_built"
       ],
       "deliverables": [
         "frontend/",
@@ -1435,13 +1403,535 @@
       ]
     },
     {
-      "id": "L25",
+      "id": "L29",
+      "order": 24,
+      "epic": "E08",
+      "title": "Set up post-build evaluation projects, datasets, and result contracts",
+      "stack": "shared",
+      "depends_on": [
+        "L24"
+      ],
+      "course_refs": [
+        "dn-program",
+        "py-app",
+        "dn-tracing",
+        "py-tracing"
+      ],
+      "official_refs": [
+        "ms-evaluation",
+        "ms-eval-libraries",
+        "ms-safety"
+      ],
+      "source_note": "Course capstones/tracing files identify the system and evidence to evaluate. Dedicated evaluation projects, datasets, and result contracts are additions grounded in the official evaluation docs.",
+      "implementation": [
+        "Confirm L24's .NET API, Python API, and frontend build/run evidence before introducing evaluations/dotnet/Support.Evaluations and evaluations/python/; choose compatible locked packages/runtimes independently of API dependencies.",
+        "Define versioned evaluation datasets and normalized result schemas with case IDs, backend/run/configuration identity, expected tool/action/state evidence, context, latency, usage availability, and scorer metadata.",
+        "Curate success, ambiguity, denial, failure, and adversarial datasets from synthetic feature fixtures; define isolated reset/cleanup, train/development versus held-out cases, and optional live-run budgets."
+      ],
+      "acceptance": [
+        "The evaluation project shells restore/import in fake or recorded-response mode without credentials; application manifests do not gain evaluation-only dependencies.",
+        "Dataset/result schema checks reject malformed or unversioned records, and the documented data-to-result flow works for both backends without replaying real writes."
+      ],
+      "learning_outcomes": [
+        "Separate business fixtures, evaluation datasets, scorer configuration, and generated results.",
+        "Design reproducible cross-language evidence without coupling the evaluator to an SDK's internal serialization."
+      ],
+      "interview_questions": [
+        "Why should evaluation dependencies live outside the support API?",
+        "What must be recorded to reproduce an evaluation result?"
+      ],
+      "stretch": "Add a held-out ambiguous query and explain why tuning the prompt directly against it would weaken the experiment.",
+      "requires_capabilities": [
+        "application_projects_built",
+        "synthetic_fixtures",
+        "version_plan"
+      ],
+      "provides_capabilities": [
+        "evaluation_projects",
+        "evaluation_specification"
+      ],
+      "deliverables": [
+        "evaluations/dotnet/Support.Evaluations/",
+        "evaluations/python/",
+        "evaluations/datasets/",
+        "evaluations/schemas/",
+        "evaluations/README.md"
+      ],
+      "scope_exclusions": [
+        "Evaluation setup before the application projects are built",
+        "Installing every optional Microsoft evaluator or committing generated raw results"
+      ]
+    },
+    {
+      "id": "L16",
       "order": 25,
+      "epic": "E08",
+      "title": "Build the shared deterministic behavior evaluation runner",
+      "stack": "shared",
+      "depends_on": [
+        "L29"
+      ],
+      "course_refs": [
+        "dn-tracing",
+        "dn-orchestrator",
+        "py-tracing"
+      ],
+      "official_refs": [
+        "ms-structured",
+        "ms-safety",
+        "ms-otel",
+        "ms-evaluation"
+      ],
+      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "implementation": [
+        "Implement the endpoint-configurable evaluation runner from L29's dataset/result specification after both backends and the frontend are built.",
+        "Run at least 20 versioned scenarios against each backend with isolated resets: routing, missing/unknown records, access control, all write approvals, restart/resume, duplicate protection, cancellation, and failures.",
+        "Capture normalized response/tool/state evidence and latency without scraping the Aspire UI or using model prose as authorization evidence; emit machine-readable results and an initial comparison summary."
+      ],
+      "acceptance": [
+        "The same fake-mode datasets run against both completed APIs; a deliberately wrong route, missing ownership guard, or duplicate write fails the runner.",
+        "Both targets have a recorded deterministic baseline with dataset/result schema versions, configuration, run identity, outcomes, and latency. Unknown usage stays unknown; formal judge scores are introduced in L32."
+      ],
+      "learning_outcomes": [
+        "Evaluate application behavior from tool/action/state evidence using one specification.",
+        "Distinguish deterministic correctness from model-quality scores and operational metrics."
+      ],
+      "interview_questions": [
+        "What does a behavior evaluation prove that a relevance score cannot?",
+        "How can one runner compare two implementations without requiring identical natural-language responses?"
+      ],
+      "stretch": "Disable one simulated ownership guard in a local branch and prove the same dataset detects the regression on that target.",
+      "requires_capabilities": [
+        "application_projects_built",
+        "evaluation_projects",
+        "evaluation_specification",
+        "dotnet_resilience",
+        "python_resilience"
+      ],
+      "provides_capabilities": [
+        "evaluation_harness",
+        "dotnet_baseline",
+        "python_baseline",
+        "backend_parity"
+      ],
+      "deliverables": [
+        "evaluations/dotnet/Support.Evaluations/",
+        "evaluations/datasets/",
+        "evaluations/schemas/",
+        "docs/evaluations/"
+      ],
+      "scope_exclusions": [
+        "LLM-based scoring before L32",
+        "Treating exact prose equality or cost estimates as business correctness"
+      ]
+    },
+    {
+      "id": "L30",
+      "order": 26,
+      "epic": "E08",
+      "title": "Integrate Microsoft .NET evaluation APIs with local checks",
+      "stack": "dotnet",
+      "depends_on": [
+        "L16"
+      ],
+      "course_refs": [
+        "dn-orchestrator",
+        "dn-tracing"
+      ],
+      "official_refs": [
+        "ms-evaluation",
+        "ms-eval-libraries",
+        "net-eval-custom"
+      ],
+      "source_note": "The course provides the workflow/telemetry context, not a Microsoft evaluation implementation. The release-tagged official custom-evaluation example supplies the API pattern.",
+      "implementation": [
+        "Add compatible Microsoft.Extensions.AI.Evaluation and the selected MAF evaluation integration to the dedicated .NET evaluation project; verify signatures against the pinned release.",
+        "Adapt the normalized captured conversations, tool definitions/calls, reference context, and recorded outputs into native EvalItem/evaluator inputs; implement domain-relevant local checks using the supported interfaces.",
+        "Demonstrate evaluation of recorded responses and a fake-agent run, preserving L16's authoritative business/state assertions alongside native evaluation scores."
+      ],
+      "acceptance": [
+        "Local native evaluations pass/fail representative expected-tool and task cases without judge calls or provider credentials; a deliberately wrong tool argument fails.",
+        "The result retains dataset/scorer versions and evidence links. Calling an orchestration helper does not accidentally regenerate live responses during a recorded-response evaluation."
+      ],
+      "learning_outcomes": [
+        "Understand MAF evaluation orchestration versus Microsoft.Extensions.AI.Evaluation evaluator abstractions.",
+        "Map full conversation/tool context into meaningful local evaluators."
+      ],
+      "interview_questions": [
+        "Does choosing a local evaluator make the whole agent-evaluation run free of model calls?",
+        "Why are answer-format checks insufficient to prove a refund was authorized?"
+      ],
+      "stretch": "Score the same captured response with two local checks and explain which evidence each check can actually assess.",
+      "requires_capabilities": [
+        "evaluation_harness",
+        "evaluation_projects",
+        "version_plan"
+      ],
+      "provides_capabilities": [
+        "dotnet_native_evaluation"
+      ],
+      "deliverables": [
+        "evaluations/dotnet/Support.Evaluations/",
+        "evaluations/dotnet/Support.Evaluations.Tests/",
+        "docs/evaluations/"
+      ],
+      "scope_exclusions": [
+        "LLM-as-judge scoring before L32",
+        "Replacing business-state assertions with a model's self-report"
+      ]
+    },
+    {
+      "id": "L31",
+      "order": 27,
+      "epic": "E08",
+      "title": "Integrate native Python local agent and workflow evaluations",
+      "stack": "python",
+      "depends_on": [
+        "L30"
+      ],
+      "course_refs": [
+        "py-app",
+        "py-executors",
+        "py-tools",
+        "py-tracing"
+      ],
+      "official_refs": [
+        "ms-evaluation",
+        "py-eval-source",
+        "ms-safety"
+      ],
+      "source_note": "Python course executors/tools supply representative conversations and tool behavior. Native evaluation APIs are taken from current Microsoft docs and the selected release source.",
+      "implementation": [
+        "Use the selected agent_framework core LocalEvaluator, evaluate_agent, and evaluate_workflow APIs in the dedicated Python evaluation package.",
+        "Adapt L29/L16's same captured inputs/tool evidence and recorded responses; demonstrate a fake-agent and workflow evaluation without automatically calling a live model.",
+        "Export native results through the shared result schema and document SDK differences in input splitting, tool evidence, exceptions, and resource ownership."
+      ],
+      "acceptance": [
+        "Expected-tool/argument and workflow scenarios pass/fail against recorded/fake inputs with no provider key or judge call.",
+        "C# and Python native checks preserve common business invariants; identically named scores are not declared numerically equivalent without matching rubrics/implementations."
+      ],
+      "learning_outcomes": [
+        "Use the Python MAF evaluation protocol and orchestrators idiomatically.",
+        "Separate native API practice from the shared cross-backend scoring specification."
+      ],
+      "interview_questions": [
+        "How do you evaluate an existing response without running the agent again?",
+        "Which context is lost if you score only the final answer text?"
+      ],
+      "stretch": "Write one small custom local check and identify a plausible false positive it would produce.",
+      "requires_capabilities": [
+        "evaluation_harness",
+        "dotnet_native_evaluation",
+        "python_host"
+      ],
+      "provides_capabilities": [
+        "python_native_evaluation"
+      ],
+      "deliverables": [
+        "evaluations/python/",
+        "docs/evaluations/"
+      ],
+      "scope_exclusions": [
+        "Adding the classic Azure evaluation SDK without a demonstrated need",
+        "Claiming a local scorer prevents a real agent from making generation calls"
+      ]
+    },
+    {
+      "id": "L32",
+      "order": 28,
+      "epic": "E08",
+      "title": "Add budgeted model-based quality evaluation for both backends",
+      "stack": "shared",
+      "depends_on": [
+        "L31"
+      ],
+      "course_refs": [
+        "dn-orchestrator",
+        "py-app",
+        "dn-tracing"
+      ],
+      "official_refs": [
+        "ms-eval-libraries",
+        "ms-evaluation",
+        "net-eval-simple",
+        "ms-eval-reporting"
+      ],
+      "source_note": "Course outputs/traces are evaluation targets. Quality scoring, judge configuration, and calibration are additional Microsoft evaluation work; do not copy course answers as an unquestioned gold standard.",
+      "implementation": [
+        "Configure Microsoft.Extensions.AI.Evaluation.Quality in the .NET evaluation project with a separately configured judge client; select relevant metrics such as relevance, groundedness, task adherence, or tool-call accuracy.",
+        "Score captured responses from both backends with the same context/rubric and pinned judge/model settings; calibrate representative good/bad examples and state dataset limitations.",
+        "Add an explicitly invoked live lane with case/repetition/token or cost caps, bounded concurrency, cancellation, and recorded usage availability; test orchestration/error handling with a fake judge."
+      ],
+      "acceptance": [
+        "A fake judge proves the lane respects configured budgets and handles missing context/judge errors without converting them to a passing score.",
+        "Any authorized live sample records judge/model, evaluator/package versions, rubric, context, repetitions, usage, and uncertainty. Deterministic authorization/idempotency gates remain authoritative.",
+        "Provider-backed Safety evaluators are documented as an optional follow-up requiring the relevant Foundry setup; the default lane needs no new cloud subscription."
+      ],
+      "learning_outcomes": [
+        "Distinguish LLM-as-judge quality assessment from deterministic business correctness.",
+        "Control evaluator variability, leakage, context completeness, and cost."
+      ],
+      "interview_questions": [
+        "Can a high groundedness score establish authorization or exactly-once execution?",
+        "How would you compare two backends fairly when the judge is also nondeterministic?"
+      ],
+      "stretch": "Change the reference context while holding the answer fixed and explain how the groundedness assessment should change.",
+      "requires_capabilities": [
+        "dotnet_native_evaluation",
+        "python_native_evaluation",
+        "evaluation_harness"
+      ],
+      "provides_capabilities": [
+        "quality_evaluation_lane"
+      ],
+      "deliverables": [
+        "evaluations/dotnet/Support.Evaluations/",
+        "evaluations/config/",
+        "docs/evaluations/"
+      ],
+      "scope_exclusions": [
+        "Unbudgeted model calls or immediate flaky judge-score PR gates",
+        "Mandatory Foundry Safety/Reporting.Azure setup"
+      ]
+    },
+    {
+      "id": "L33",
+      "order": 29,
+      "epic": "E08",
+      "title": "Generate Microsoft evaluation reports and separate CI lanes",
+      "stack": "shared",
+      "depends_on": [
+        "L32"
+      ],
+      "course_refs": [
+        "dn-tracing",
+        "py-tracing",
+        "dn-program",
+        "py-app"
+      ],
+      "official_refs": [
+        "ms-eval-libraries",
+        "ms-eval-reporting",
+        "ms-evaluation"
+      ],
+      "source_note": "Course tracing examples motivate run identity. Microsoft's reporting/caching tutorial and package docs define the new reporting lane; native/custom result adapters must be verified rather than assumed.",
+      "implementation": [
+        "Add compatible Microsoft.Extensions.AI.Evaluation.Reporting and a version-pinned local dotnet aieval tool from Microsoft.Extensions.AI.Evaluation.Console; map supported run results into reporting storage and document any adapter needed for custom/native results.",
+        "Generate machine-readable results and HTML reports, preserve common run IDs, dataset/judge/scorer versions, and distinguish fresh responses from cached ones.",
+        "Make deterministic behavior/local checks mandatory CI gates and model-based evaluation an explicit budgeted lane; upload raw sanitized outputs/reports as CI artifacts and curate approved Markdown summaries."
+      ],
+      "acceptance": [
+        "A clean recorded/fake run produces a readable report and a failing deterministic case fails required CI; report generation does not invoke a live agent or judge.",
+        "The report distinguishes targets, errors, unknown usage, estimates, and cache provenance; committed documentation contains only selected summaries, while generated run outputs are ignored by Git.",
+        "Application entry points stay free of evaluation-only dependencies and artifact links/results can be reproduced from the documented command and configuration."
+      ],
+      "learning_outcomes": [
+        "Understand evaluation storage, caching, report generation, and CI promotion policies.",
+        "Keep model-quality reports, business gates, and telemetry connected through explicit run identity."
+      ],
+      "interview_questions": [
+        "How can cached responses make a claimed fresh-model experiment misleading?",
+        "Which evaluation results should block a PR and which should initially remain diagnostic?"
+      ],
+      "stretch": "Generate a report from recorded results with all agent/provider services stopped and verify no model request occurs.",
+      "requires_capabilities": [
+        "quality_evaluation_lane",
+        "backend_parity",
+        "evaluation_harness"
+      ],
+      "provides_capabilities": [
+        "evaluation_reports"
+      ],
+      "deliverables": [
+        "evaluations/",
+        ".config/dotnet-tools.json",
+        ".github/workflows/repository-checks.yml",
+        "docs/evaluations/",
+        ".gitignore"
+      ],
+      "scope_exclusions": [
+        "Committing raw caches/reports or requiring Azure report storage",
+        "Publishing a judge failure as a successful business evaluation"
+      ]
+    },
+    {
+      "id": "L34",
+      "order": 30,
+      "epic": "E09",
+      "title": "Author canonical Markdown documentation for the completed system",
+      "stack": "docs",
+      "depends_on": [
+        "L33"
+      ],
+      "course_refs": [
+        "dn-program",
+        "py-app",
+        "dn-orchestrator",
+        "py-executors",
+        "dn-tracing"
+      ],
+      "official_refs": [
+        "ms-markdown",
+        "ms-evaluation",
+        "ms-safety",
+        "gatsby-markdown"
+      ],
+      "source_note": "Course capstone files are references for describing the system, not Gatsby examples. Microsoft Learn supplies Markdown guidance; use the portable subset supported by the selected Gatsby Markdown plugins.",
+      "implementation": [
+        "After L24 and E08, curate plain .md pages under docs/ for architecture, setup/runbook, API/approval/state flow, observability, SDK decisions, evaluation methodology/results, and interview explanations.",
+        "Define page titles/order/slugs, relative links, static image assets, code fences, and a publication manifest so Gatsby sources selected canonical pages directly without duplicate Markdown copies.",
+        "Use completed implementation and sanitized approved evaluation summaries as evidence; credit course sources and distinguish portable Markdown from Microsoft Learn-specific extensions."
+      ],
+      "acceptance": [
+        "Every selected page has a stable planned URL and valid source/asset links; architecture/setup examples match the built projects and locked versions.",
+        "Documentation is readable as plain Markdown; no MDX, JSX, private transcripts, credentials, or raw evaluation caches are needed to author the content."
+      ],
+      "learning_outcomes": [
+        "Write documentation from observed system behavior and reproducible evidence.",
+        "Separate content ownership, navigation metadata, and renderer-specific extensions."
+      ],
+      "interview_questions": [
+        "What belongs in a runbook versus an architecture decision record?",
+        "Why keep canonical Markdown separate from generated HTML and raw evaluation results?"
+      ],
+      "stretch": "Ask a reader to follow one Markdown setup page, or label a recorded self-check honestly, and improve the first unclear step.",
+      "requires_capabilities": [
+        "application_projects_built",
+        "evaluation_reports"
+      ],
+      "provides_capabilities": [
+        "markdown_documentation"
+      ],
+      "deliverables": [
+        "docs/",
+        "docs/site-content.json"
+      ],
+      "scope_exclusions": [
+        "Building Gatsby before application completion",
+        "Duplicating the docs source under the site or generating MDX-only authoring requirements"
+      ]
+    },
+    {
+      "id": "L35",
+      "order": 31,
+      "epic": "E09",
+      "title": "Build Gatsby Markdown-to-static-HTML documentation",
+      "stack": "docs",
+      "depends_on": [
+        "L34"
+      ],
+      "course_refs": [
+        "dn-program",
+        "py-app"
+      ],
+      "official_refs": [
+        "gatsby-filesystem",
+        "gatsby-markdown",
+        "gatsby-cli",
+        "ms-gatsby"
+      ],
+      "source_note": "The course repositories provide documented application behavior only. Gatsby's own filesystem/Markdown/CLI docs provide the site implementation; the Microsoft guide is a hosting/output reference, not a deployment requirement.",
+      "implementation": [
+        "Create docs-site/ with verified compatible Gatsby/Node/plugin versions and a dependency lock; source L34's selected .md files from docs/ using gatsby-source-filesystem and gatsby-transformer-remark.",
+        "Create static page routes, a documentation layout/navigation, code formatting, images, and accessible headings/links; define path-prefix behavior explicitly.",
+        "Run gatsby build to emit HTML plus CSS/JavaScript/images into docs-site/public. Keep the content present in generated HTML and require no runtime agent/API/model service or Gatsby SSR/functions."
+      ],
+      "acceptance": [
+        "A clean locked build converts every selected Markdown page into navigable static HTML; a representative page's content remains readable with JavaScript disabled.",
+        "The generated public folder includes all referenced assets and is ignored by Git. Node/Gatsby is needed to build, while ordinary static hosting suffices to read the output.",
+        "The Microsoft Azure guide is a reference for Gatsby's static output shape only; creating an Azure resource or deploying a live site is outside this ticket."
+      ],
+      "learning_outcomes": [
+        "Understand Gatsby filesystem nodes, Markdown transformation, static page generation, and optional browser hydration.",
+        "Separate build-time dependencies from static hosting requirements."
+      ],
+      "interview_questions": [
+        "What does gatsby build produce, and which files must be copied?",
+        "How does a pre-rendered Markdown page differ from a route that needs server-side rendering at request time?"
+      ],
+      "stretch": "Turn off JavaScript and verify the main article text, heading structure, and navigation still work.",
+      "requires_capabilities": [
+        "markdown_documentation",
+        "version_plan"
+      ],
+      "provides_capabilities": [
+        "gatsby_static_docs"
+      ],
+      "deliverables": [
+        "docs-site/package.json",
+        "docs-site/",
+        ".gitignore"
+      ],
+      "scope_exclusions": [
+        "Docusaurus, MDX-only content, or a dynamic documentation backend",
+        "Running the Gatsby build as part of an API request"
+      ]
+    },
+    {
+      "id": "L36",
+      "order": 32,
+      "epic": "E09",
+      "title": "Validate and package copyable Gatsby static documentation",
+      "stack": "docs",
+      "depends_on": [
+        "L35"
+      ],
+      "course_refs": [
+        "dn-program",
+        "py-app",
+        "dn-tracing"
+      ],
+      "official_refs": [
+        "gatsby-cli",
+        "gatsby-prefix",
+        "ms-static-hosting",
+        "ms-gatsby"
+      ],
+      "source_note": "Course files identify the application being documented. Gatsby path-prefix/build guidance and Microsoft's static-hosting docs define portability; cloud provisioning is not part of the exercise.",
+      "implementation": [
+        "Add a docs CI build and checks for internal links, assets, deep links, readable static content, and an explicit 404; keep model/evaluation runs out of documentation builds.",
+        "Copy the complete public directory to a separate temporary location and serve it using an ordinary static HTTP server with the application, Aspire, and Gatsby development server stopped.",
+        "Verify root hosting and a separately configured path-prefix build, then archive the complete HTML/assets folder with source-commit/build metadata and a concise copy-and-serve guide."
+      ],
+      "acceptance": [
+        "The copied artifact serves selected pages and assets through direct/deep links without Node/Gatsby or application services running; the documentation does not promise file:// navigation or portability from copying HTML alone.",
+        "Root and configured-subpath smoke checks pass; docs CI needs no provider credentials and fails for an intentionally broken internal link or missing asset.",
+        "A downloadable artifact and serving instructions exist; no hosting account, paid service, domain, or production deployment is required."
+      ],
+      "learning_outcomes": [
+        "Validate static-site portability independently of the development server.",
+        "Understand path prefixes, asset completeness, reproducible build metadata, and artifact handoff."
+      ],
+      "interview_questions": [
+        "Why can a copied index.html fail while copying the entire output directory works?",
+        "Why can links work in the Gatsby dev server but fail on static hosting under a subpath?"
+      ],
+      "stretch": "Remove one asset from a copied build and show that the portability check detects the failure.",
+      "requires_capabilities": [
+        "gatsby_static_docs"
+      ],
+      "provides_capabilities": [
+        "portable_docs_artifact"
+      ],
+      "deliverables": [
+        "docs-site/",
+        ".github/workflows/repository-checks.yml",
+        "docs/site-build-and-serving.md",
+        ".gitignore"
+      ],
+      "scope_exclusions": [
+        "Publishing to a live hosting service",
+        "Claiming arbitrary double-click file:// support or a single self-contained HTML file"
+      ]
+    },
+    {
+      "id": "L25",
+      "order": 33,
       "epic": "E07",
       "title": "Run fault, concurrency, and bounded load exercises",
       "stack": "shared",
       "depends_on": [
-        "L24"
+        "L36"
       ],
       "course_refs": [
         "dn-orchestrator",
@@ -1455,7 +1945,7 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Run the L16/L21 shared harness with faults and concurrent conversations across both backend aliases; include same-conversation serialization, slow tools, restart, and cancellation.",
+        "Expand the L16/L33 shared evaluation runner with fault and bounded-load scenarios against both built backends and the completed frontend lifecycle; reuse the versioned result contract.",
         "Measure bounded fake-provider load first; any live run must have an explicit selected target, usage budget, sample count, and cleanup/reset scope.",
         "Record each backend's bottlenecks, error/latency distributions, and one evidence-backed improvement without changing the business contract or weakening its gates."
       ],
@@ -1475,7 +1965,8 @@
       "requires_capabilities": [
         "backend_parity",
         "frontend_approvals",
-        "evaluation_harness"
+        "evaluation_harness",
+        "evaluation_reports"
       ],
       "provides_capabilities": [
         "fault_load_evidence"
@@ -1491,7 +1982,7 @@
     },
     {
       "id": "L26",
-      "order": 26,
+      "order": 34,
       "epic": "E07",
       "title": "Review dependencies, security checks, and operational limits",
       "stack": "shared",
@@ -1513,7 +2004,7 @@
       "implementation": [
         "Review dependency/secret protections and operational checks already introduced by L04/L17 and add only missing code-analysis coverage for the actual projects.",
         "Recheck both hosts, DevUI, frontend proxy, ownership/approval boundaries, credential lifecycle, sensitive telemetry, and retention/cleanup.",
-        "Update the threat model created in L02 and extended in L13/L14; list remaining production requirements as explicit follow-ups."
+        "Update the threat model from L02/L13/L14 using application and evaluation evidence; list remaining production requirements as explicit follow-ups."
       ],
       "acceptance": [
         "A concrete review references the current implementation and evidence for both backends and browser; dependency automation covers each existing manifest.",
@@ -1549,7 +2040,7 @@
     },
     {
       "id": "L27",
-      "order": 27,
+      "order": 35,
       "epic": "E07",
       "title": "Publish the architecture, runbook, and portfolio demonstration",
       "stack": "shared",
@@ -1568,13 +2059,14 @@
       ],
       "source_note": "Use both capstones as credited comparison points. The runbook, evaluations, decisions, and portfolio narrative describe this repository's actual implementation.",
       "implementation": [
-        "Write a fresh-checkout runbook, architecture diagram, version table, and troubleshooting guide.",
-        "Prepare a short demonstration covering success, denial, a fault, and cross-language comparison.",
-        "Link sanitized evidence, decisions, and evaluation results; credit course inspiration."
+        "Finalize the existing Markdown architecture, runbook, version table, troubleshooting, and interview narrative using the completed application, evaluation, and operational-review evidence.",
+        "Refresh the Gatsby static build and portable documentation artifact from the latest Markdown; verify it matches the reviewed code/commit and selected evaluation summaries.",
+        "Prepare a short demonstration covering success, denial, a fault, cross-language comparison, and serving the copied documentation folder; credit course inspiration."
       ],
       "acceptance": [
         "A fresh-checkout walkthrough or recorded self-check follows the runbook with fake-mode defaults; live prerequisites and budgeted commands are separate.",
-        "The demo accurately distinguishes implemented behavior, synthetic dependencies, SDK differences, and remaining work, with links to reproducible verification and sanitized evidence."
+        "The demo accurately distinguishes implemented behavior, synthetic dependencies, SDK differences, and remaining work, with links to reproducible verification and sanitized evidence.",
+        "The final handoff includes the portable static docs artifact produced by the existing Gatsby pipeline, refreshed after L25/L26 changes; no API or model service is needed to read it."
       ],
       "learning_outcomes": [
         "Explain a system clearly with evidence and limitations.",
@@ -1588,7 +2080,8 @@
       "requires_capabilities": [
         "backend_parity",
         "fault_load_evidence",
-        "security_review"
+        "security_review",
+        "portable_docs_artifact"
       ],
       "provides_capabilities": [
         "portfolio_runbook"
@@ -1597,16 +2090,18 @@
         "README.md",
         "docs/runbook.md",
         "docs/architecture.md",
-        "docs/learning/evidence/"
+        "docs/learning/evidence/",
+        "docs-site/",
+        "docs/site-build-and-serving.md"
       ],
       "scope_exclusions": [
-        "Claiming another person verified a self-check",
-        "Exposing credentials or sensitive demo telemetry"
+        "Creating a second documentation stack",
+        "Exposing credentials, private course transcripts, or raw sensitive evaluation output"
       ]
     },
     {
       "id": "L28",
-      "order": 28,
+      "order": 36,
       "epic": "E07",
       "title": "Complete a mock interview and independent change exercise",
       "stack": "shared",
@@ -1627,7 +2122,7 @@
       "implementation": [
         "Answer accumulated interview questions in your own words, using the implemented evidence rather than memorized generated answers.",
         "Diagnose an injected fault on a selected backend using its traces/metrics/logs, then explain how the same issue would appear in the other SDK.",
-        "Add a read-only return-eligibility query in both implementations using the existing authoritative policy, extend shared contract/evaluation cases, and defend the design without adding a write operation."
+        "Add a read-only return-eligibility query in both implementations using the existing authoritative policy, extend shared contract/evaluation cases, and defend the design without adding a write operation. Update the affected Markdown page and rebuild the existing static docs artifact."
       ],
       "acceptance": [
         "Record answers, weak areas, and follow-up practice honestly; explain SDK choice, workflow/state/approval boundaries, observability, evaluation, and deployment gaps.",

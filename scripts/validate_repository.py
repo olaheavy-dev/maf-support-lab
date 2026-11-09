@@ -20,22 +20,27 @@ def validate(root: Path = ROOT) -> tuple[int, int, int]:
     backlog = json.loads((root / "docs/learning/backlog.json").read_text())
     registry = json.loads((root / "docs/sources.json").read_text())
     mapping = json.loads((root / "docs/learning/github-issues.json").read_text())
-    require(backlog["schema_version"] == 2, "Unsupported backlog schema")
+    require(backlog["schema_version"] == 3, "Unsupported backlog schema")
     sources = registry["sources"]
     epics = {epic["id"] for epic in backlog["epics"]}
+    phases = {epic["id"]: epic.get("phase", "application") for epic in backlog["epics"]}
     require(len(epics) == len(backlog["epics"]), "Duplicate epic identifiers")
     seen: set[str] = set()
     available: set[str] = set()
     for order, ticket in enumerate(backlog["tickets"], 1):
         ident = ticket["id"]
-        require(ident == f"L{order:02}", f"Noncontiguous learning sequence: {ident}")
+        require(re.fullmatch(r"L[0-9]{2,}", ident) is not None, f"Invalid stable ticket ID: {ident}")
         require(ident not in seen and ticket["order"] == order, f"Invalid order: {ident}")
         require(ticket["epic"] in epics, f"Unknown parent epic: {ident}")
         require(all(dep in seen for dep in ticket["depends_on"]), f"Unknown/future dependency: {ident}")
         if order == 1:
             require(not ticket["depends_on"], "First ticket must be unblocked")
         else:
-            require(f"L{order-1:02}" in ticket["depends_on"], f"Missing sequential prerequisite: {ident}")
+            previous = backlog["tickets"][order-2]["id"]
+            require(previous in ticket["depends_on"], f"Missing sequential prerequisite: {ident}")
+        if phases[ticket["epic"]] in {"evaluation", "documentation"}:
+            require("application_projects_built" in available,
+                    f"Post-build phase before application completion: {ident}")
         for field in ("implementation", "acceptance", "learning_outcomes", "interview_questions", "scope_exclusions"):
             require(len(ticket[field]) >= 2 and all(ticket[field]), f"Missing {field}: {ident}")
         require(bool(ticket["stretch"]) and bool(ticket["source_note"]), f"Missing learning detail: {ident}")
@@ -71,6 +76,7 @@ def validate(root: Path = ROOT) -> tuple[int, int, int]:
                     f"Course source must be commit-pinned: {key}")
     for epic in epics:
         require(any(t["epic"] == epic for t in backlog["tickets"]), f"Empty epic: {epic}")
+    require(seen == {f"L{i:02}" for i in range(1, len(seen)+1)}, "Stable ticket IDs must remain unique and complete")
 
     require(mapping["repository"] == REPO_URL, "Unexpected GitHub issue repository")
     require(set(mapping["issues"]) == epics | seen, "GitHub mapping does not match ticket/epic IDs")

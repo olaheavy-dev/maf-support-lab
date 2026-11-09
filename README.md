@@ -48,4 +48,6 @@ Ticket scope and parity requirements are defined in the [alignment contract](doc
 
 [Project board](https://github.com/users/sunkanmi-olawuwo/projects/2) · [First ticket: L01](https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/8) · [All issues](https://github.com/sunkanmi-olawuwo/maf-support-lab/issues)
 
-The board contains 28 learning tickets; seven parent epics are linked through native sub-issues. L01 is Ready; later tickets are blocked by their predecessor.
+The board contains 36 learning tickets and nine parent epics linked through native sub-issues. Follow the execution Order field and blocking links; stable ticket IDs do not change when a task moves. L01 is Ready; later tickets are blocked by their execution predecessor.
+
+Build the .NET API, Python API, and shared frontend first. E08 then introduces six formal evaluation tasks, and E09 introduces three documentation tasks: canonical plain Markdown, Gatsby static HTML generation, and packaging/serving the copied output. The complete Gatsby public folder is the portable deliverable; the documentation requires no running support backend or model service.

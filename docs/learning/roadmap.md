@@ -1,39 +1,47 @@
 # Ordered learning roadmap
 
-Work one ticket at a time. Stable ticket IDs and issue links are retained. Only the first unblocked ticket is Ready.
+Work one ticket at a time in execution order. Ticket IDs are stable identifiers, not execution positions; follow the Order column and blocking links. Only the first unblocked ticket is Ready.
 
 The [alignment contract](alignment.md) fixes cross-ticket scope and the [capability map](capabilities.md) identifies prerequisites. Source metadata lives in backlog.json and ../sources.json; generated ticket/epic pages must be rerendered when it changes.
 
-| Order | Epic | Learning ticket | Stack | Depends on |
-| --- | --- | --- | --- | --- |
-| L01 | E01 | [Audit Chapter 7 and record a verified version baseline](tickets/L01.md) | shared | None |
-| L02 | E01 | [Define shared support contracts and synthetic fixtures](tickets/L02.md) | shared | L01 |
-| L03 | E01 | [Scaffold .NET support API and C# Aspire AppHost](tickets/L03.md) | dotnet | L02 |
-| L04 | E01 | [Add reproducible builds and meaningful offline CI](tickets/L04.md) | dotnet | L03 |
-| L05 | E02 | [Build the first .NET order-status agent and DevUI](tickets/L05.md) | dotnet | L04 |
-| L06 | E02 | [Export traces, metrics, and structured logs to Aspire](tickets/L06.md) | dotnet | L05 |
-| L07 | E02 | [Implement validated triage and deterministic routing](tickets/L07.md) | dotnet | L06 |
-| L08 | E02 | [Complete read-only .NET billing and technical specialists](tickets/L08.md) | dotnet | L07 |
-| L09 | E03 | [Add per-conversation sessions and preserve context](tickets/L09.md) | dotnet | L08 |
-| L10 | E03 | [Require bound approval for simulated support mutations](tickets/L10.md) | dotnet | L09 |
-| L11 | E03 | [Persist pending approvals and prevent duplicate operations](tickets/L11.md) | dotnet | L10 |
-| L12 | E03 | [Implement streaming, cancellation, and terminal events](tickets/L12.md) | dotnet | L11 |
-| L13 | E04 | [Verify customer access and conversation ownership boundaries](tickets/L13.md) | dotnet | L12 |
-| L14 | E04 | [Validate tool boundaries and exercise prompt injection](tickets/L14.md) | dotnet | L13 |
-| L15 | E04 | [Add bounded timeouts, retries, and graceful failure](tickets/L15.md) | dotnet | L14 |
-| L16 | E04 | [Establish behavioral, latency, and usage baselines](tickets/L16.md) | shared | L15 |
-| L17 | E05 | [Scaffold Python packaging, health, and Aspire integration](tickets/L17.md) | python | L16 |
-| L18 | E05 | [Implement Python read-only agents, tools, and triage](tickets/L18.md) | python | L17 |
-| L19 | E05 | [Implement Python sessions, approval persistence, and idempotency](tickets/L19.md) | python | L18 |
-| L20 | E05 | [Complete Python streaming, telemetry, and resilience](tickets/L20.md) | python | L19 |
-| L21 | E05 | [Run cross-language parity checks and document SDK decisions](tickets/L21.md) | shared | L20 |
-| L22 | E06 | [Verify browser compatibility with the established API contract](tickets/L22.md) | frontend | L21 |
-| L23 | E06 | [Build shared chat UI with backend selection](tickets/L23.md) | frontend | L22 |
-| L24 | E06 | [Add approval UI, recovery states, and trace references](tickets/L24.md) | frontend | L23 |
-| L25 | E07 | [Run fault, concurrency, and bounded load exercises](tickets/L25.md) | shared | L24 |
-| L26 | E07 | [Review dependencies, security checks, and operational limits](tickets/L26.md) | shared | L25 |
-| L27 | E07 | [Publish the architecture, runbook, and portfolio demonstration](tickets/L27.md) | shared | L26 |
-| L28 | E07 | [Complete a mock interview and independent change exercise](tickets/L28.md) | shared | L27 |
+| Order | Ticket ID | Epic | Learning ticket | Stack | Depends on |
+| --- | --- | --- | --- | --- | --- |
+| 1 | L01 | E01 | [Audit Chapter 7 and record a verified version baseline](tickets/L01.md) | shared | None |
+| 2 | L02 | E01 | [Define shared support contracts and synthetic fixtures](tickets/L02.md) | shared | L01 |
+| 3 | L03 | E01 | [Scaffold .NET support API and C# Aspire AppHost](tickets/L03.md) | dotnet | L02 |
+| 4 | L04 | E01 | [Add reproducible builds and meaningful offline CI](tickets/L04.md) | dotnet | L03 |
+| 5 | L05 | E02 | [Build the first .NET order-status agent and DevUI](tickets/L05.md) | dotnet | L04 |
+| 6 | L06 | E02 | [Export traces, metrics, and structured logs to Aspire](tickets/L06.md) | dotnet | L05 |
+| 7 | L07 | E02 | [Implement validated triage and deterministic routing](tickets/L07.md) | dotnet | L06 |
+| 8 | L08 | E02 | [Complete read-only .NET billing and technical specialists](tickets/L08.md) | dotnet | L07 |
+| 9 | L09 | E03 | [Add per-conversation sessions and preserve context](tickets/L09.md) | dotnet | L08 |
+| 10 | L10 | E03 | [Require bound approval for simulated support mutations](tickets/L10.md) | dotnet | L09 |
+| 11 | L11 | E03 | [Persist pending approvals and prevent duplicate operations](tickets/L11.md) | dotnet | L10 |
+| 12 | L12 | E03 | [Implement streaming, cancellation, and terminal events](tickets/L12.md) | dotnet | L11 |
+| 13 | L13 | E04 | [Verify customer access and conversation ownership boundaries](tickets/L13.md) | dotnet | L12 |
+| 14 | L14 | E04 | [Validate tool boundaries and exercise prompt injection](tickets/L14.md) | dotnet | L13 |
+| 15 | L15 | E04 | [Add bounded timeouts, retries, and graceful failure](tickets/L15.md) | dotnet | L14 |
+| 16 | L17 | E05 | [Scaffold Python packaging, health, and Aspire integration](tickets/L17.md) | python | L15 |
+| 17 | L18 | E05 | [Implement Python read-only agents, tools, and triage](tickets/L18.md) | python | L17 |
+| 18 | L19 | E05 | [Implement Python sessions, approval persistence, and idempotency](tickets/L19.md) | python | L18 |
+| 19 | L20 | E05 | [Complete Python streaming, telemetry, and resilience](tickets/L20.md) | python | L19 |
+| 20 | L21 | E05 | [Verify cross-language application contracts and document SDK decisions](tickets/L21.md) | shared | L20 |
+| 21 | L22 | E06 | [Verify browser compatibility with the established API contract](tickets/L22.md) | frontend | L21 |
+| 22 | L23 | E06 | [Build shared chat UI with backend selection](tickets/L23.md) | frontend | L22 |
+| 23 | L24 | E06 | [Add approval UI, recovery states, and trace references](tickets/L24.md) | frontend | L23 |
+| 24 | L29 | E08 | [Set up post-build evaluation projects, datasets, and result contracts](tickets/L29.md) | shared | L24 |
+| 25 | L16 | E08 | [Build the shared deterministic behavior evaluation runner](tickets/L16.md) | shared | L29 |
+| 26 | L30 | E08 | [Integrate Microsoft .NET evaluation APIs with local checks](tickets/L30.md) | dotnet | L16 |
+| 27 | L31 | E08 | [Integrate native Python local agent and workflow evaluations](tickets/L31.md) | python | L30 |
+| 28 | L32 | E08 | [Add budgeted model-based quality evaluation for both backends](tickets/L32.md) | shared | L31 |
+| 29 | L33 | E08 | [Generate Microsoft evaluation reports and separate CI lanes](tickets/L33.md) | shared | L32 |
+| 30 | L34 | E09 | [Author canonical Markdown documentation for the completed system](tickets/L34.md) | docs | L33 |
+| 31 | L35 | E09 | [Build Gatsby Markdown-to-static-HTML documentation](tickets/L35.md) | docs | L34 |
+| 32 | L36 | E09 | [Validate and package copyable Gatsby static documentation](tickets/L36.md) | docs | L35 |
+| 33 | L25 | E07 | [Run fault, concurrency, and bounded load exercises](tickets/L25.md) | shared | L36 |
+| 34 | L26 | E07 | [Review dependencies, security checks, and operational limits](tickets/L26.md) | shared | L25 |
+| 35 | L27 | E07 | [Publish the architecture, runbook, and portfolio demonstration](tickets/L27.md) | shared | L26 |
+| 36 | L28 | E07 | [Complete a mock interview and independent change exercise](tickets/L28.md) | shared | L27 |
 
 ## Epics
 
@@ -55,26 +63,38 @@ Preserve conversation state and safely pause/resume side-effecting work.
 
 Exit: Demonstrate isolated follow-ups, bound approval/rejection for all simulated writes, restart/resume, duplicate protection, and the shared streaming terminal outcomes.
 
-### [E04: Safety, reliability, and measurement](epics/E04.md)
+### [E04: Safety and reliability](epics/E04.md)
 
-Strengthen and verify established business boundaries, bound failures, and measure behavior/resource use.
+Strengthen established ownership/tool boundaries and bound .NET failures before implementing the Python project.
 
-Exit: Show unauthorized access rejection, bounded failure handling, and a baseline evaluation with honest cost/quality limits.
+Exit: Feature-level ownership, injection-boundary, cancellation, retry, and resource-budget checks pass. The formal evaluation harness is deferred until all application projects are built.
 
-### [E05: Python implementation and behavioral parity](epics/E05.md)
+### [E05: Python implementation and application contract verification](epics/E05.md)
 
-Rebuild the complete behavior idiomatically in Python and compare SDK choices.
+Build the equivalent Python support API, then verify the completed backend projects through their integration/contract checks.
 
-Exit: Both backends pass the same deterministic contracts, ownership, approval, durable-state, streaming, resilience, and injection-boundary scenarios with isolated state and comparable telemetry.
+Exit: Both backend projects build and pass their feature/contract tests for ownership, approvals, durable state, streaming, and resilience. This is the prerequisite for the frontend, not the formal evaluation phase.
 
 ### [E06: One frontend for both implementations](epics/E06.md)
 
 Verify browser compatibility with the established backend contract and add one shared frontend.
 
-Exit: Select a backend when starting a conversation, chat, approve/reject an operation, and diagnose a failure.
+Exit: Select a backend when starting a conversation, chat, approve/reject an operation, and diagnose a failure. The two APIs and shared frontend build and run with their feature tests passing, establishing application_projects_built.
+
+### [E08: Post-build Microsoft evaluation and reporting](epics/E08.md)
+
+After the .NET, Python, and frontend projects are built, create shared evaluation datasets/runners, integrate native Microsoft evaluation APIs, and report deterministic and budgeted judge results.
+
+Exit: Both targets run the same versioned behavior datasets; native .NET/Python evaluations are demonstrated; model-based scores are separated from business gates; reproducible reports and CI artifacts exist.
+
+### [E09: Markdown documentation and portable Gatsby HTML](epics/E09.md)
+
+After the application projects and evaluation reporting exist, author plain Markdown and render it with Gatsby into a portable static HTML/assets folder.
+
+Exit: One canonical Markdown source feeds a locked Gatsby build. The complete public folder can be copied and served by an ordinary static server with correct routes/assets and no application backend, model service, or Gatsby runtime.
 
 ### [E07: Engineering evidence and interview readiness](epics/E07.md)
 
-Demonstrate the system, defend decisions, and state its operational limits.
+Use the completed applications, evaluations, and static documentation to demonstrate engineering evidence and interview readiness.
 
 Exit: Complete a fault demonstration, publish a reproducible runbook, and answer a recorded or written mock interview.

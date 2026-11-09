@@ -1,22 +1,8 @@
 {
   "repository": "https://github.com/sunkanmi-olawuwo/maf-support-lab",
   "project": {
-    "closed": false,
-    "fields": {
-      "totalCount": 13
-    },
     "id": "PVT_kwHOBS6C3c4Bq5Ct",
-    "items": {
-      "totalCount": 0
-    },
     "number": 2,
-    "owner": {
-      "login": "sunkanmi-olawuwo",
-      "type": "User"
-    },
-    "public": false,
-    "readme": "",
-    "shortDescription": "",
     "title": "MAF Support Lab - Learning Roadmap",
     "url": "https://github.com/users/sunkanmi-olawuwo/projects/2"
   },
@@ -286,6 +272,66 @@
       "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/35",
       "parent_linked": true,
       "dependencies_linked": true
+    },
+    "E08": {
+      "number": 38,
+      "id": 6293965944,
+      "node_id": "I_kwDOVoiBds8AAAABdyZMeA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/38"
+    },
+    "E09": {
+      "number": 39,
+      "id": 6293966135,
+      "node_id": "I_kwDOVoiBds8AAAABdyZNNw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/39"
+    },
+    "L29": {
+      "number": 40,
+      "id": 6293966498,
+      "node_id": "I_kwDOVoiBds8AAAABdyZOog",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/40"
+    },
+    "L30": {
+      "number": 41,
+      "id": 6293966999,
+      "node_id": "I_kwDOVoiBds8AAAABdyZQlw",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/41"
+    },
+    "L31": {
+      "number": 42,
+      "id": 6293967422,
+      "node_id": "I_kwDOVoiBds8AAAABdyZSPg",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/42"
+    },
+    "L32": {
+      "number": 43,
+      "id": 6293967809,
+      "node_id": "I_kwDOVoiBds8AAAABdyZTwQ",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/43"
+    },
+    "L33": {
+      "number": 44,
+      "id": 6293968220,
+      "node_id": "I_kwDOVoiBds8AAAABdyZVXA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/44"
+    },
+    "L34": {
+      "number": 45,
+      "id": 6293968566,
+      "node_id": "I_kwDOVoiBds8AAAABdyZWtg",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/45"
+    },
+    "L35": {
+      "number": 46,
+      "id": 6293969024,
+      "node_id": "I_kwDOVoiBds8AAAABdyZYgA",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/46"
+    },
+    "L36": {
+      "number": 47,
+      "id": 6293969373,
+      "node_id": "I_kwDOVoiBds8AAAABdyZZ3Q",
+      "html_url": "https://github.com/sunkanmi-olawuwo/maf-support-lab/issues/47"
     }
   }
 }
