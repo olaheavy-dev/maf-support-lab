@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/turn-result.schema.json",
+  "title": "Turn result",
+  "description": "Result of one conversation turn. A finished turn has exactly one outcome: completed, awaiting_approval, failed, or cancelled.",
+  "type": "object",
+  "required": ["contract_version", "conversation_id", "turn_id", "client_turn_id", "state", "trace_id", "created_at"],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "$ref": "common.schema.json#/$defs/contract_version" },
+    "conversation_id": { "$ref": "common.schema.json#/$defs/conversation_id" },
+    "turn_id": { "$ref": "common.schema.json#/$defs/turn_id" },
+    "client_turn_id": {
+      "description": "Echo of the submitted client_turn_id; null for turns resumed by an approval decision.",
+      "oneOf": [{ "$ref": "common.schema.json#/$defs/client_turn_id" }, { "type": "null" }]
+    },
+    "resumed_from_turn_id": { "$ref": "common.schema.json#/$defs/turn_id" },
+    "state": { "enum": ["running", "finished"] },
+    "outcome": { "enum": ["completed", "awaiting_approval", "failed", "cancelled"] },
+    "route": { "$ref": "common.schema.json#/$defs/route" },
+    "reply": { "$ref": "common.schema.json#/$defs/reply" },
+    "pending_approval": { "$ref": "common.schema.json#/$defs/approval" },
+    "operations": {
+      "description": "Business operations created or changed during this turn, with their factual status.",
+      "type": "array",
+      "maxItems": 10,
+      "items": { "$ref": "common.schema.json#/$defs/operation_summary" }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/turn_error" },
+    "trace_id": { "$ref": "common.schema.json#/$defs/trace_id" },
+    "created_at": { "$ref": "common.schema.json#/$defs/timestamp" },
+    "finished_at": { "$ref": "common.schema.json#/$defs/timestamp" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "state": { "const": "running" } } },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["outcome"] },
+            { "required": ["finished_at"] },
+            { "required": ["pending_approval"] },
+            { "required": ["error"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "const": "finished" } } },
+      "then": { "required": ["outcome", "finished_at"] }
+    },
+    {
+      "if": { "properties": { "outcome": { "const": "completed" } }, "required": ["outcome"] },
+      "then": { "required": ["reply"] }
+    },
+    {
+      "if": { "properties": { "outcome": { "const": "awaiting_approval" } }, "required": ["outcome"] },
+      "then": { "required": ["pending_approval", "reply"] },
+      "else": { "not": { "required": ["pending_approval"] } }
+    },
+    {
+      "if": { "properties": { "outcome": { "const": "failed" } }, "required": ["outcome"] },
+      "then": { "required": ["error"] },
+      "else": { "not": { "required": ["error"] } }
+    }
+  ]
+}

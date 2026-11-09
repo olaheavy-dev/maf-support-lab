@@ -1,0 +1,9 @@
+{
+  "contract_version": "1.0",
+  "type": "https://contracts.maf-support-lab.example/v1/errors/client_turn_id_reused",
+  "title": "client_turn_id reused",
+  "status": 409,
+  "code": "client_turn_id_reused",
+  "detail": "This client_turn_id was already used with a different message.",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+}

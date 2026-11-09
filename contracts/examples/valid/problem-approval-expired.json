@@ -1,0 +1,9 @@
+{
+  "contract_version": "1.0",
+  "type": "https://contracts.maf-support-lab.example/v1/errors/approval_expired",
+  "title": "Approval expired",
+  "status": 410,
+  "code": "approval_expired",
+  "detail": "This approval expired; nothing was changed.",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+}

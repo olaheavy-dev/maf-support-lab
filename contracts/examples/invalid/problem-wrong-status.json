@@ -1,0 +1,9 @@
+{
+  "contract_version": "1.0",
+  "type": "https://contracts.maf-support-lab.example/v1/errors/not_found",
+  "title": "Not found",
+  "status": 403,
+  "code": "not_found",
+  "detail": "The conversation does not exist or is not available to you.",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+}

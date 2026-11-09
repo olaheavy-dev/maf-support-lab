@@ -1,0 +1,10 @@
+{
+  "contract_version": "1.0",
+  "type": "https://contracts.maf-support-lab.example/v1/errors/rate_limited",
+  "title": "Too many requests",
+  "status": 429,
+  "code": "rate_limited",
+  "detail": "Please wait before sending another message.",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "retry_after_seconds": 20
+}

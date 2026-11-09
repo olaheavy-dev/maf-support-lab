@@ -1,0 +1,9 @@
+{
+  "contract_version": "1.0",
+  "type": "https://contracts.maf-support-lab.example/v1/errors/approval_already_decided",
+  "title": "Approval already decided",
+  "status": 409,
+  "code": "approval_already_decided",
+  "detail": "This approval was already rejected.",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"
+}

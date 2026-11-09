@@ -1,0 +1,15 @@
+{
+  "fixture_version": "1.0",
+  "customers": [
+    {
+      "customer_id": "CUST-1001",
+      "display_name": "Ada Example",
+      "email": "ada@example.com"
+    },
+    {
+      "customer_id": "CUST-1002",
+      "display_name": "Ben Sample",
+      "email": "ben@example.com"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "fixture_version": "1.0",
+  "articles": [
+    {
+      "article_id": "KB-101",
+      "title": "Smart Speaker Wi-Fi setup",
+      "keywords": [
+        "speaker",
+        "wifi",
+        "wi-fi",
+        "setup",
+        "connect"
+      ],
+      "steps": [
+        "Hold the reset button for 5 seconds until the light blinks.",
+        "Open the app and choose Settings > Devices > Add New.",
+        "Select your 2.4 GHz network and enter the password."
+      ]
+    },
+    {
+      "article_id": "KB-102",
+      "title": "Headphones crackling or dropping audio",
+      "keywords": [
+        "headphones",
+        "crackling",
+        "bluetooth",
+        "audio",
+        "static"
+      ],
+      "steps": [
+        "Charge the headphones fully.",
+        "Remove the headphones from your device's Bluetooth list and pair again.",
+        "Move away from other wireless devices and test again."
+      ]
+    },
+    {
+      "article_id": "KB-103",
+      "title": "Laptop stand wobbles",
+      "keywords": [
+        "laptop",
+        "stand",
+        "wobble",
+        "loose"
+      ],
+      "steps": [
+        "Tighten both hinge screws with the included key.",
+        "Check that the rubber feet are attached and clean."
+      ]
+    }
+  ]
+}

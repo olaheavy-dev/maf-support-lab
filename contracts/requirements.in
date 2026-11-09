@@ -1,0 +1,3 @@
+# Contract and fixture test tooling only. Compile with:
+#   uv pip compile requirements.in --generate-hashes --universal --python-version 3.12 -o requirements.txt
+jsonschema==4.26.0

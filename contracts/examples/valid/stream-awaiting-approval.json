@@ -1,0 +1,82 @@
+[
+  {
+    "contract_version": "1.0",
+    "type": "turn.started",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 1,
+    "data": {
+      "client_turn_id": "3f2c8a1e-5b7d-4c9a-8e2f-1a6b9c0d4e71"
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "turn.progress",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 2,
+    "data": {
+      "stage": "routed",
+      "route": {
+        "status": "routed",
+        "target": "billing"
+      }
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "turn.progress",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 3,
+    "data": {
+      "stage": "awaiting_approval"
+    }
+  },
+  {
+    "contract_version": "1.0",
+    "type": "turn.final",
+    "conversation_id": "conv_7Hq2Lm9Xa1",
+    "turn_id": "turn_A1b2C3d4E5",
+    "sequence": 4,
+    "data": {
+      "result": {
+        "contract_version": "1.0",
+        "conversation_id": "conv_7Hq2Lm9Xa1",
+        "turn_id": "turn_A1b2C3d4E5",
+        "client_turn_id": "3f2c8a1e-5b7d-4c9a-8e2f-1a6b9c0d4e71",
+        "state": "finished",
+        "outcome": "awaiting_approval",
+        "route": {
+          "status": "routed",
+          "target": "billing"
+        },
+        "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "created_at": "2026-11-01T12:00:00Z",
+        "finished_at": "2026-11-01T12:00:03Z",
+        "reply": {
+          "kind": "approval_request",
+          "text": "I can refund order ORD-1001 in full ($86.39). Please approve or reject."
+        },
+        "pending_approval": {
+          "approval_id": "appr_Z1x2C3v4B5",
+          "operation_id": "op_Q9w8E7r6T5",
+          "kind": "refund_order",
+          "arguments": {
+            "order_id": "ORD-1001",
+            "reason": "The headphones crackle."
+          },
+          "summary": "Refund order ORD-1001 in full ($86.39) for reason: The headphones crackle.",
+          "expires_at": "2026-11-01T12:15:03Z"
+        },
+        "operations": [
+          {
+            "operation_id": "op_Q9w8E7r6T5",
+            "kind": "refund_order",
+            "status": "awaiting_approval"
+          }
+        ]
+      }
+    }
+  }
+]

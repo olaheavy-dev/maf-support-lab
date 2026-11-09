@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/approval-decision-request.schema.json",
+  "title": "Approval decision request",
+  "description": "POST /api/v1/conversations/{conversation_id}/approvals/{approval_id} body. The decision applies only to the server-bound operation; arguments cannot be changed here.",
+  "type": "object",
+  "required": [
+    "operation_id",
+    "decision"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "operation_id": {
+      "$ref": "common.schema.json#/$defs/operation_id"
+    },
+    "decision": {
+      "enum": [
+        "approve",
+        "reject"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/conversation.schema.json",
+  "title": "Conversation",
+  "description": "A conversation owned by the server-side principal and bound to one backend for its lifetime. Used to recover pending approvals and an active turn after a refresh.",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "conversation_id",
+    "backend",
+    "created_at",
+    "active_turn_id",
+    "pending_approvals"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "$ref": "common.schema.json#/$defs/contract_version"
+    },
+    "conversation_id": {
+      "$ref": "common.schema.json#/$defs/conversation_id"
+    },
+    "backend": {
+      "$ref": "common.schema.json#/$defs/backend"
+    },
+    "created_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "active_turn_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/turn_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pending_approvals": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "$ref": "common.schema.json#/$defs/approval"
+      }
+    }
+  }
+}

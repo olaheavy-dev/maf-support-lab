@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/v1/problem.schema.json",
+  "title": "HTTP error (RFC 9457 problem details)",
+  "description": "Returned with Content-Type application/problem+json when a request is rejected before or instead of running a turn. A turn that runs and fails returns a turn result with outcome failed instead.",
+  "type": "object",
+  "required": ["contract_version", "type", "title", "status", "code"],
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": { "$ref": "common.schema.json#/$defs/contract_version" },
+    "type": { "type": "string", "pattern": "^https://contracts\\.maf-support-lab\\.example/v1/errors/[a-z_]+$" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+    "detail": { "type": "string", "maxLength": 1000 },
+    "instance": { "type": "string", "maxLength": 300 },
+    "code": {
+      "enum": [
+        "invalid_request",
+        "not_found",
+        "turn_in_progress",
+        "turn_already_finished",
+        "client_turn_id_reused",
+        "approval_already_decided",
+        "approval_mismatch",
+        "approval_expired",
+        "rate_limited",
+        "service_unavailable",
+        "internal_error"
+      ]
+    },
+    "trace_id": { "$ref": "common.schema.json#/$defs/trace_id" },
+    "retry_after_seconds": { "type": "integer", "minimum": 1 },
+    "errors": {
+      "description": "Field-level validation failures for invalid_request.",
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["pointer", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "pointer": { "description": "JSON Pointer into the request body.", "type": "string", "maxLength": 200 },
+          "message": { "type": "string", "minLength": 1, "maxLength": 300 }
+        }
+      }
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "code": { "const": "invalid_request" } } }, "then": { "properties": { "status": { "const": 400 } } } },
+    { "if": { "properties": { "code": { "const": "not_found" } } }, "then": { "properties": { "status": { "const": 404 } } } },
+    { "if": { "properties": { "code": { "enum": ["turn_in_progress", "turn_already_finished", "client_turn_id_reused", "approval_already_decided", "approval_mismatch"] } } }, "then": { "properties": { "status": { "const": 409 } } } },
+    { "if": { "properties": { "code": { "const": "approval_expired" } } }, "then": { "properties": { "status": { "const": 410 } } } },
+    { "if": { "properties": { "code": { "const": "rate_limited" } } }, "then": { "properties": { "status": { "const": 429 } }, "required": ["retry_after_seconds"] } },
+    { "if": { "properties": { "code": { "const": "service_unavailable" } } }, "then": { "properties": { "status": { "const": 503 } } } },
+    { "if": { "properties": { "code": { "const": "internal_error" } } }, "then": { "properties": { "status": { "const": 500 } } } }
+  ]
+}

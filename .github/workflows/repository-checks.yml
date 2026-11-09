@@ -23,3 +23,11 @@ jobs:
         run: python3 scripts/validate_repository.py
       - name: Check planning validation regressions
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+      - name: Install contract test tools (hash-locked)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/contracts-venv"
+          "$RUNNER_TEMP/contracts-venv/bin/pip" install --quiet --require-hashes -r contracts/requirements.txt
+      - name: Check support contracts
+        run: '"$RUNNER_TEMP/contracts-venv/bin/python" -m unittest discover -s contracts/tests -p "test_*.py"'
+      - name: Check synthetic fixtures and scenarios
+        run: '"$RUNNER_TEMP/contracts-venv/bin/python" -m unittest discover -s fixtures/tests -p "test_*.py"'

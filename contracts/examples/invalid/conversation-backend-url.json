@@ -1,0 +1,20 @@
+{
+  "contract_version": "1.0",
+  "conversation_id": "conv_7Hq2Lm9Xa1",
+  "backend": "http://attacker.example:8080",
+  "created_at": "2026-11-01T12:00:00Z",
+  "active_turn_id": null,
+  "pending_approvals": [
+    {
+      "approval_id": "appr_Z1x2C3v4B5",
+      "operation_id": "op_Q9w8E7r6T5",
+      "kind": "refund_order",
+      "arguments": {
+        "order_id": "ORD-1001",
+        "reason": "The headphones crackle."
+      },
+      "summary": "Refund order ORD-1001 in full ($86.39) for reason: The headphones crackle.",
+      "expires_at": "2026-11-01T12:15:03Z"
+    }
+  ]
+}

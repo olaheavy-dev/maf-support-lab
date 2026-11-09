@@ -1,0 +1,411 @@
+{
+  "description": "Every contract example and the schema it is checked against. Valid examples must pass; invalid examples must fail.",
+  "examples": [
+    {
+      "file": "valid/create-conversation-request.json",
+      "schema": "create-conversation-request",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "valid/turn-request.json",
+      "schema": "turn-request",
+      "valid": true,
+      "covers": [
+        "success"
+      ]
+    },
+    {
+      "file": "valid/turn-result-order-status.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": [
+        "success"
+      ]
+    },
+    {
+      "file": "valid/turn-result-missing-order-id.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": [
+        "missing_order"
+      ]
+    },
+    {
+      "file": "valid/turn-result-unknown-order.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": [
+        "unknown_order"
+      ]
+    },
+    {
+      "file": "valid/turn-result-other-customer-order.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": [
+        "forbidden_access"
+      ]
+    },
+    {
+      "file": "valid/problem-conversation-not-found.json",
+      "schema": "problem",
+      "valid": true,
+      "covers": [
+        "forbidden_access"
+      ]
+    },
+    {
+      "file": "valid/turn-result-unrouted.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": [
+        "invalid_route"
+      ]
+    },
+    {
+      "file": "valid/triage-decision.json",
+      "schema": "triage-decision",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "valid/routed-request.json",
+      "schema": "routed-request",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "valid/turn-result-awaiting-approval.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": [
+        "stream_pause"
+      ]
+    },
+    {
+      "file": "valid/approval-decision-reject.json",
+      "schema": "approval-decision-request",
+      "valid": true,
+      "covers": [
+        "approval_denial"
+      ]
+    },
+    {
+      "file": "valid/turn-result-approval-rejected.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": [
+        "approval_denial"
+      ]
+    },
+    {
+      "file": "valid/operation-awaiting-approval.json",
+      "schema": "operation",
+      "valid": true,
+      "covers": [
+        "operation_status"
+      ]
+    },
+    {
+      "file": "valid/operation-rejected.json",
+      "schema": "operation",
+      "valid": true,
+      "covers": [
+        "operation_status",
+        "approval_denial"
+      ]
+    },
+    {
+      "file": "valid/operation-committed-refund.json",
+      "schema": "operation",
+      "valid": true,
+      "covers": [
+        "operation_status"
+      ]
+    },
+    {
+      "file": "valid/operation-committed-cancel.json",
+      "schema": "operation",
+      "valid": true,
+      "covers": [
+        "operation_status"
+      ]
+    },
+    {
+      "file": "valid/operation-failed-not-eligible.json",
+      "schema": "operation",
+      "valid": true,
+      "covers": [
+        "operation_status"
+      ]
+    },
+    {
+      "file": "valid/conversation-with-pending-approval.json",
+      "schema": "conversation",
+      "valid": true,
+      "covers": [
+        "operation_status"
+      ]
+    },
+    {
+      "file": "valid/stream-completed.json",
+      "schema": "stream-event",
+      "valid": true,
+      "covers": [
+        "success"
+      ],
+      "stream": true
+    },
+    {
+      "file": "valid/stream-awaiting-approval.json",
+      "schema": "stream-event",
+      "valid": true,
+      "covers": [
+        "stream_pause"
+      ],
+      "stream": true
+    },
+    {
+      "file": "valid/turn-result-failed.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": [
+        "stream_error"
+      ]
+    },
+    {
+      "file": "valid/stream-failed.json",
+      "schema": "stream-event",
+      "valid": true,
+      "covers": [
+        "stream_error"
+      ],
+      "stream": true
+    },
+    {
+      "file": "valid/turn-result-running.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "valid/cancel-turn-response.json",
+      "schema": "cancel-turn-response",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "valid/turn-result-cancelled.json",
+      "schema": "turn-result",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "valid/problem-turn-in-progress.json",
+      "schema": "problem",
+      "valid": true,
+      "covers": [
+        "duplicate_submission"
+      ]
+    },
+    {
+      "file": "valid/problem-client-turn-id-reused.json",
+      "schema": "problem",
+      "valid": true,
+      "covers": [
+        "duplicate_submission"
+      ]
+    },
+    {
+      "file": "valid/problem-approval-already-decided.json",
+      "schema": "problem",
+      "valid": true,
+      "covers": [
+        "duplicate_submission"
+      ]
+    },
+    {
+      "file": "valid/problem-approval-expired.json",
+      "schema": "problem",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "valid/problem-invalid-request.json",
+      "schema": "problem",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "valid/problem-rate-limited.json",
+      "schema": "problem",
+      "valid": true,
+      "covers": []
+    },
+    {
+      "file": "invalid/triage-unknown-route.json",
+      "schema": "triage-decision",
+      "valid": false,
+      "covers": [
+        "invalid_route"
+      ],
+      "reason": "route target outside the allowed set"
+    },
+    {
+      "file": "invalid/triage-confidence-out-of-range.json",
+      "schema": "triage-decision",
+      "valid": false,
+      "covers": [
+        "invalid_route"
+      ],
+      "reason": "confidence above 1.0"
+    },
+    {
+      "file": "invalid/triage-malformed-order-id.json",
+      "schema": "triage-decision",
+      "valid": false,
+      "covers": [
+        "invalid_route"
+      ],
+      "reason": "order id does not match ORD-NNNN"
+    },
+    {
+      "file": "invalid/turn-request-with-customer-id.json",
+      "schema": "turn-request",
+      "valid": false,
+      "covers": [
+        "forbidden_access"
+      ],
+      "reason": "client cannot supply identity"
+    },
+    {
+      "file": "invalid/turn-request-with-confirmation.json",
+      "schema": "turn-request",
+      "valid": false,
+      "covers": [],
+      "reason": "client or model cannot supply approval"
+    },
+    {
+      "file": "invalid/turn-request-blank-message.json",
+      "schema": "turn-request",
+      "valid": false,
+      "covers": [],
+      "reason": "message has no visible characters"
+    },
+    {
+      "file": "invalid/turn-request-missing-client-turn-id.json",
+      "schema": "turn-request",
+      "valid": false,
+      "covers": [
+        "duplicate_submission"
+      ],
+      "reason": "idempotency key is required"
+    },
+    {
+      "file": "invalid/turn-result-contract-v2.json",
+      "schema": "turn-result",
+      "valid": false,
+      "covers": [],
+      "reason": "incompatible major version"
+    },
+    {
+      "file": "invalid/turn-result-awaiting-without-approval.json",
+      "schema": "turn-result",
+      "valid": false,
+      "covers": [
+        "stream_pause"
+      ],
+      "reason": "awaiting_approval requires the pending approval"
+    },
+    {
+      "file": "invalid/turn-result-completed-with-error.json",
+      "schema": "turn-result",
+      "valid": false,
+      "covers": [],
+      "reason": "error only allowed on failed turns"
+    },
+    {
+      "file": "invalid/turn-result-running-with-outcome.json",
+      "schema": "turn-result",
+      "valid": false,
+      "covers": [],
+      "reason": "a running turn has no outcome"
+    },
+    {
+      "file": "invalid/turn-result-unknown-outcome.json",
+      "schema": "turn-result",
+      "valid": false,
+      "covers": [],
+      "reason": "only four outcomes exist"
+    },
+    {
+      "file": "invalid/operation-committed-without-result.json",
+      "schema": "operation",
+      "valid": false,
+      "covers": [
+        "operation_status"
+      ],
+      "reason": "committed operations report their result"
+    },
+    {
+      "file": "invalid/operation-arguments-mismatch.json",
+      "schema": "operation",
+      "valid": false,
+      "covers": [],
+      "reason": "arguments must match the operation kind"
+    },
+    {
+      "file": "invalid/operation-unknown-status.json",
+      "schema": "operation",
+      "valid": false,
+      "covers": [
+        "operation_status"
+      ],
+      "reason": "status outside the defined set"
+    },
+    {
+      "file": "invalid/approval-decision-with-arguments.json",
+      "schema": "approval-decision-request",
+      "valid": false,
+      "covers": [
+        "approval_denial"
+      ],
+      "reason": "a decision cannot change arguments"
+    },
+    {
+      "file": "invalid/conversation-backend-url.json",
+      "schema": "conversation",
+      "valid": false,
+      "covers": [],
+      "reason": "backend is a server alias, never a URL"
+    },
+    {
+      "file": "invalid/stream-final-running.json",
+      "schema": "stream-event",
+      "valid": false,
+      "covers": [
+        "stream_error"
+      ],
+      "reason": "the terminal event carries a finished result"
+    },
+    {
+      "file": "invalid/stream-unknown-type.json",
+      "schema": "stream-event",
+      "valid": false,
+      "covers": [
+        "stream_pause"
+      ],
+      "reason": "unknown event type"
+    },
+    {
+      "file": "invalid/problem-wrong-status.json",
+      "schema": "problem",
+      "valid": false,
+      "covers": [
+        "forbidden_access"
+      ],
+      "reason": "not_found must use HTTP 404"
+    }
+  ]
+}
