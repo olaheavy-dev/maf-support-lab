@@ -8,7 +8,7 @@ The assistant drives each ticket end to end; the owner reviews and decides.
 
 - Implement the active ticket completely: code, tests, docs, the evidence note, a branch, and a pull request.
 - Explain in plain, simple English. Put the review brief (what changed, what to check) on the PR, knowledge the owner should learn on the ticket, and a short summary plus anything needing the owner in the chat.
-- Keep the project board current: move the active ticket to In progress when work starts and to Review when its PR opens. After the owner merges, move it to Done and the next ticket in Order to Ready.
+- Keep the project board current: move the active ticket to In progress when work starts and to Review when its PR opens. After the PR merges, move it to Done and the next ticket in Order to Ready.
 - Merge a PR (squash) once required checks pass and review threads are resolved. Do not start implementing the next ticket without the owner's go-ahead, and never mark a ticket learned; the owner decides that.
 - Label assistant-written evidence and interview answers as assistant-drafted. Leave a section for the owner's own explanation.
 - Never invent learning evidence, interview answers, test results, or elapsed study time.
