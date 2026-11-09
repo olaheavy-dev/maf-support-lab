@@ -1,37 +1,33 @@
-# Ticket alignment review - 2026-11-09
+# Ticket alignment review - updated 2026-11-09
 
-Reviewed all seven epics and all 28 learning tickets against their predecessor sequence, shared contracts, course reference roles, official documentation, expected learning outcomes, and interview questions. No application behavior was implemented or marked learned.
+The current plan contains nine epics and 42 learning tickets. This report supersedes the original seven-epic, 28-ticket review and the later 36-ticket expansion. No application work or learner understanding is marked complete.
 
-## Findings corrected
+## Current review corrections
 
 | Finding | Correction |
 | --- | --- |
-| L08 described a read-only task while requiring ticket creation | Keep L08 read-only; introduce all three simulated writes with approval in L10. |
-| L10 required customer authorization before L13 first introduced identity | Establish the trusted development boundary in L03, guard reads/sessions as introduced, and make L13 a comprehensive verification task. |
-| Health/CI startup could require credentials before an offline mode existed | Make fake-mode startup explicit in L03 and Python L17; validate live configuration only when selected. |
-| L07 expected all domains to operate before L08 implemented specialists | Route tests use explicit stubs; only read-only specialists become complete in L08. |
-| Workflow telemetry appeared to be required before a workflow existed | Prove agent/tool signals in L06; add workflow/executor correlation in L07. |
-| The contract was finalized after both backends had been implemented | L02 owns the protocol; L22 verifies browser compatibility and requires parity-preserving updates for any breaking discovery. |
-| Persistence and duplicate protection focused on refunds | Cover refunds, cancellations, and ticket creation, including commit/response-loss recovery and the limits of local guarantees. |
-| Cancellation and approval pauses lacked precise transport semantics | Define one terminal transport outcome and distinguish paused, committed, disconnected, and cancelled cases. |
-| Python parity did not explicitly include .NET authorization, validation, retry, and budget behavior | Assign those porting responsibilities to L17-L20 and make L21's acceptance require the complete common invariant set. |
-| Evaluation/operational metrics could be mixed or imply Python existed at L16 | L16 owns a reusable harness and .NET baseline; L21 proves both targets; missing usage remains unknown and cost remains an estimate. |
-| Frontend endpoint configuration could imply browser access to internal service discovery | Require a server/dev proxy and server-controlled backend aliases with fixed per-conversation ownership. |
-| L26 updated a threat model that no earlier ticket created | Start it in L02, extend it in L13/L14, review it in L26. |
-| Readable tickets could drift from backlog JSON because validation only checked links | Add one deterministic renderer and validate full generated content, capability prerequisites, stable issue mapping, and metadata coherence. |
+| Review counts and evaluation ownership described the original plan | L21 verifies existing application feature/contracts only. After L24 builds both APIs and the frontend, L29 sets up evaluation projects and L16 runs the shared deterministic harness against both backends. |
+| L14/L24 listed evaluation deliverables before the post-build phase | Keep L14 adversarial fixtures/checks in Support.Api.Tests and L24 browser checks in frontend/tests; formal evaluation projects/datasets begin at L29. |
+| ADR numbering differed from authoring sequence | L01 owns 0001-version-baseline, L11 writes 0002-state-and-idempotency, and L21 writes 0003-sdk-comparison. L38 later extends the existing state ADR with Python evidence. |
+| L19/L20 combined too many independent learning goals | Retain their stable IDs for sessions/streaming. Add L37 approvals, L38 durability, L39 access checks, L40 OTLP telemetry, L41 injection boundaries, and L42 resilience, each with references, outcomes, interview practice, evidence, and native blocking links. |
+| L02 could freeze contracts before native approval/streaming experience | Make L10/L12 explicit feasibility/revision checkpoints. Update schemas, examples, revision history, implemented adapters and tests together; later backends/UI use the agreed revision. |
+| Gatsby maintenance/Node support could be assumed | L35 records dated maintenance/security/release evidence, supported Node/plugin compatibility, and a clean-build result before accepting the dependency set. |
 
-## Verification scope
+## Earlier corrections retained
 
-- Every original registered reference URL resolved, including commit-pinned course files. Four targeted official references were added for integration tests, HTTP resilience, Aspire telemetry, and dependency-update configuration and checked separately.
-- Existing ticket/epic IDs, issue numbers, parent relationships, order, states, assignees, and learning progress are preserved.
-- Repository validation checks all generated ticket/epic pages, the roadmap, and the capability map against canonical sources.
-- Focused negative checks ensure a future capability dependency, changed acceptance text, or invalid source classification cannot silently pass validation.
-- Source existence checks do not prove an SDK combination compiles. L01/L03/L04/L17 retain that verification responsibility.
+- Trusted development identity starts at L03, and ownership guards accompany each read/session/write. L13/L39 verify the full access matrix.
+- Fake-mode startup and offline checks precede model calls. Live-mode configuration and usage are explicit and bounded.
+- L08/L18 stay read-only; L10/L37 introduce approval-bound simulated refund, cancellation, and ticket creation.
+- L11/L38 require atomic local business/operation records separately from native checkpoints and duplicate protection. No universal exactly-once external-provider claim is made.
+- Stream delivery, cooperative cancellation, approval pauses, and factual business-operation state remain distinct. A disconnected client may receive no terminal event; a committed action is not rolled back by disconnect.
+- Operational metrics remain distinct from model-quality evaluation. Missing usage is unknown and pricing-based cost is an estimate.
+- Browser calls use a controlled proxy/backend alias, fixed per conversation; server-owned endpoints and credentials stay outside browser code.
+- Generated tickets, epic pages, roadmap, and capability ownership come from canonical metadata and are validated in full.
 
-## Remaining learner decisions
+## Verification and limits
 
-L01 selects a compatible runtime/provider/model/package baseline. L02 writes the concrete version-1 schemas/routes and authoritative fixture policies. L11 selects a suitable supported local durable store. L23 selects the frontend stack. These are intentional learning decisions, with ownership and acceptance boundaries now explicit.
+The review checks source roles, execution order, scope boundaries, capability ownership, contract revision policy, and durable decision paths. Repository regression checks reject pre-build evaluation deliverables and out-of-order numbered ADRs as well as the existing dependency/generated-document failures.
 
-## Subsequent phase expansion
+Publishing must synchronize issue text, native epic/sub-issue and blocking relationships, project Order/positions, and the generated roadmap while preserving actual state, assignees, comments, completed checkboxes, and learner evidence. The publication verifier checks these against the pre-change snapshot.
 
-This report records the earlier 28-ticket alignment review. The current 36-ticket plan, including reordered formal evaluation and Gatsby documentation phases, is described in post-build-plan.md and the generated roadmap.
+Planning/source checks do not establish runtime or provider compatibility. L01 selects a baseline; L03/L04 and L17 prove builds/imports; L35 proves the Gatsby build. Follow execution Order, not numerical ticket IDs.

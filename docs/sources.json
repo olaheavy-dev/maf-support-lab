@@ -473,6 +473,20 @@
       "kind": "official-doc",
       "checked_on": "2026-11-09",
       "note": "Official Python language/runtime guidance. Select the Python version established in L01/L17; cancellation is cooperative and does not roll back committed operations."
+    },
+    "gatsby-releases": {
+      "title": "Official Gatsby releases and maintenance activity",
+      "url": "https://github.com/gatsbyjs/gatsby/releases",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck when L35 starts; a release history or engines declaration alone does not prove the selected Gatsby/Node/plugin set builds."
+    },
+    "node-support": {
+      "title": "Official Node.js release and support lifecycle",
+      "url": "https://nodejs.org/en/about/previous-releases",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Recheck when L35 starts; a release history or engines declaration alone does not prove the selected Gatsby/Node/plugin set builds."
     }
   }
 }

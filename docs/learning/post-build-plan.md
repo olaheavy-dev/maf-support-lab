@@ -29,6 +29,8 @@ Local scoring can avoid judge calls while agent response generation can still ca
 | L35 | Build Gatsby routes from Markdown into static HTML/assets | Filesystem sourcing, Markdown transformation, and build-time rendering |
 | L36 | Copy, serve, validate, and archive the complete output | Static hosting, path prefixes, deep links, and portable artifact handoff |
 
+L35 first checks Gatsby maintenance/security/release activity, supported Node versions, plugin engines, and a clean build; it records a dated feasibility decision before scaffolding. Gatsby remains the requested framework. If no supported compatible set works, report the blocker for an explicit scope decision.
+
 The source is selected .md content under docs/. Gatsby configuration/layout lives under docs-site/. Use gatsby-source-filesystem and gatsby-transformer-remark; MDX is not required. The production output is the complete docs-site/public directory, including HTML, CSS, JavaScript, and images.
 
 Node/Gatsby is required to build, not to host the resulting folder. Acceptance requires copying the full output to another location and reading it through an ordinary static HTTP server while application services and the Gatsby development server are stopped. Primary article content remains readable without JavaScript.

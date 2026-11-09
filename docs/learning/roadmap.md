@@ -14,9 +14,9 @@ flowchart TD
     E02["E02: Observable .NET support workflow<br/>L05 → L06 → L07 → L08"]
     E03["E03: Conversations, approvals, and streaming<br/>L09 → L10 → L11 → L12"]
     E04["E04: Safety and reliability<br/>L13 → L14 → L15"]
-    E05["E05: Python implementation and application contract verification<br/>L17 → L18 → L19 → L20 → L21"]
+    E05["E05: Python implementation and application contract verification<br/>L17 → L18 → L19 → L37<br/>L38 → L39 → L20 → L40<br/>L41 → L42 → L21"]
     E06["E06: One frontend for both implementations<br/>L22 → L23 → L24"]
-    E08["E08: Post-build Microsoft evaluation and reporting<br/>L29 → L16 → L30 → L31 → L32 → L33"]
+    E08["E08: Post-build Microsoft evaluation and reporting<br/>L29 → L16 → L30 → L31<br/>L32 → L33"]
     E09["E09: Markdown documentation and portable Gatsby HTML<br/>L34 → L35 → L36"]
     E07["E07: Engineering evidence and interview readiness<br/>L25 → L26 → L27 → L28"]
     E01 --> E02 --> E03 --> E04 --> E05 --> E06 --> E08 --> E09 --> E07
@@ -45,25 +45,31 @@ The table below is the text alternative and includes the exact prerequisites. Fo
 | 15 | L15 | E04 | [Add bounded timeouts, retries, and graceful failure](tickets/L15.md) | dotnet | L14 |
 | 16 | L17 | E05 | [Scaffold Python packaging, health, and Aspire integration](tickets/L17.md) | python | L15 |
 | 17 | L18 | E05 | [Implement Python read-only agents, tools, and triage](tickets/L18.md) | python | L17 |
-| 18 | L19 | E05 | [Implement Python sessions, approval persistence, and idempotency](tickets/L19.md) | python | L18 |
-| 19 | L20 | E05 | [Complete Python streaming, telemetry, and resilience](tickets/L20.md) | python | L19 |
-| 20 | L21 | E05 | [Verify cross-language application contracts and document SDK decisions](tickets/L21.md) | shared | L20 |
-| 21 | L22 | E06 | [Verify browser compatibility with the established API contract](tickets/L22.md) | frontend | L21 |
-| 22 | L23 | E06 | [Build shared chat UI with backend selection](tickets/L23.md) | frontend | L22 |
-| 23 | L24 | E06 | [Add approval UI, recovery states, and trace references](tickets/L24.md) | frontend | L23 |
-| 24 | L29 | E08 | [Set up post-build evaluation projects, datasets, and result contracts](tickets/L29.md) | shared | L24 |
-| 25 | L16 | E08 | [Build the shared deterministic behavior evaluation runner](tickets/L16.md) | shared | L29 |
-| 26 | L30 | E08 | [Integrate Microsoft .NET evaluation APIs with local checks](tickets/L30.md) | dotnet | L16 |
-| 27 | L31 | E08 | [Integrate native Python local agent and workflow evaluations](tickets/L31.md) | python | L30 |
-| 28 | L32 | E08 | [Add budgeted model-based quality evaluation for both backends](tickets/L32.md) | shared | L31 |
-| 29 | L33 | E08 | [Generate Microsoft evaluation reports and separate CI lanes](tickets/L33.md) | shared | L32 |
-| 30 | L34 | E09 | [Author canonical Markdown documentation for the completed system](tickets/L34.md) | docs | L33 |
-| 31 | L35 | E09 | [Build Gatsby Markdown-to-static-HTML documentation](tickets/L35.md) | docs | L34 |
-| 32 | L36 | E09 | [Validate and package copyable Gatsby static documentation](tickets/L36.md) | docs | L35 |
-| 33 | L25 | E07 | [Run fault, concurrency, and bounded load exercises](tickets/L25.md) | shared | L36 |
-| 34 | L26 | E07 | [Review dependencies, security checks, and operational limits](tickets/L26.md) | shared | L25 |
-| 35 | L27 | E07 | [Publish the architecture, runbook, and portfolio demonstration](tickets/L27.md) | shared | L26 |
-| 36 | L28 | E07 | [Complete a mock interview and independent change exercise](tickets/L28.md) | shared | L27 |
+| 18 | L19 | E05 | [Implement isolated Python conversation sessions](tickets/L19.md) | python | L18 |
+| 19 | L37 | E05 | [Add bound Python approvals for simulated mutations](tickets/L37.md) | python | L19 |
+| 20 | L38 | E05 | [Persist Python approvals and atomic operation records](tickets/L38.md) | python | L37 |
+| 21 | L39 | E05 | [Verify Python customer and operation ownership boundaries](tickets/L39.md) | python | L38 |
+| 22 | L20 | E05 | [Implement Python streaming and cooperative cancellation](tickets/L20.md) | python | L39 |
+| 23 | L40 | E05 | [Export Python traces, logs, and metrics to Aspire over OTLP](tickets/L40.md) | python | L20 |
+| 24 | L41 | E05 | [Exercise Python prompt-injection and tool-validation boundaries](tickets/L41.md) | python | L40 |
+| 25 | L42 | E05 | [Bound Python retries, timeouts, and execution budgets](tickets/L42.md) | python | L41 |
+| 26 | L21 | E05 | [Verify cross-language application contracts and document SDK decisions](tickets/L21.md) | shared | L42 |
+| 27 | L22 | E06 | [Verify browser compatibility with the established API contract](tickets/L22.md) | frontend | L21 |
+| 28 | L23 | E06 | [Build shared chat UI with backend selection](tickets/L23.md) | frontend | L22 |
+| 29 | L24 | E06 | [Add approval UI, recovery states, and trace references](tickets/L24.md) | frontend | L23 |
+| 30 | L29 | E08 | [Set up post-build evaluation projects, datasets, and result contracts](tickets/L29.md) | shared | L24 |
+| 31 | L16 | E08 | [Build the shared deterministic behavior evaluation runner](tickets/L16.md) | shared | L29 |
+| 32 | L30 | E08 | [Integrate Microsoft .NET evaluation APIs with local checks](tickets/L30.md) | dotnet | L16 |
+| 33 | L31 | E08 | [Integrate native Python local agent and workflow evaluations](tickets/L31.md) | python | L30 |
+| 34 | L32 | E08 | [Add budgeted model-based quality evaluation for both backends](tickets/L32.md) | shared | L31 |
+| 35 | L33 | E08 | [Generate Microsoft evaluation reports and separate CI lanes](tickets/L33.md) | shared | L32 |
+| 36 | L34 | E09 | [Author canonical Markdown documentation for the completed system](tickets/L34.md) | docs | L33 |
+| 37 | L35 | E09 | [Build Gatsby Markdown-to-static-HTML documentation](tickets/L35.md) | docs | L34 |
+| 38 | L36 | E09 | [Validate and package copyable Gatsby static documentation](tickets/L36.md) | docs | L35 |
+| 39 | L25 | E07 | [Run fault, concurrency, and bounded load exercises](tickets/L25.md) | shared | L36 |
+| 40 | L26 | E07 | [Review dependencies, security checks, and operational limits](tickets/L26.md) | shared | L25 |
+| 41 | L27 | E07 | [Publish the architecture, runbook, and portfolio demonstration](tickets/L27.md) | shared | L26 |
+| 42 | L28 | E07 | [Complete a mock interview and independent change exercise](tickets/L28.md) | shared | L27 |
 
 ## Epics
 
