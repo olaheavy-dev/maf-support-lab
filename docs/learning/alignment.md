@@ -26,11 +26,11 @@ The local simulated store must prevent a repeated approved operation from mutati
 
 ## Keep stream and business outcomes separate
 
-L02 defines the exact schemas; L12 and L20 implement them. Each connected turn has one terminal transport outcome: completed, awaiting_approval, failed, or cancelled.
+L02 defines the exact schemas; L12 and L20 implement them. Each turn has one final outcome: completed, awaiting_approval, failed, or cancelled. Emit one terminal event only while the connection remains usable; a disconnected client may never receive that event. Pending/final business-operation state remains authoritative and retrievable.
 
 Awaiting approval is a pause, not successful business execution. A resumed approval is a later request bound to the same owning native session/operation. Business operation states and their enum spellings are defined once in L02, including pending, rejected/expired, running, committed, and failed cases.
 
-A dropped stream does not roll back a committed operation. Status lookup and duplicate-operation protection reconcile that case. Cancellation is cooperative: propagate it, stop launching new work, and report factual committed state. Do not claim an upstream provider necessarily stopped computing.
+A dropped stream does not roll back a committed operation. Status lookup and duplicate-operation protection reconcile that case. Cancellation is cooperative: propagate it, observe it at a defined pre-commit boundary, stop launching new work when observed, and report factual committed state. Connection loss, cancellation notification, and commit can race. A disconnect alone does not guarantee prevention of a later commit, and an upstream provider is not guaranteed to stop computing.
 
 Refresh recovery requires retrieving pending/final state. Replaying every model-token delta is outside the baseline. Choose output buffering deliberately and measure first-output as well as final-response latency.
 

@@ -445,6 +445,13 @@
       "kind": "official-doc",
       "checked_on": "2026-11-09",
       "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
+    },
+    "ms-cooperative-cancellation": {
+      "title": ".NET cooperative cancellation semantics",
+      "url": "https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads",
+      "kind": "official-doc",
+      "checked_on": "2026-11-09",
+      "note": "Cancellation is a request that work must observe; it does not roll back an already committed operation."
     }
   }
 }

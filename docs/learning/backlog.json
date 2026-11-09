@@ -140,7 +140,7 @@
       "source_note": "The course contracts and tools illustrate domain behavior. The shared HTTP/streaming protocol, reset rules, and threat model are project additions.",
       "implementation": [
         "Define the version-1 HTTP request/response, conversation, operation-status, approval, error, and planned streaming schemas in contracts/; decide the transport mapping now and record it in contracts/README.md.",
-        "Define one terminal transport outcome per turn: completed, awaiting_approval, failed, or cancelled. Awaiting approval is a pause, not a completed business action. Specify refresh/status lookup and how subsequent approval resumes work.",
+        "Define one final turn outcome: completed, awaiting_approval, failed, or cancelled. Emit its terminal stream event only while the transport remains usable; a disconnect may prevent delivery. Specify authoritative operation-status lookup and approval resumption separately.",
         "Seed synthetic customers, orders, refund/cancellation eligibility rules, and feature-test scenario inputs; define reset/isolation rules for each backend and evaluation run.",
         "Draft trust boundaries and operation-risk rules in docs/threat-model.md. Preserve original user text beside derived fields and keep principal/ownership authority outside model arguments."
       ],
@@ -705,17 +705,18 @@
       "official_refs": [
         "ms-structured",
         "ms-workflows",
-        "ms-safety"
+        "ms-safety",
+        "ms-cooperative-cancellation"
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Implement L02's chosen streaming transport and event schema for progress/deltas plus exactly one terminal outcome per connected turn: completed, awaiting_approval, failed, or cancelled.",
+        "Implement L02's chosen event contract for progress/deltas and a single terminal event while the connection remains usable. A disconnected client may receive no terminal event; retain factual pending/final operation state for status lookup.",
         "Persist pending/final operation status so a new request or status lookup can resolve a disconnected approval/write; do not promise replay of model tokens unless separately implemented.",
-        "Propagate cooperative cancellation to SDK/tool work, stop launching new work, and choose buffered versus incremental output validation explicitly; measure first-output and full-response latency."
+        "Propagate cooperative cancellation, check it at the defined pre-commit boundary, and stop launching new work when observed. Choose output buffering explicitly and measure first-output/full-response latency; cancellation notification and write completion can race."
       ],
       "acceptance": [
-        "A successful, paused, failed, and cancelled turn each follow the same event contract; a pause is not reported as successful business completion, and partial structured data never drives routing.",
-        "Disconnect before a write leaves no new mutation; disconnect/cancellation after a committed write preserves factual status and duplicate protection. The application does not claim cancellation rolls back an already committed operation."
+        "Connected successful, paused, failed, and cancelled turns follow the event contract with one terminal event. A transport disconnect may prevent final-event delivery; partial structured data never drives routing and awaiting approval is not business completion.",
+        "Deterministic tests cover cancellation observed before commit (no new mutation), after commit (committed status preserved), and a lost response/terminal event (status lookup and duplicate protection recover the result). A raw client disconnect is not asserted to instantly stop or roll back a write."
       ],
       "learning_outcomes": [
         "Understand asynchronous streaming and cancellation propagation.",
@@ -724,7 +725,8 @@
       "interview_questions": [
         "How does transport streaming differ from actual model-token streaming?",
         "How do you handle an error after an HTTP stream has begun?",
-        "What should happen when the client cancels after a refund has already committed?"
+        "What should happen when the client cancels after a refund has already committed?",
+        "What can the server guarantee when the connection closes before it observes cancellation?"
       ],
       "stretch": "Disconnect the client while a slow tool runs and inspect the trace.",
       "requires_capabilities": [
@@ -1130,7 +1132,7 @@
         "Port L14/L15's tested boundary-validation cases, model/tool/step/output budgets, retry ownership, failure envelopes, and secret-safe output handling."
       ],
       "acceptance": [
-        "Python streaming, pause/resume, disconnect-after-commit, cancellation, timeout, rate-limit, step-budget, and injection-boundary checks match the .NET expected outcomes.",
+        "Python follows the same tested outcomes for pause/resume, cancellation observed before versus after commit, a dropped terminal event, timeout, rate-limit, step-budget, and injection boundaries. A client disconnect alone does not prove the write was cancelled.",
         "All three signals arrive in Aspire; first-output latency/buffering is measured, usage accounting is not duplicated, and resource-owning clients/credentials close at host shutdown."
       ],
       "learning_outcomes": [
