@@ -17,6 +17,17 @@ For each ticket:
 
 Every learning ticket contains: parent epic; order and prerequisites; concrete implementation steps and files; course source links; Microsoft Learn links; release/version guidance; measurable acceptance criteria; learning outcomes; interview questions; an independent stretch exercise; and closing evidence.
 
+Use the [alignment contract](alignment.md) and [capability map](capabilities.md) to check what already exists before a ticket starts. Explicit scope boundaries prevent a task from depending on later work.
+
+The stretch exercise is optional and is not a closing requirement. If it needs a future capability, defer it. L19/L20 are porting slices across several previously learned concepts; split their listed steps into linked sub-tasks before implementing if needed.
+
+Backlog JSON and the source registry are canonical. After changing either, run:
+
+    python3 scripts/render_learning.py
+    python3 scripts/validate_repository.py
+
+Readable tickets, epic pages, the roadmap, and the capability map are generated. A source update must also be synchronized to the matching GitHub issue while preserving completed checkboxes, evidence, comments, and status. Rendering files does not update GitHub automatically.
+
 Course references are comparison material when the planned behavior is absent from the course. Official docs are live; record the date and recheck against release notes and tagged SDK source before implementation.
 
 ## Size and scope

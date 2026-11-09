@@ -1,0 +1,35 @@
+# Capability ownership
+
+The sequential ticket order is the default learning path. These additional gates show the earlier implementation capabilities a task actually consumes.
+A capability is available only after its owning ticket meets its acceptance criteria; the initial board does not claim any capability is already implemented.
+
+| Ticket | Requires implementation from | Produces |
+| --- | --- | --- |
+| [L01](tickets/L01.md) | None | `version_plan`, `source_audit` |
+| [L02](tickets/L02.md) | [L01](tickets/L01.md) | `support_contract_v1`, `synthetic_fixtures`, `risk_model` |
+| [L03](tickets/L03.md) | [L01](tickets/L01.md), [L02](tickets/L02.md) | `dotnet_host`, `apphost`, `dev_identity_boundary`, `offline_mode` |
+| [L04](tickets/L04.md) | [L03](tickets/L03.md), [L02](tickets/L02.md) | `offline_ci_dotnet` |
+| [L05](tickets/L05.md) | [L03](tickets/L03.md), [L04](tickets/L04.md), [L02](tickets/L02.md) | `dotnet_order_query`, `dotnet_devui` |
+| [L06](tickets/L06.md) | [L05](tickets/L05.md), [L03](tickets/L03.md) | `dotnet_otel` |
+| [L07](tickets/L07.md) | [L05](tickets/L05.md), [L06](tickets/L06.md), [L02](tickets/L02.md) | `dotnet_triage`, `dotnet_workflow_otel` |
+| [L08](tickets/L08.md) | [L07](tickets/L07.md), [L03](tickets/L03.md), [L02](tickets/L02.md) | `dotnet_readonly_specialists` |
+| [L09](tickets/L09.md) | [L08](tickets/L08.md), [L03](tickets/L03.md) | `dotnet_sessions` |
+| [L10](tickets/L10.md) | [L09](tickets/L09.md), [L03](tickets/L03.md), [L02](tickets/L02.md) | `dotnet_approved_mutations` |
+| [L11](tickets/L11.md) | [L10](tickets/L10.md), [L09](tickets/L09.md), [L02](tickets/L02.md) | `dotnet_durable_operations` |
+| [L12](tickets/L12.md) | [L11](tickets/L11.md), [L02](tickets/L02.md), [L06](tickets/L06.md) | `dotnet_streaming` |
+| [L13](tickets/L13.md) | [L03](tickets/L03.md), [L09](tickets/L09.md), [L11](tickets/L11.md) | `dotnet_access_regressions` |
+| [L14](tickets/L14.md) | [L13](tickets/L13.md), [L10](tickets/L10.md) | `dotnet_injection_regressions` |
+| [L15](tickets/L15.md) | [L11](tickets/L11.md), [L12](tickets/L12.md), [L06](tickets/L06.md) | `dotnet_resilience` |
+| [L16](tickets/L16.md) | [L13](tickets/L13.md), [L14](tickets/L14.md), [L15](tickets/L15.md) | `evaluation_harness`, `dotnet_baseline` |
+| [L17](tickets/L17.md) | [L03](tickets/L03.md), [L02](tickets/L02.md) | `python_host`, `offline_ci_python`, `python_dev_identity` |
+| [L18](tickets/L18.md) | [L17](tickets/L17.md), [L02](tickets/L02.md) | `python_readonly_specialists`, `python_triage`, `python_devui` |
+| [L19](tickets/L19.md) | [L18](tickets/L18.md), [L17](tickets/L17.md), [L11](tickets/L11.md) | `python_sessions`, `python_approved_mutations`, `python_durable_operations`, `python_access_regressions` |
+| [L20](tickets/L20.md) | [L19](tickets/L19.md), [L18](tickets/L18.md), [L15](tickets/L15.md), [L14](tickets/L14.md) | `python_streaming`, `python_otel`, `python_resilience`, `python_injection_regressions` |
+| [L21](tickets/L21.md) | [L16](tickets/L16.md), [L19](tickets/L19.md), [L20](tickets/L20.md) | `backend_parity` |
+| [L22](tickets/L22.md) | [L02](tickets/L02.md), [L21](tickets/L21.md) | `browser_conformance` |
+| [L23](tickets/L23.md) | [L22](tickets/L22.md), [L03](tickets/L03.md) | `frontend_chat` |
+| [L24](tickets/L24.md) | [L23](tickets/L23.md), [L11](tickets/L11.md), [L19](tickets/L19.md) | `frontend_approvals` |
+| [L25](tickets/L25.md) | [L21](tickets/L21.md), [L24](tickets/L24.md), [L16](tickets/L16.md) | `fault_load_evidence` |
+| [L26](tickets/L26.md) | [L25](tickets/L25.md), [L02](tickets/L02.md), [L04](tickets/L04.md), [L17](tickets/L17.md) | `security_review` |
+| [L27](tickets/L27.md) | [L21](tickets/L21.md), [L25](tickets/L25.md), [L26](tickets/L26.md) | `portfolio_runbook` |
+| [L28](tickets/L28.md) | [L27](tickets/L27.md), [L21](tickets/L21.md) | `interview_evidence` |

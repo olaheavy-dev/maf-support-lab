@@ -14,7 +14,7 @@ body:
     id: task
     attributes:
       label: What I will implement
-      description: A concrete behavior, boundaries, and expected files. Aim for one focused change.
+      description: A concrete behavior, expected deliverables, explicit scope exclusions, required earlier capabilities, and produced capabilities. Follow docs/learning/alignment.md.
     validations:
       required: true
   - type: textarea

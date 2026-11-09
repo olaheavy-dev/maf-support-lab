@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "checked_on": "2026-11-09",
   "epics": [
     {
@@ -11,31 +11,31 @@
     {
       "id": "E02",
       "title": "Observable .NET support workflow",
-      "outcome": "Implement the Chapter 7 request path with working tools, routing, DevUI, and telemetry.",
-      "exit_criteria": "Demonstrate orders, billing, and technical requests and follow a request from HTTP entry through model/tool spans."
+      "outcome": "Implement the read-only Chapter 7 support path with guarded tools, routing, DevUI, and telemetry.",
+      "exit_criteria": "Demonstrate read-only orders, billing, and technical requests with correlated workflow/model/tool telemetry; mutating tools remain unregistered until E03."
     },
     {
       "id": "E03",
       "title": "Conversations, approvals, and streaming",
       "outcome": "Preserve conversation state and safely pause/resume side-effecting work.",
-      "exit_criteria": "Demonstrate a follow-up, approval rejection, approved refund, restart/resume, cancellation, and streamed error."
+      "exit_criteria": "Demonstrate isolated follow-ups, bound approval/rejection for all simulated writes, restart/resume, duplicate protection, and the shared streaming terminal outcomes."
     },
     {
       "id": "E04",
       "title": "Safety, reliability, and measurement",
-      "outcome": "Enforce business boundaries and measure behavior and resource use.",
+      "outcome": "Strengthen and verify established business boundaries, bound failures, and measure behavior/resource use.",
       "exit_criteria": "Show unauthorized access rejection, bounded failure handling, and a baseline evaluation with honest cost/quality limits."
     },
     {
       "id": "E05",
       "title": "Python implementation and behavioral parity",
       "outcome": "Rebuild the complete behavior idiomatically in Python and compare SDK choices.",
-      "exit_criteria": "The shared evaluation runs against both backends with isolated state and comparable telemetry."
+      "exit_criteria": "Both backends pass the same deterministic contracts, ownership, approval, durable-state, streaming, resilience, and injection-boundary scenarios with isolated state and comparable telemetry."
     },
     {
       "id": "E06",
       "title": "One frontend for both implementations",
-      "outcome": "Add a browser experience over the shared backend contract.",
+      "outcome": "Verify browser compatibility with the established backend contract and add one shared frontend.",
       "exit_criteria": "Select a backend when starting a conversation, chat, approve/reject an operation, and diagnose a failure."
     },
     {
@@ -66,13 +66,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Recheck releases, runtime support, provider requirements, and prerelease dependencies.",
-        "Map the .NET and Python request paths and confirm the audit findings.",
-        "Write docs/decisions/0001-version-baseline.md with candidate versions, source links, and an explicit verification plan."
+        "Recheck runtime support and compatible released MAF, provider, Aspire, hosting, and DevUI packages; record prerelease rationale and provider/model capabilities needed for tools and structured output.",
+        "Map both Chapter 7 request paths and confirm the static audit; distinguish hosted behavior from unused helper code.",
+        "Write docs/decisions/0001-version-baseline.md with candidate versions, checked source links, and explicit restore/build/import verification to perform at L03/L04 and L17."
       ],
       "acceptance": [
-        "The decision distinguishes observed versions from restore/build-tested versions.",
-        "Explain which security/refund path is actually hosted and identify one documentation/source disagreement."
+        "The decision separates observed release versions from a restored/tested dependency set, and selects a provider/model configuration without committing credentials.",
+        "Explain the actual hosted security/refund path and one documentation/source disagreement; the decision names how fake mode and opt-in live checks will be used."
       ],
       "learning_outcomes": [
         "Separate framework concepts from provider/hosting integrations.",
@@ -82,7 +82,19 @@
         "How do you establish that a tutorial is compatible with the SDK you selected?",
         "Why can core be released while DevUI or hosting remains prerelease?"
       ],
-      "stretch": "Find one additional assumption in the capstone and prove or disprove it from tagged source."
+      "stretch": "Find one additional assumption in the capstone and prove or disprove it from tagged source.",
+      "requires_capabilities": [],
+      "provides_capabilities": [
+        "version_plan",
+        "source_audit"
+      ],
+      "deliverables": [
+        "docs/decisions/0001-version-baseline.md"
+      ],
+      "scope_exclusions": [
+        "Installing or implementing the support system",
+        "Claiming compatibility from release numbers alone"
+      ]
     },
     {
       "id": "L02",
@@ -104,25 +116,47 @@
         "ms-structured",
         "ms-safety"
       ],
-      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "source_note": "The course contracts and tools illustrate domain behavior. The shared HTTP/streaming protocol, reset rules, and threat model are project additions.",
       "implementation": [
-        "Define schemas for requests, triage, responses, approvals, errors, and planned stream events under contracts/.",
-        "Seed synthetic customers, orders, policies, and an evaluation scenario format under fixtures/ and evaluations/.",
-        "Record ownership and state-isolation rules; preserve original user text beside derived routing fields."
+        "Define the version-1 HTTP request/response, conversation, operation-status, approval, error, and planned streaming schemas in contracts/; decide the transport mapping now and record it in contracts/README.md.",
+        "Define one terminal transport outcome per turn: completed, awaiting_approval, failed, or cancelled. Awaiting approval is a pause, not a completed business action. Specify refresh/status lookup and how subsequent approval resumes work.",
+        "Seed synthetic customers, orders, refund/cancellation eligibility rules, and scenario inputs; define reset/isolation rules for each backend and evaluation run.",
+        "Draft trust boundaries and operation-risk rules in docs/threat-model.md. Preserve original user text beside derived fields and keep principal/ownership authority outside model arguments."
       ],
       "acceptance": [
-        "Examples include a valid request, missing order, unknown order, denied operation, and invalid route.",
-        "Schema checks reject invalid categories/ranges; fixtures contain no real personal data."
+        "Contract examples cover success, missing/unknown order, invalid route, forbidden access, approval denial, operation-status lookup, stream pause/error, and duplicate submission.",
+        "Schema checks reject invalid routes/ranges and incompatible envelopes. HTTP routes, event shapes, error codes, state ownership, and versioning rules are documented before either backend implements them.",
+        "Fixtures contain two synthetic customers with distinct orders and eligibility outcomes; each backend/run can reset its own mutable state without resetting the other."
       ],
       "learning_outcomes": [
         "Distinguish schema validity, factual validity, and business authorization.",
-        "Design a language-neutral observable contract."
+        "Design a language-neutral observable contract.",
+        "Separate transport outcomes from business-operation state and evolve a shared contract compatibly."
       ],
       "interview_questions": [
         "Why does structured output not guarantee a correct or authorized operation?",
         "What should be shared between equivalent C# and Python implementations?"
       ],
-      "stretch": "Add an ambiguous request and describe the expected clarification behavior."
+      "stretch": "Add an ambiguous request and describe the expected clarification behavior.",
+      "requires_capabilities": [
+        "version_plan",
+        "source_audit"
+      ],
+      "provides_capabilities": [
+        "support_contract_v1",
+        "synthetic_fixtures",
+        "risk_model"
+      ],
+      "deliverables": [
+        "contracts/",
+        "fixtures/",
+        "evaluations/",
+        "docs/threat-model.md"
+      ],
+      "scope_exclusions": [
+        "Backend implementation",
+        "Choosing a frontend framework"
+      ]
     },
     {
       "id": "L03",
@@ -140,27 +174,50 @@
       "official_refs": [
         "ms-first",
         "aspire-apphost",
-        "aspire-python"
+        "aspire-python",
+        "ms-integration-tests"
       ],
-      "source_note": "The course composition roots are comparison points; Chapter 7 does not implement Aspire.",
+      "source_note": "Chapter 7 composition roots are comparison points; Aspire, fake-mode startup, and the development identity boundary are project additions.",
       "implementation": [
-        "Create apphost/ and src/dotnet/ with the selected compatible SDK/package versions.",
-        "Add configuration validation and a health endpoint; keep support behavior unimplemented.",
-        "Launch the API through Aspire and document exact local prerequisites and startup commands."
+        "Create the C# AppHost and ASP.NET Core skeleton, commit the selected SDK/direct package versions, and document prerequisites; keep agent behavior for L05.",
+        "Add health/configuration handling with an explicit offline/fake mode that starts without provider credentials; validate required credentials only when live mode is selected.",
+        "Establish a fixed server-owned development principal and a trusted test-host identity injection point. Do not accept a model-supplied identity or an arbitrary customer header as authority.",
+        "Launch the API through Aspire with local development endpoints and document service versus agent-workflow responsibilities."
       ],
       "acceptance": [
-        "A clean checkout restores/builds and starts the API through AppHost.",
-        "Health is visible; missing provider configuration yields an actionable startup message without leaking a key."
+        "A clean checkout restores/builds and starts the fake-mode API through AppHost without a model key or billable request; health is visible.",
+        "Selecting live mode with incomplete configuration fails clearly without exposing secrets. The test host can exercise two principals without enabling client identity spoofing."
       ],
       "learning_outcomes": [
         "Separate process orchestration from agent workflow orchestration.",
-        "Understand composition roots, configuration, and health."
+        "Understand composition roots, configuration, and health.",
+        "Establish offline startup and a trusted development identity before agents can access records."
       ],
       "interview_questions": [
         "What does Aspire manage, and what remains the application's responsibility?",
         "Where should provider credentials and service endpoints be configured?"
       ],
-      "stretch": "Change the local service port and prove the AppHost-provided endpoint still works."
+      "stretch": "Change the local service port and prove the AppHost-provided endpoint still works.",
+      "requires_capabilities": [
+        "version_plan",
+        "support_contract_v1"
+      ],
+      "provides_capabilities": [
+        "dotnet_host",
+        "apphost",
+        "dev_identity_boundary",
+        "offline_mode"
+      ],
+      "deliverables": [
+        "apphost/",
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.ServiceDefaults/",
+        "global.json"
+      ],
+      "scope_exclusions": [
+        "Agent/tool implementation",
+        "Production authentication or cloud provisioning"
+      ]
     },
     {
       "id": "L04",
@@ -178,17 +235,20 @@
       "official_refs": [
         "ms-first",
         "ms-safety",
-        "gh-rules"
+        "gh-rules",
+        "ms-integration-tests",
+        "gh-dependabot"
       ],
       "source_note": "The course dependency manifest motivates reproducibility; CI is an extension beyond the capstone.",
       "implementation": [
-        "Commit the runtime selector, central package versions, and dependency locks established by a successful restore.",
-        "Extend CI to build the AppHost/API and run meaningful contract/configuration tests using fakes.",
-        "Keep a stable always-reported required aggregate check and document offline versus live verification."
+        "Enable locked restore and commit compatible dependency locks for the skeleton introduced in L03; record runtime/SDK selection already made there.",
+        "Extend CI to build the AppHost/API and run meaningful contract/configuration/identity-boundary integration tests in fake mode.",
+        "Keep repository-checks as the stable always-reported required aggregate; every introduced language check must feed it. Document offline tests and explicit live verification separately.",
+        "Configure dependency updates for the introduced NuGet manifests; keep network-backed advisory checks separate from deterministic fake-model tests."
       ],
       "acceptance": [
-        "A clean CI run needs no model credential and fails for a deliberate contract/configuration regression.",
-        "Branch protection requires the aggregate result; a skipped path does not create a permanently pending check."
+        "A fresh locked restore/build/test succeeds without provider credentials and fails for deliberate schema/configuration/identity-boundary regressions.",
+        "The required repository-checks aggregate reports on every PR and fails if a mandatory child check fails; skipped language paths cannot hide required failures or leave a permanently pending check."
       ],
       "learning_outcomes": [
         "Reproducibility and dependency locking.",
@@ -198,7 +258,25 @@
         "How do you test an agent application without paying for model calls on every PR?",
         "Why can path-filtered required workflows block merges?"
       ],
-      "stretch": "Reproduce a failed CI check locally from the documented command."
+      "stretch": "Reproduce a failed CI check locally from the documented command.",
+      "requires_capabilities": [
+        "dotnet_host",
+        "apphost",
+        "offline_mode",
+        "support_contract_v1"
+      ],
+      "provides_capabilities": [
+        "offline_ci_dotnet"
+      ],
+      "deliverables": [
+        ".github/workflows/repository-checks.yml",
+        "src/dotnet/Support.Api.Tests/",
+        "src/dotnet/Directory.Packages.props"
+      ],
+      "scope_exclusions": [
+        "Mandatory live-model CI",
+        "Python/frontend builds before their projects exist"
+      ]
     },
     {
       "id": "L05",
@@ -220,13 +298,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Create one support agent with a typed order-status tool backed by synthetic fixtures.",
-        "Expose the same core behavior through the support API and development-only DevUI.",
-        "Provide deterministic tool tests plus a separately invoked live smoke check."
+        "Create one support agent and an order-status tool backed by fixture services; enforce order ownership using the trusted principal established in L03.",
+        "Use the L02 version-1 contract for the support API and expose the same underlying behavior through development-only DevUI.",
+        "Add a controllable fake model/client at the provider boundary, deterministic tool/host tests, and a separately invoked bounded live smoke check."
       ],
       "acceptance": [
-        "Known and unknown orders produce factual outcomes and no invented status.",
-        "DevUI discovers the agent; tool execution is observable and the startup command is documented."
+        "Known/unknown orders and missing IDs produce the specified result or clarification. Cross-customer queries are denied by the service regardless of model arguments.",
+        "DevUI discovers the agent; API/DevUI entry points use the same service guards. Tool calls can be inspected in DevUI; full OTLP verification belongs to L06."
       ],
       "learning_outcomes": [
         "Understand the model/tool invocation loop.",
@@ -236,7 +314,25 @@
         "When should a model call a tool rather than answer from its prompt?",
         "How does DevUI relate to your application API?"
       ],
-      "stretch": "Remove the order ID and require a clarification without calling the lookup tool."
+      "stretch": "Remove the order ID and require a clarification without calling the lookup tool.",
+      "requires_capabilities": [
+        "dotnet_host",
+        "dev_identity_boundary",
+        "offline_ci_dotnet",
+        "synthetic_fixtures"
+      ],
+      "provides_capabilities": [
+        "dotnet_order_query",
+        "dotnet_devui"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/"
+      ],
+      "scope_exclusions": [
+        "Refund/cancellation/ticket creation",
+        "Durable conversation state"
+      ]
     },
     {
       "id": "L06",
@@ -255,17 +351,18 @@
         "ms-otel",
         "ms-workflow-otel",
         "net-otel-sample",
-        "net-release"
+        "net-release",
+        "aspire-telemetry"
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Instrument the HTTP request, agent/model calls, and tools with correlated spans.",
-        "Configure explicit metric and log export and resource names/version.",
-        "Keep sensitive capture opt-in; add request/error counts and latency measurement."
+        "Instrument HTTP, agent/model, and tool operations with correlated spans and sanitized structured logs; configure explicit trace, metric, and log export to Aspire.",
+        "Record request/error counts and latency with bounded labels such as route, tool, and outcome. Put conversation/operation identifiers in appropriate traces/logs, never unbounded metric labels.",
+        "Keep sensitive capture opt-in and choose instrumentation ownership to avoid duplicate providers, exporters, or usage accounting. L07 adds workflow spans when routing exists."
       ],
       "acceptance": [
-        "A success and a failure appear with correlated logs and useful span status.",
-        "Actual metric samples arrive in the dashboard; identify sources/meters and avoid counting one model call twice."
+        "A fake-mode success and failure appear in Aspire with correlated logs, useful error status, and actual metric samples; a live run is an optional separate check.",
+        "Document listened-to sources/meters, service/version identity, and which layer owns each signal. Nested agent/model spans remain distinguishable; one usage observation is not charged twice."
       ],
       "learning_outcomes": [
         "Separate instrumentation, providers, exporters, and the telemetry backend.",
@@ -275,7 +372,23 @@
         "Why does seeing a trace not prove metrics are configured?",
         "How do you correlate a request while avoiding sensitive data in telemetry?"
       ],
-      "stretch": "Break the OTLP endpoint and explain the failure from application/exporter diagnostics."
+      "stretch": "Break the OTLP endpoint and explain the failure from application/exporter diagnostics.",
+      "requires_capabilities": [
+        "dotnet_order_query",
+        "apphost"
+      ],
+      "provides_capabilities": [
+        "dotnet_otel"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.ServiceDefaults/",
+        "src/dotnet/Support.Api/",
+        "docs/observability.md"
+      ],
+      "scope_exclusions": [
+        "Workflow spans before L07",
+        "Unbounded metric labels or always-on sensitive capture"
+      ]
     },
     {
       "id": "L07",
@@ -297,13 +410,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Produce a typed triage decision with an allowed route and validated ranges.",
-        "Build explicit conditional routes and a fallback for invalid/ambiguous decisions.",
-        "Pass original request context and validated entities alongside the routing decision."
+        "Produce and validate typed triage with allowed routes, bounded fields, and a controlled invalid/ambiguous fallback; do not treat generated confidence as calibrated correctness.",
+        "Build conditional workflow routing. Keep the existing orders path working; use clearly identified test doubles/placeholders for billing/technical until L08.",
+        "Pass original request plus validated fields and trusted context to executors; extend the L06 telemetry chain with workflow/executor spans using the selected release's names."
       ],
       "acceptance": [
-        "Orders, billing, and technical fixtures take the expected route.",
-        "Malformed JSON, invalid category, and incomplete requests produce controlled fallback/clarification."
+        "Deterministic route tests cover orders, billing, and technical without claiming unimplemented specialists are operational; the orders path remains end to end.",
+        "Malformed JSON, unknown category, and missing required information lead to a defined error/fallback/clarification. A trace connects routing to its selected executor."
       ],
       "learning_outcomes": [
         "Use LLM classification inside deterministic control flow.",
@@ -313,13 +426,30 @@
         "What should be deterministic in an agent workflow?",
         "How would you detect and improve poor routing?"
       ],
-      "stretch": "Add an out-of-domain request without introducing another specialist."
+      "stretch": "Add an out-of-domain request without introducing another specialist.",
+      "requires_capabilities": [
+        "dotnet_order_query",
+        "dotnet_otel",
+        "support_contract_v1"
+      ],
+      "provides_capabilities": [
+        "dotnet_triage",
+        "dotnet_workflow_otel"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/"
+      ],
+      "scope_exclusions": [
+        "Claiming billing/technical placeholders are complete agents",
+        "Using model confidence as authorization"
+      ]
     },
     {
       "id": "L08",
       "order": 8,
       "epic": "E02",
-      "title": "Complete .NET billing and technical specialists",
+      "title": "Complete read-only .NET billing and technical specialists",
       "stack": "dotnet",
       "depends_on": [
         "L07"
@@ -337,13 +467,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Implement read-only billing and technical tools over fixture-backed services.",
-        "Give each specialist only its required tools and preserve source identifiers in answers.",
-        "Add scenario checks for invoice lookup, knowledge search, and ticket creation."
+        "Replace the billing/technical placeholders from L07 with read-only invoice/payment-history and knowledge-search tools over customer-scoped fixture services.",
+        "Give each specialist only its required tools and preserve order/invoice/article identifiers and the original request context in factual responses.",
+        "Add invoice, knowledge-search, unknown-record, and unresolved-issue scenarios. An unresolved issue may offer escalation; actual ticket creation, refunds, and cancellations are introduced with approval in L10."
       ],
       "acceptance": [
-        "All three domains work through the public support path.",
-        "Unknown records and failed searches are handled; a technical request cannot invoke a billing mutation."
+        "Read-only requests in all three domains run through the version-1 support path and appear in the workflow trace.",
+        "No mutating tool is registered by this ticket. Failed searches produce an honest unresolved/handoff suggestion; cross-customer data access is denied."
       ],
       "learning_outcomes": [
         "Design scoped capabilities and factual tool-backed answers.",
@@ -353,7 +483,23 @@
         "When do specialist agents justify additional model calls?",
         "How do you prevent a specialist from exceeding its intended capabilities?"
       ],
-      "stretch": "Compare one request with a single-agent baseline and record the call-count tradeoff."
+      "stretch": "Compare one request with a single-agent baseline and record the call-count tradeoff.",
+      "requires_capabilities": [
+        "dotnet_triage",
+        "dev_identity_boundary",
+        "synthetic_fixtures"
+      ],
+      "provides_capabilities": [
+        "dotnet_readonly_specialists"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/"
+      ],
+      "scope_exclusions": [
+        "Any business mutation",
+        "Approval and durable storage implementation"
+      ]
     },
     {
       "id": "L09",
@@ -375,13 +521,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Map public conversation IDs to isolated agent/workflow state.",
-        "Support follow-ups using original user context and validated order/customer fields.",
-        "Define bounded history behavior and test concurrent conversations."
+        "Map version-1 conversation IDs to per-conversation routing/specialist sessions owned by the trusted development principal.",
+        "Support follow-ups with original messages and validated order/customer state; preserve the appropriate native session across turns rather than rebuilding a stateless specialist call.",
+        "Define a bounded history policy and serialize or reject competing turns on the same conversation while allowing separate conversations to proceed."
       ],
       "acceptance": [
-        "An order follow-up works without repeating the ID.",
-        "Two conversations with different customers never see each other's history; model-generated summaries do not become authority."
+        "An order follow-up works without repeating its ID and routes correctly using established context.",
+        "Two principals/conversations have isolated state, an unauthorized conversation lookup is denied, and concurrent turns have a documented deterministic policy. Durable restart comes in L11."
       ],
       "learning_outcomes": [
         "Separate agent object lifetime from conversation state.",
@@ -391,13 +537,28 @@
         "Can a reusable agent be shared while conversations remain isolated?",
         "What belongs in conversation history versus application state?"
       ],
-      "stretch": "Simulate simultaneous requests to one conversation and define the conflict policy."
+      "stretch": "Simulate simultaneous requests to one conversation and define the conflict policy.",
+      "requires_capabilities": [
+        "dotnet_readonly_specialists",
+        "dev_identity_boundary"
+      ],
+      "provides_capabilities": [
+        "dotnet_sessions"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/"
+      ],
+      "scope_exclusions": [
+        "Durable restart/resume",
+        "Production identity-provider integration"
+      ]
     },
     {
       "id": "L10",
       "order": 10,
       "epic": "E03",
-      "title": "Require bound approval for refunds and cancellations",
+      "title": "Require bound approval for simulated support mutations",
       "stack": "dotnet",
       "depends_on": [
         "L09"
@@ -406,6 +567,7 @@
         "dn-orders",
         "dn-refund",
         "dn-billing",
+        "dn-technical",
         "py-tools"
       ],
       "official_refs": [
@@ -413,15 +575,15 @@
         "ms-hitl",
         "ms-safety"
       ],
-      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "source_note": "Use course refund/cancellation/ticket tools as domain examples. This baseline deliberately approval-gates every simulated write; the course does not provide the complete host-boundary and persistence design.",
       "implementation": [
-        "Wrap mutating tools in the current framework approval mechanism.",
-        "Expose pending action details and submit approval/rejection against the exact pending operation.",
-        "Enforce eligibility and customer access in the tool/service; eliminate model-supplied confirmation authority."
+        "Introduce simulated refund, cancellation, and support-ticket creation tools over in-memory fixture state; use the native framework approval mechanism for all three in this learning baseline.",
+        "Adapt native pending requests/responses to the L02 approval and operation-status contract, binding principal, conversation, operation identity, tool, and exact arguments. Rejection must not trigger an immediate repeat request.",
+        "Enforce eligibility and customer access inside services using the L03/L05/L09 trusted boundaries; remove model-supplied confirmation authority. Durable storage/idempotency is the next ticket."
       ],
       "acceptance": [
-        "A denied or absent approval produces zero business mutations.",
-        "Approving a different action or changed arguments fails; the successful operation returns factual state."
+        "For refund, cancellation, and ticket creation: absent/denied approval produces zero mutation, and an approved eligible operation changes simulated state and returns its factual result.",
+        "Changed arguments, wrong operation, wrong principal/conversation, and ineligible actions cannot reuse approval. Tests prove the native approval gate and service authorization both apply."
       ],
       "learning_outcomes": [
         "Separate user intent, human approval, and business authorization.",
@@ -431,7 +593,23 @@
         "Why is a customerConfirmed argument supplied by the model insufficient?",
         "What data must an approval be bound to?"
       ],
-      "stretch": "Reject an action and verify the agent does not immediately repeat the same request."
+      "stretch": "Reject an action and verify the agent does not immediately repeat the same request.",
+      "requires_capabilities": [
+        "dotnet_sessions",
+        "dev_identity_boundary",
+        "support_contract_v1"
+      ],
+      "provides_capabilities": [
+        "dotnet_approved_mutations"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/"
+      ],
+      "scope_exclusions": [
+        "Real external business actions",
+        "Durable restart/idempotency, implemented in L11"
+      ]
     },
     {
       "id": "L11",
@@ -454,13 +632,14 @@
       ],
       "source_note": "The course refund runner illustrates approval flow, not durable restart/resume or idempotency.",
       "implementation": [
-        "Persist conversation/pending-operation state and choose the appropriate checkpoint/session mechanism.",
-        "Use stable workflow/agent identities where required for restoration.",
-        "Add a durable operation key and state transition so an approved retry cannot refund twice."
+        "Choose a supported local durable store and document session serialization versus workflow checkpoint responsibilities in docs/decisions/0003-state-and-idempotency.md.",
+        "Persist pending approvals/expiry, operation status, required native session/checkpoint state, and stable workflow/agent identities. Protect restore/status access using the owning principal and conversation.",
+        "Use a durable operation key plus atomic simulated business-state/operation-record changes for refunds, cancellations, and ticket creation; isolate state by backend and evaluation run."
       ],
       "acceptance": [
-        "Restart between request and approval; resume the intended operation.",
-        "Duplicate approval/submission changes business state once; unknown or expired approval IDs are rejected."
+        "Restart between request and approval, restore the matching native state, and resume the intended operation; wrong-owner, expired, rejected, or mismatched operations do not execute.",
+        "Duplicate submission/approval and a crash after the simulated commit but before response delivery produce one mutation and a retrievable final status for each write type.",
+        "Document the atomic local-store guarantee and why it does not imply exactly-once execution against an arbitrary external provider."
       ],
       "learning_outcomes": [
         "Distinguish workflow durability from side-effect idempotency.",
@@ -470,7 +649,24 @@
         "Does checkpointing guarantee exactly-once external side effects?",
         "What state must survive an approval wait and process restart?"
       ],
-      "stretch": "Crash immediately after the fake refund commits and before the response is sent."
+      "stretch": "Crash immediately after the fake refund commits and before the response is sent.",
+      "requires_capabilities": [
+        "dotnet_approved_mutations",
+        "dotnet_sessions",
+        "synthetic_fixtures"
+      ],
+      "provides_capabilities": [
+        "dotnet_durable_operations"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/",
+        "docs/decisions/0003-state-and-idempotency.md"
+      ],
+      "scope_exclusions": [
+        "Exactly-once guarantees for arbitrary external providers",
+        "Sharing mutable state between backends"
+      ]
     },
     {
       "id": "L12",
@@ -493,13 +689,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Implement the shared event contract for progress, output, approval, error, and completion.",
-        "Propagate request cancellation through model/tool calls.",
-        "Choose buffered versus incremental filtering explicitly and measure time to first output."
+        "Implement L02's chosen streaming transport and event schema for progress/deltas plus exactly one terminal outcome per connected turn: completed, awaiting_approval, failed, or cancelled.",
+        "Persist pending/final operation status so a new request or status lookup can resolve a disconnected approval/write; do not promise replay of model tokens unless separately implemented.",
+        "Propagate cooperative cancellation to SDK/tool work, stop launching new work, and choose buffered versus incremental output validation explicitly; measure first-output and full-response latency."
       ],
       "acceptance": [
-        "A successful stream has one terminal outcome and no hidden error after completion.",
-        "Client disconnect and tool failure stop or terminate predictably; partial structured output is not treated as a complete decision."
+        "A successful, paused, failed, and cancelled turn each follow the same event contract; a pause is not reported as successful business completion, and partial structured data never drives routing.",
+        "Disconnect before a write leaves no new mutation; disconnect/cancellation after a committed write preserves factual status and duplicate protection. The application does not claim cancellation rolls back an already committed operation."
       ],
       "learning_outcomes": [
         "Understand asynchronous streaming and cancellation propagation.",
@@ -507,15 +703,33 @@
       ],
       "interview_questions": [
         "How does transport streaming differ from actual model-token streaming?",
-        "How do you handle an error after an HTTP stream has begun?"
+        "How do you handle an error after an HTTP stream has begun?",
+        "What should happen when the client cancels after a refund has already committed?"
       ],
-      "stretch": "Disconnect the client while a slow tool runs and inspect the trace."
+      "stretch": "Disconnect the client while a slow tool runs and inspect the trace.",
+      "requires_capabilities": [
+        "dotnet_durable_operations",
+        "support_contract_v1",
+        "dotnet_otel"
+      ],
+      "provides_capabilities": [
+        "dotnet_streaming"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/",
+        "contracts/"
+      ],
+      "scope_exclusions": [
+        "Rollback of a committed action on disconnect",
+        "Model-token replay unless separately designed"
+      ]
     },
     {
       "id": "L13",
       "order": 13,
       "epic": "E04",
-      "title": "Enforce customer access and conversation ownership",
+      "title": "Verify customer access and conversation ownership boundaries",
       "stack": "dotnet",
       "depends_on": [
         "L12"
@@ -528,17 +742,18 @@
       ],
       "official_refs": [
         "ms-safety",
-        "ms-memory"
+        "ms-memory",
+        "ms-integration-tests"
       ],
-      "source_note": "Course tools expose synthetic records without real access control; this ticket is an application-boundary extension.",
+      "source_note": "Course tools expose synthetic records without the complete ownership model. This ticket strengthens and verifies earlier guards; it does not postpone basic authorization until this point.",
       "implementation": [
-        "Introduce a clearly documented local/test identity boundary.",
-        "Enforce order and conversation ownership in services using trusted request context.",
-        "Test cross-customer access and keep identity out of model-controlled authority."
+        "Consolidate and adversarially verify the trusted development-identity and ownership guards already introduced in L03/L05/L09/L10/L11.",
+        "Exercise every record read, conversation lookup, status lookup, approval, and mutation under both synthetic principals; include API and DevUI entry points.",
+        "Update docs/threat-model.md with identity provenance, tested boundaries, and the explicit gap between the local development principal and production authentication."
       ],
       "acceptance": [
-        "A customer cannot read another customer's order or resume their conversation.",
-        "An invented customer ID in tool arguments cannot override the authenticated/test principal."
+        "A cross-customer matrix proves record, conversation, operation-status, approval, and mutation access is denied at the application/service boundary.",
+        "Model arguments, client customer headers, and guessed IDs cannot change the trusted principal. Tests cover all current entry points; the baseline makes no production-authentication claim."
       ],
       "learning_outcomes": [
         "Distinguish authentication, authorization, and model context.",
@@ -548,7 +763,24 @@
         "Where should authorization run in a tool-calling application?",
         "Why does knowing an order ID not establish permission to access it?"
       ],
-      "stretch": "Attempt cross-customer access through both the direct tool/service test and agent-facing API."
+      "stretch": "Attempt cross-customer access through both the direct tool/service test and agent-facing API.",
+      "requires_capabilities": [
+        "dev_identity_boundary",
+        "dotnet_sessions",
+        "dotnet_durable_operations"
+      ],
+      "provides_capabilities": [
+        "dotnet_access_regressions"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api.Tests/",
+        "src/dotnet/Support.Api/",
+        "docs/threat-model.md"
+      ],
+      "scope_exclusions": [
+        "Introducing the first ownership guard this late",
+        "Claiming a development principal is production authentication"
+      ]
     },
     {
       "id": "L14",
@@ -571,13 +803,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Validate tool argument types, ranges, allowlists, and output handling.",
-        "Exercise direct and tool-result injection using synthetic adversarial data.",
-        "Treat phrase filters as heuristics; enforce allowed actions before mutation."
+        "Strengthen validation of tool arguments and rendering/output boundaries; keep developer instructions separate from user and tool-result data.",
+        "Add direct and tool-result injection scenarios that attempt a cross-customer read, unauthorized write, or changed approved arguments.",
+        "Treat phrase filters as diagnostic heuristics and verify action/ownership/approval gates independently of whether the model detects an attack; extend the threat model."
       ],
       "acceptance": [
-        "A malicious tool result cannot authorize a privileged operation.",
-        "False-positive/negative examples are documented; outputs are safely handled and traces contain no sensitive test payload by default."
+        "The adversarial fixture matrix demonstrates that tested unauthorized/cross-customer/unapproved actions are rejected even when the fake model attempts them.",
+        "Document false positives, bypass examples, and coverage limits. Do not claim complete prompt-injection prevention; output handling and default telemetry avoid exposing sensitive test data."
       ],
       "learning_outcomes": [
         "Understand direct versus indirect prompt injection.",
@@ -587,7 +819,23 @@
         "Why are regex filters insufficient for prompt injection?",
         "What happens when an LLM follows an instruction embedded in a tool result?"
       ],
-      "stretch": "Create a paraphrased attack that bypasses the course phrase matcher and prove the operation gate still holds."
+      "stretch": "Create a paraphrased attack that bypasses the course phrase matcher and prove the operation gate still holds.",
+      "requires_capabilities": [
+        "dotnet_access_regressions",
+        "dotnet_approved_mutations"
+      ],
+      "provides_capabilities": [
+        "dotnet_injection_regressions"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api.Tests/",
+        "evaluations/",
+        "docs/threat-model.md"
+      ],
+      "scope_exclusions": [
+        "Claiming complete prompt-injection prevention",
+        "Experimental security middleware as a cross-language requirement"
+      ]
     },
     {
       "id": "L15",
@@ -606,17 +854,18 @@
       "official_refs": [
         "ms-safety",
         "ms-tools",
-        "ms-otel"
+        "ms-otel",
+        "ms-http-resilience"
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Set explicit model/tool budgets and propagate cancellation.",
-        "Retry only eligible transient failures within a bound; protect writes using operation state.",
-        "Represent unavailable services and invalid model output without fabricated success."
+        "Set model/tool timeouts, maximum tool/agent steps, output limits, and per-turn budgets; preserve L12's cancellation behavior.",
+        "Inventory retries in the provider SDK, HTTP client, and application; assign one retry owner per layer and a bounded end-to-end attempt budget. Retry only eligible operations and use L11 operation state for writes.",
+        "Represent rate limits, unavailable tools/providers, invalid output, and exhausted budgets with version-1 error/terminal outcomes and a trace reference; respect provider retry hints where applicable."
       ],
       "acceptance": [
-        "A deterministic fault fixture triggers the expected timeout/retry behavior.",
-        "Retries are bounded and visible; mutating operations are not duplicated; safe error responses retain a trace reference."
+        "Deterministic transient, permanent, timeout, rate-limit, and loop-budget faults have bounded attempts/latency and the specified safe outcome.",
+        "Layered retries cannot multiply beyond the documented budget; cancellation stops new attempts and retrying a write cannot repeat its committed mutation."
       ],
       "learning_outcomes": [
         "Classify transient failures versus invalid requests.",
@@ -626,7 +875,24 @@
         "Which operations are safe to retry and why?",
         "How can retries increase latency and model spend?"
       ],
-      "stretch": "Combine a transient failure with cancellation and show the work stops."
+      "stretch": "Combine a transient failure with cancellation and show the work stops.",
+      "requires_capabilities": [
+        "dotnet_durable_operations",
+        "dotnet_streaming",
+        "dotnet_otel"
+      ],
+      "provides_capabilities": [
+        "dotnet_resilience"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/",
+        "docs/observability.md"
+      ],
+      "scope_exclusions": [
+        "Unbounded retries or agent loops",
+        "Retrying writes without operation-state checks"
+      ]
     },
     {
       "id": "L16",
@@ -648,13 +914,14 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Run at least 20 shared scenarios covering success, ambiguity, invalid state, denial, and failures.",
-        "Report routing/tool/action outcomes and latency; collect provider-reported input/output usage.",
-        "Label cost estimates and unknown usage accurately; record model, versions, run count, and limitations."
+        "Create the endpoint-configurable evaluation runner and at least 20 shared scenarios for reads, routing, ambiguity, ownership, all write approvals, restart, cancellation, and failures.",
+        "Run the .NET baseline now. Keep the same runner/fixtures ready for Python in L21, but do not claim Python parity before it exists. Reset only the selected backend/run state.",
+        "Report routing/tool/action invariants, latency, and provider-reported usage. Mark unavailable usage unknown, distinguish cached-token categories where reported, and label rate-based cost estimates separately from billed cost.",
+        "Separate deterministic fake-mode CI gates from opt-in repeated live runs; record configuration, model/deployment, sample count, thresholds, and limitations."
       ],
       "acceptance": [
-        "The evaluation produces a machine-readable result and a concise human report.",
-        "Offline deterministic checks and live-model evaluations are clearly separated; no exact-response-string equality is required."
+        "A deliberately incorrect route, missing ownership check, or duplicate write fails the deterministic runner, which emits machine-readable and human-readable results.",
+        "The recorded baseline identifies .NET as its target; unavailable usage is not zero and nested telemetry is not double-counted. Natural-language wording is not compared by exact equality."
       ],
       "learning_outcomes": [
         "Separate correctness evaluations from operational metrics.",
@@ -664,7 +931,24 @@
         "How would you evaluate an agent beyond answer quality?",
         "Why is self-reported model confidence not a substitute for labelled evaluation?"
       ],
-      "stretch": "Change one prompt and compare behavior/cost with an unchanged evaluation set."
+      "stretch": "Change one prompt and compare behavior/cost with an unchanged evaluation set.",
+      "requires_capabilities": [
+        "dotnet_access_regressions",
+        "dotnet_injection_regressions",
+        "dotnet_resilience"
+      ],
+      "provides_capabilities": [
+        "evaluation_harness",
+        "dotnet_baseline"
+      ],
+      "deliverables": [
+        "evaluations/",
+        "docs/evaluations/"
+      ],
+      "scope_exclusions": [
+        "Claiming Python parity before L21",
+        "Treating estimated cost as billing or unknown usage as zero"
+      ]
     },
     {
       "id": "L17",
@@ -684,33 +968,59 @@
         "ms-first",
         "aspire-python",
         "ms-overview",
-        "py-release"
+        "py-release",
+        "gh-dependabot"
       ],
       "source_note": "The Python course setup is a reference for configuration; Aspire packaging and CI are extensions.",
       "implementation": [
-        "Create an idiomatic src/python package with pyproject.toml and uv.lock.",
-        "Implement configuration/health and add the process to the C# AppHost using the official integration.",
-        "Add import/lint/meaningful configuration checks to CI."
+        "Create src/python/ with pyproject.toml/uv.lock, a host/configuration shell, and the same fixed server-owned development-principal/test-host boundary as .NET.",
+        "Support fake-mode startup without credentials, live-mode configuration validation, health, and independent local execution; register the Python process in the C# AppHost.",
+        "Add locked sync/import/lint/configuration tests to the stable required CI aggregate; keep mutable state separate and document Python client/credential cleanup ownership.",
+        "Extend dependency update coverage for the actual Python manifest/lock format and select a supported updater configuration."
       ],
       "acceptance": [
-        "Both backends start from AppHost and Python can also run independently.",
-        "A clean locked sync/import check passes without provider secrets; state directories remain separate."
+        "Both hosts start through AppHost; the Python host also runs independently without provider secrets or billable calls in fake mode.",
+        "Locked environment/import/configuration checks pass and fail on a deliberate config/identity-boundary regression; code cannot import a C# helper to obtain its telemetry or authorization behavior."
       ],
       "learning_outcomes": [
         "Understand Python package/import structure and environment locking.",
-        "Compare hosting/configuration conventions across languages."
+        "Compare hosting/configuration conventions across languages.",
+        "Port the trusted host boundary and resource lifecycle without treating model arguments as identity."
       ],
       "interview_questions": [
         "What is the role of uv.lock versus pyproject.toml?",
         "How does Aspire launch a Python service while its logic stays independent?"
       ],
-      "stretch": "Launch only Python outside Aspire using the documented configuration."
+      "stretch": "Launch only Python outside Aspire using the documented configuration.",
+      "requires_capabilities": [
+        "apphost",
+        "offline_mode",
+        "dev_identity_boundary",
+        "support_contract_v1"
+      ],
+      "provides_capabilities": [
+        "python_host",
+        "offline_ci_python",
+        "python_dev_identity"
+      ],
+      "deliverables": [
+        "src/python/pyproject.toml",
+        "src/python/uv.lock",
+        "src/python/support_agent/",
+        "src/python/tests/",
+        "apphost/",
+        ".github/workflows/repository-checks.yml"
+      ],
+      "scope_exclusions": [
+        "Agent implementation",
+        "Reusing a C# library as Python application logic"
+      ]
     },
     {
       "id": "L18",
       "order": 18,
       "epic": "E05",
-      "title": "Implement Python agents, typed tools, and triage",
+      "title": "Implement Python read-only agents, tools, and triage",
       "stack": "python",
       "depends_on": [
         "L17"
@@ -728,13 +1038,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Implement the same three specialist domains with idiomatic Python typing and models.",
-        "Preserve original requests and validated fields through routing.",
-        "Reuse shared fixture/scenario contracts while keeping Python tool/service implementation independent."
+        "Port L05/L07/L08's read-only orders, billing, and technical behavior using idiomatic Python types, validated models, workflow executors, and a controllable fake client.",
+        "Enforce principal-scoped record access, preserve original requests/validated fields, and use the unchanged version-1 contract and shared fixtures.",
+        "Expose development-only Python DevUI for agent/workflow inspection; register no mutating tools until L19 implements the approval gate."
       ],
       "acceptance": [
-        "The same known/unknown record and routing checks pass against Python.",
-        "Invalid schema/category output reaches the controlled fallback."
+        "The shared known/unknown/missing record and route checks pass; invalid output reaches the same controlled fallback and cross-customer reads are denied.",
+        "All read-only specialists are discoverable in DevUI; no mutating tool can run. Each entry point uses the same guarded services; Python OTLP verification belongs to L20."
       ],
       "learning_outcomes": [
         "Compare C# response types/executors with Python models/handlers.",
@@ -744,7 +1054,26 @@
         "Which differences are SDK conventions and which change observable behavior?",
         "Where should Python validate model-generated values?"
       ],
-      "stretch": "Implement an ambiguous routing scenario without consulting the C# code."
+      "stretch": "Implement an ambiguous routing scenario without consulting the C# code.",
+      "requires_capabilities": [
+        "python_host",
+        "python_dev_identity",
+        "support_contract_v1",
+        "synthetic_fixtures"
+      ],
+      "provides_capabilities": [
+        "python_readonly_specialists",
+        "python_triage",
+        "python_devui"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/"
+      ],
+      "scope_exclusions": [
+        "Any business mutation before L19",
+        "Weakening the shared schemas to fit the SDK"
+      ]
     },
     {
       "id": "L19",
@@ -764,33 +1093,54 @@
         "ms-approval",
         "ms-memory",
         "ms-checkpoints",
+        "ms-safety",
         "py-release"
       ],
-      "source_note": "The course always_require tools are useful; durable storage and business idempotency are added here.",
+      "source_note": "Course always_require tools and executors illustrate the concept. This ticket ports the established .NET state/authorization/idempotency design; it is larger than a single new-concept exercise and should be worked in the three listed slices.",
       "implementation": [
-        "Implement per-conversation sessions and framework-bound pending approvals.",
-        "Persist the required state and stable workflow identity.",
-        "Port the operation-level idempotency/authorization behavior through Python services."
+        "Port L09-L11's conversation isolation, pending approvals, durable restore/status lookup, and all three simulated write types with the same eligibility rules.",
+        "Bind native Python approval requests to the owning session and exact proposed operation; preserve that state across restart without using unbound approval responses.",
+        "Apply the .NET baseline's customer/service authorization, atomic local-store operation records, expiry policy, and backend/run namespaces; use idiomatic Python resource cleanup."
       ],
       "acceptance": [
-        "Approval denial, changed arguments, cross-conversation replay, and restart/resume cases pass.",
-        "Two repeated submissions produce one simulated business mutation."
+        "Follow-up, same-conversation concurrency, approval denial/change/replay, wrong-owner status lookup, expiry, restart/resume, and every write type pass the same expected business invariants.",
+        "Duplicate approval/submission and a crash after commit yield one mutation and factual final status; restoration uses matching native state and stable identities."
       ],
       "learning_outcomes": [
         "Understand Python session-bound approval and durable state.",
-        "Separate language parity from line-by-line translation."
+        "Separate language parity from line-by-line translation.",
+        "Prove the same authorization, durable-operation, and duplicate-submission invariants with native Python sessions."
       ],
       "interview_questions": [
         "How does the current Python SDK bind an approval to a pending request?",
         "Why should session state be isolated even when an agent definition is reusable?"
       ],
-      "stretch": "Attempt a replay from a second conversation and inspect the rejection."
+      "stretch": "Attempt a replay from a second conversation and inspect the rejection.",
+      "requires_capabilities": [
+        "python_readonly_specialists",
+        "python_dev_identity",
+        "dotnet_durable_operations"
+      ],
+      "provides_capabilities": [
+        "python_sessions",
+        "python_approved_mutations",
+        "python_durable_operations",
+        "python_access_regressions"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/"
+      ],
+      "scope_exclusions": [
+        "Unbound approval responses",
+        "Reinterpreting eligibility or ownership rules"
+      ]
     },
     {
       "id": "L20",
       "order": 20,
       "epic": "E05",
-      "title": "Implement Python streaming and correlated telemetry",
+      "title": "Complete Python streaming, telemetry, and resilience",
       "stack": "python",
       "depends_on": [
         "L19"
@@ -803,28 +1153,54 @@
       "official_refs": [
         "ms-otel",
         "ms-devui",
+        "ms-safety",
+        "ms-tools",
         "py-devui-source",
-        "py-otel-source"
+        "py-otel-source",
+        "aspire-telemetry"
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Implement the shared streaming/cancellation/error behavior.",
-        "Configure one telemetry setup with explicit service identity and exports.",
-        "Reconcile DevUI instrumentation with sensitive-data settings and avoid unintended duplicate providers/handlers."
+        "Port L12's event/cancellation/operation-status behavior, preserving the same completed/awaiting_approval/failed/cancelled distinction and buffering policy.",
+        "Export traces/logs/metrics with explicit Python service identity and bounded labels; reconcile DevUI's sensitive-capture behavior and avoid duplicate provider/handler setup.",
+        "Port L14/L15's tested boundary-validation cases, model/tool/step/output budgets, retry ownership, failure envelopes, and secret-safe output handling."
       ],
       "acceptance": [
-        "Python traces, logs, and metrics arrive in Aspire and meaningful events match the API contract.",
-        "Measure first-output latency and demonstrate whether middleware buffers; cancellation behaves as specified."
+        "Python streaming, pause/resume, disconnect-after-commit, cancellation, timeout, rate-limit, step-budget, and injection-boundary checks match the .NET expected outcomes.",
+        "All three signals arrive in Aspire; first-output latency/buffering is measured, usage accounting is not duplicated, and resource-owning clients/credentials close at host shutdown."
       ],
       "learning_outcomes": [
         "Understand async streams and middleware buffering.",
-        "Compare .NET and Python telemetry configuration and lifecycle ownership."
+        "Compare .NET and Python telemetry configuration and lifecycle ownership.",
+        "Carry boundary checks and end-to-end retry/step budgets into the second SDK rather than relying on provider defaults."
       ],
       "interview_questions": [
         "Why can a streamed API still buffer the entire answer?",
-        "How do provider setup and logger propagation cause duplicate telemetry?"
+        "How do provider setup and logger propagation cause duplicate telemetry?",
+        "How can different provider defaults break cross-language retry or cancellation guarantees?"
       ],
-      "stretch": "Toggle the safe development telemetry setting and verify exactly what changes."
+      "stretch": "Toggle the safe development telemetry setting and verify exactly what changes.",
+      "requires_capabilities": [
+        "python_durable_operations",
+        "python_devui",
+        "dotnet_resilience",
+        "dotnet_injection_regressions"
+      ],
+      "provides_capabilities": [
+        "python_streaming",
+        "python_otel",
+        "python_resilience",
+        "python_injection_regressions"
+      ],
+      "deliverables": [
+        "src/python/support_agent/",
+        "src/python/tests/",
+        "docs/observability.md"
+      ],
+      "scope_exclusions": [
+        "Deferring Python security/retry behavior beyond parity",
+        "Shared global conversation state or duplicate telemetry setup"
+      ]
     },
     {
       "id": "L21",
@@ -848,13 +1224,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Run the same evaluation set against both backend endpoints with reset isolated state.",
-        "Classify differences as defect, intentional SDK difference, or model variability.",
-        "Write docs/decisions/0002-sdk-comparison.md covering tools, state, workflows, approvals, streaming, and diagnostics."
+        "Run L16's unchanged endpoint-configurable deterministic suite against each backend with isolated/reset state; include identity, all writes, durable restore, streaming, retry budgets, and safe failures.",
+        "Classify differences as defects, internal SDK choices that preserve the contract, or measured live-model variability. Business/security contract violations must be fixed rather than accepted as SDK differences.",
+        "Write docs/decisions/0002-sdk-comparison.md covering tools, sessions/checkpoints, routing, approvals, cancellation, resource lifecycle, telemetry, and resilience; record package/provider/model settings."
       ],
       "acceptance": [
-        "Parity is assessed by routes, actions, schemas, and state outcomes.",
-        "Known differences and live-evaluation limits are explicit; deterministic regression checks join CI."
+        "Both implementations pass the same deterministic contract/business/security gates in CI without credentials. Optional live comparisons report configuration, repetitions, and variance.",
+        "Equivalent routes/actions/state are required while prose may vary; every intentionally different internal SDK choice is documented and preserves the shared public contract."
       ],
       "learning_outcomes": [
         "Evaluate behavioral equivalence without requiring identical prose.",
@@ -864,13 +1240,34 @@
         "How do you prove two probabilistic implementations meet one specification?",
         "What differences would influence your choice of SDK for a team?"
       ],
-      "stretch": "Demonstrate a defect in one backend that the shared suite detects."
+      "stretch": "Demonstrate a defect in one backend that the shared suite detects.",
+      "requires_capabilities": [
+        "evaluation_harness",
+        "dotnet_baseline",
+        "python_access_regressions",
+        "python_resilience",
+        "python_streaming",
+        "python_otel",
+        "python_injection_regressions"
+      ],
+      "provides_capabilities": [
+        "backend_parity"
+      ],
+      "deliverables": [
+        "evaluations/",
+        ".github/workflows/repository-checks.yml",
+        "docs/decisions/0002-sdk-comparison.md"
+      ],
+      "scope_exclusions": [
+        "Accepting business/security violations as SDK differences",
+        "Exact natural-language equality"
+      ]
     },
     {
       "id": "L22",
       "order": 22,
       "epic": "E06",
-      "title": "Finalize the frontend-facing protocol and stream/approval lifecycle",
+      "title": "Verify browser compatibility with the established API contract",
       "stack": "frontend",
       "depends_on": [
         "L21"
@@ -886,15 +1283,15 @@
         "aspire-apphost",
         "aspire-samples"
       ],
-      "source_note": "Chapter 7 hosting/approval behavior motivates the protocol; the course does not provide this frontend.",
+      "source_note": "Course hosting/approval behavior motivates the browser probes. L02 owns the API design; this ticket verifies browser compatibility rather than finalizing a new protocol after parity.",
       "implementation": [
-        "Validate the existing contracts against a minimal browser client and record protocol decisions.",
-        "Define session/backend binding, reconnect behavior, approval payloads, and terminal errors.",
-        "Add contract-level backend checks before implementing UI components."
+        "Use a minimal disposable browser probe to verify L02's existing version-1 contract after both backends pass L21; record browser-specific integration decisions without redefining backend behavior.",
+        "Verify conversation/backend binding, relative frontend API addressing via the server/dev proxy, stream decoding, pending-status lookup after refresh, and safe error rendering.",
+        "Keep backend aliases/endpoints server-controlled. Any discovered breaking contract change requires updating schemas, both adapters, and the shared evaluations before UI work proceeds."
       ],
       "acceptance": [
-        "Example traces/messages cover chat, pending approval, rejection, timeout, and disconnection.",
-        "Backend selection is fixed per conversation and the browser never receives provider credentials."
+        "The same browser probes pass for chat, stream pause/error, approval/rejection, refreshed pending status, and disconnect recovery against either backend.",
+        "One conversation stays on its original backend; no provider key, arbitrary backend URL, or Aspire-internal service DNS name is required in browser code."
       ],
       "learning_outcomes": [
         "Design a frontend around asynchronous workflow state.",
@@ -904,7 +1301,23 @@
         "What does the browser need to render a paused workflow?",
         "How do you keep sessions coherent when two equivalent backends exist?"
       ],
-      "stretch": "Specify how a refreshed browser discovers a pending approval."
+      "stretch": "Specify how a refreshed browser discovers a pending approval.",
+      "requires_capabilities": [
+        "support_contract_v1",
+        "backend_parity"
+      ],
+      "provides_capabilities": [
+        "browser_conformance"
+      ],
+      "deliverables": [
+        "frontend/probes/",
+        "contracts/README.md",
+        "docs/decisions/"
+      ],
+      "scope_exclusions": [
+        "Redesigning the API after parity",
+        "A complete frontend or product authentication"
+      ]
     },
     {
       "id": "L23",
@@ -923,17 +1336,20 @@
         "ms-multiturn",
         "ms-safety",
         "aspire-samples",
-        "aspire-apphost"
+        "aspire-apphost",
+        "gh-dependabot"
       ],
       "source_note": "Course composition roots are comparison references; this UI is original project work.",
       "implementation": [
-        "Choose and document a modest frontend stack; implement chat and new-conversation backend selection.",
-        "Render progress, streamed output, safe errors, and the current backend.",
-        "Register the frontend in AppHost with runtime endpoint configuration."
+        "Choose/document a modest frontend stack and implement chat plus backend-alias selection only when starting a new conversation.",
+        "Consume the existing contract to render progress, validated output, safe errors, and current backend; defer approval controls and refresh UX to L24.",
+        "Register the frontend in AppHost and configure relative API calls through its server/dev proxy using Aspire-provided backend URLs; keep provider credentials exclusively on backends.",
+        "Commit the frontend dependency lock, add its build/type/lint checks as appropriate to the chosen stack to the required aggregate, and configure dependency updates for its manifest."
       ],
       "acceptance": [
-        "One UI completes order-status conversations against either backend.",
-        "Backend selection cannot silently move an existing conversation; no provider key is shipped to the browser."
+        "One UI completes order-status follow-ups against either backend with the same session semantics.",
+        "Backend selection cannot move an existing conversation; browser requests do not depend on internal service-name resolution or expose credentials. Loading/empty/error states are usable.",
+        "Frontend checks run without model secrets and a deliberate build/contract regression fails the required aggregate; dependency automation covers the introduced manifest."
       ],
       "learning_outcomes": [
         "Consume a common API while keeping implementation choices behind it.",
@@ -941,9 +1357,26 @@
       ],
       "interview_questions": [
         "Why choose the backend at conversation creation?",
-        "Which configuration is safe to expose to a browser?"
+        "Which configuration is safe to expose to a browser?",
+        "Why should browser code use a configured proxy instead of resolving Aspire-internal service names?"
       ],
-      "stretch": "Exercise the same prompt on both backends and compare results without changing UI code."
+      "stretch": "Exercise the same prompt on both backends and compare results without changing UI code.",
+      "requires_capabilities": [
+        "browser_conformance",
+        "apphost"
+      ],
+      "provides_capabilities": [
+        "frontend_chat"
+      ],
+      "deliverables": [
+        "frontend/",
+        "apphost/",
+        ".github/workflows/repository-checks.yml"
+      ],
+      "scope_exclusions": [
+        "Moving active conversations between backends",
+        "Approval/recovery controls, delivered in L24"
+      ]
     },
     {
       "id": "L24",
@@ -966,13 +1399,13 @@
       ],
       "source_note": "Course approval tools teach the backend concept; browser state/recovery is an extension.",
       "implementation": [
-        "Display exact pending-action details with approve/reject controls.",
-        "Handle refresh, duplicate clicks, expired operations, and disconnected streams.",
-        "Display a support-safe trace reference for failures without exposing telemetry payloads."
+        "Display exact pending-action details and approve/reject controls using server-owned operation identities.",
+        "Recover pending/final status after refresh or a dropped stream; handle duplicate clicks, expired/forbidden operations, and the committed-write/lost-response case.",
+        "Add browser tests for both backends and display a sanitized trace reference for failures; never expose raw telemetry or treat approval itself as proof of successful execution."
       ],
       "acceptance": [
-        "Rejecting an action results in zero mutation; duplicate approval cannot repeat it.",
-        "The UI recovers pending state and presents meaningful error/empty/loading states."
+        "For refund, cancellation, and ticket creation, denial yields no mutation and duplicate clicks/refresh cannot repeat the write.",
+        "The UI correctly distinguishes awaiting approval, submitted/running, committed, rejected, failed, expired, and forbidden outcomes as defined by the contract; failures remain diagnosable."
       ],
       "learning_outcomes": [
         "Turn workflow pause/resume into an understandable user interaction.",
@@ -982,7 +1415,24 @@
         "Why must disabling an approval button not be the only duplicate-operation control?",
         "What should the UI show when approval succeeds but the response connection fails?"
       ],
-      "stretch": "Refresh immediately after approval submission and verify the final state."
+      "stretch": "Refresh immediately after approval submission and verify the final state.",
+      "requires_capabilities": [
+        "frontend_chat",
+        "dotnet_durable_operations",
+        "python_durable_operations"
+      ],
+      "provides_capabilities": [
+        "frontend_approvals"
+      ],
+      "deliverables": [
+        "frontend/",
+        "frontend/tests/",
+        "evaluations/"
+      ],
+      "scope_exclusions": [
+        "Client-only authorization/idempotency",
+        "Exposing raw trace or provider payloads"
+      ]
     },
     {
       "id": "L25",
@@ -1005,13 +1455,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Exercise concurrent conversations, slow providers, tool faults, restart/resume, and cancellations.",
-        "Measure bounded load with fake providers before any explicitly budgeted live run.",
-        "Record bottlenecks, resource limits, and one evidence-backed improvement."
+        "Run the L16/L21 shared harness with faults and concurrent conversations across both backend aliases; include same-conversation serialization, slow tools, restart, and cancellation.",
+        "Measure bounded fake-provider load first; any live run must have an explicit selected target, usage budget, sample count, and cleanup/reset scope.",
+        "Record each backend's bottlenecks, error/latency distributions, and one evidence-backed improvement without changing the business contract or weakening its gates."
       ],
       "acceptance": [
-        "No cross-conversation leakage or duplicate mutation occurs in deterministic exercises.",
-        "A report states workload, sample counts, latency/error distributions, and limitations."
+        "Deterministic concurrent/fault runs show no cross-conversation leakage or duplicate simulated write across either backend.",
+        "The report distinguishes each target/configuration, observed throughput/latency, cost availability, and limitations; optimization preserves the shared suite."
       ],
       "learning_outcomes": [
         "Understand throughput, backpressure, and state contention.",
@@ -1021,7 +1471,23 @@
         "What fails first when traffic increases in this design?",
         "How would you distinguish model latency from tool or application latency?"
       ],
-      "stretch": "Demonstrate one regression and show the signal that reveals it."
+      "stretch": "Demonstrate one regression and show the signal that reveals it.",
+      "requires_capabilities": [
+        "backend_parity",
+        "frontend_approvals",
+        "evaluation_harness"
+      ],
+      "provides_capabilities": [
+        "fault_load_evidence"
+      ],
+      "deliverables": [
+        "evaluations/",
+        "docs/evaluations/"
+      ],
+      "scope_exclusions": [
+        "Unbudgeted live-provider load",
+        "Publishing performance claims without workload/sample details"
+      ]
     },
     {
       "id": "L26",
@@ -1045,13 +1511,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Review dependency/secret protections and add appropriate language security/code-analysis checks for existing code.",
-        "Verify credential handling, access boundaries, sensitive telemetry policy, and data retention assumptions.",
-        "Update the threat model and list unresolved production requirements with owners/follow-up tasks."
+        "Review dependency/secret protections and operational checks already introduced by L04/L17 and add only missing code-analysis coverage for the actual projects.",
+        "Recheck both hosts, DevUI, frontend proxy, ownership/approval boundaries, credential lifecycle, sensitive telemetry, and retention/cleanup.",
+        "Update the threat model created in L02 and extended in L13/L14; list remaining production requirements as explicit follow-ups."
       ],
       "acceptance": [
-        "A documented review covers both backends and the browser surface.",
-        "CI/security checks run on the actual code; the repository does not claim production readiness without evidence."
+        "A concrete review references the current implementation and evidence for both backends and browser; dependency automation covers each existing manifest.",
+        "No production-readiness claim is made from green CI alone; local test identity, simulated operations, and unresolved deployment/authentication requirements are explicit."
       ],
       "learning_outcomes": [
         "Understand defense in depth and the limits of automation.",
@@ -1061,7 +1527,25 @@
         "What would you require before connecting this demo to real refunds or customer data?",
         "Which controls are enforced by MAF and which belong to the application?"
       ],
-      "stretch": "Trace one trust boundary from browser input to a mutating tool."
+      "stretch": "Trace one trust boundary from browser input to a mutating tool.",
+      "requires_capabilities": [
+        "fault_load_evidence",
+        "risk_model",
+        "offline_ci_dotnet",
+        "offline_ci_python"
+      ],
+      "provides_capabilities": [
+        "security_review"
+      ],
+      "deliverables": [
+        "docs/threat-model.md",
+        "SECURITY.md",
+        ".github/"
+      ],
+      "scope_exclusions": [
+        "The first dependency/security check",
+        "A production-readiness claim based only on CI"
+      ]
     },
     {
       "id": "L27",
@@ -1082,15 +1566,15 @@
         "ms-otel",
         "aspire-apphost"
       ],
-      "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
+      "source_note": "Use both capstones as credited comparison points. The runbook, evaluations, decisions, and portfolio narrative describe this repository's actual implementation.",
       "implementation": [
         "Write a fresh-checkout runbook, architecture diagram, version table, and troubleshooting guide.",
         "Prepare a short demonstration covering success, denial, a fault, and cross-language comparison.",
         "Link sanitized evidence, decisions, and evaluation results; credit course inspiration."
       ],
       "acceptance": [
-        "Another developer can follow the documented startup and verification steps.",
-        "The demonstration accurately separates implemented behavior, mock dependencies, and remaining work."
+        "A fresh-checkout walkthrough or recorded self-check follows the runbook with fake-mode defaults; live prerequisites and budgeted commands are separate.",
+        "The demo accurately distinguishes implemented behavior, synthetic dependencies, SDK differences, and remaining work, with links to reproducible verification and sanitized evidence."
       ],
       "learning_outcomes": [
         "Explain a system clearly with evidence and limitations.",
@@ -1100,7 +1584,25 @@
         "Walk me through an end-to-end request and its failure path.",
         "What did you change from the course and why?"
       ],
-      "stretch": "Ask someone to follow the runbook without verbal guidance and record the gaps."
+      "stretch": "Ask someone to follow the runbook without verbal guidance and record the gaps.",
+      "requires_capabilities": [
+        "backend_parity",
+        "fault_load_evidence",
+        "security_review"
+      ],
+      "provides_capabilities": [
+        "portfolio_runbook"
+      ],
+      "deliverables": [
+        "README.md",
+        "docs/runbook.md",
+        "docs/architecture.md",
+        "docs/learning/evidence/"
+      ],
+      "scope_exclusions": [
+        "Claiming another person verified a self-check",
+        "Exposing credentials or sensitive demo telemetry"
+      ]
     },
     {
       "id": "L28",
@@ -1123,13 +1625,13 @@
       ],
       "source_note": "Use the course files to understand the behavior; adapt the implementation to the selected release.",
       "implementation": [
-        "Answer the accumulated ticket questions in your own words using the evidence notes.",
-        "Demonstrate diagnosis of an injected fault from traces/metrics/logs.",
-        "Implement a small new requirement independently, then review its design and tests."
+        "Answer accumulated interview questions in your own words, using the implemented evidence rather than memorized generated answers.",
+        "Diagnose an injected fault on a selected backend using its traces/metrics/logs, then explain how the same issue would appear in the other SDK.",
+        "Add a read-only return-eligibility query in both implementations using the existing authoritative policy, extend shared contract/evaluation cases, and defend the design without adding a write operation."
       ],
       "acceptance": [
-        "Document answers, weak areas, and follow-up practice honestly.",
-        "Explain SDK selection, workflows, approvals, state, telemetry, evaluation, and deployment gaps without reading generated answers."
+        "Record answers, weak areas, and follow-up practice honestly; explain SDK choice, workflow/state/approval boundaries, observability, evaluation, and deployment gaps.",
+        "The independent read-only change passes the shared gates for both backends; it neither bypasses ownership nor redefines the original refund policy."
       ],
       "learning_outcomes": [
         "Synthesize implementation knowledge and engineering judgment.",
@@ -1139,7 +1641,26 @@
         "Why did you choose this architecture, and when would you simplify it?",
         "What would you change for a production service handling real customer actions?"
       ],
-      "stretch": "Add a read-only return-eligibility query and justify its tool, policy, evaluation, and observability design."
+      "stretch": "Ask a follow-up interview question about the return-eligibility tradeoff and answer it without reading the code; keep additional feature work outside this ticket.",
+      "requires_capabilities": [
+        "portfolio_runbook",
+        "backend_parity"
+      ],
+      "provides_capabilities": [
+        "interview_evidence"
+      ],
+      "deliverables": [
+        "docs/learning/evidence/L28.md",
+        "src/dotnet/",
+        "src/python/",
+        "contracts/",
+        "evaluations/"
+      ],
+      "scope_exclusions": [
+        "New writes or real refunds",
+        "Invented interview performance or learning evidence"
+      ]
     }
-  ]
+  ],
+  "reviewed_on": "2026-11-09"
 }
