@@ -14,7 +14,7 @@ turn, so concurrent turns never share executor state. The DevUI variant swaps on
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Never
 
 from agent_framework import (
@@ -32,6 +32,7 @@ from agent_framework import (
 from support_agent.activity import begin_activity
 from support_agent.agents import SPECIALISTS, SupportAgents
 from support_agent.routing import TriageDecision, TriageOutcome, TurnRoute, UnroutedReason, parse, route
+from support_agent.sessions import ConversationContext, ConversationSessions, context_note
 
 WORKFLOW_NAME = "support-routing"
 ASK_FOR_ORDER_ID = "Which order do you mean? Please share the order id, for example ORD-1234."
@@ -46,6 +47,8 @@ FALLBACK = "Sorry, I couldn't produce an answer. Please try again."
 class RoutingRequest:
     message: str
     conversation_id: str | None = None
+    context: ConversationContext = field(default_factory=ConversationContext)
+    sessions: ConversationSessions | None = None  # None: stateless (DevUI workflow chats)
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,9 +81,18 @@ class TriageExecutor(Executor):
     @handler
     async def classify(self, request: RoutingRequest, ctx: WorkflowContext[TriageOutcome]) -> None:
         await ctx.add_event(progress("triage"))
-        response = await self._agents.triage.run(request.message, options={"response_format": TriageDecision})
+        # Triage is stateless: it classifies this one message. A follow-up gets the previous route as a short,
+        # code-written hint; the message itself is still what gets classified.
+        messages = [Message(role="user", contents=[request.message])]
+        if request.context.last_target is not None:
+            messages.append(
+                context_note(f"The previous request in this conversation was routed to {request.context.last_target}.")
+            )
+        response = await self._agents.triage.run(messages, options={"response_format": TriageDecision})
         decision = parse(response.text)  # the model's output is untrusted until it passes the full schema
-        outcome = TriageOutcome(request.message, decision, route(decision), request.conversation_id)
+        outcome = TriageOutcome(
+            request.message, decision, route(decision), request.conversation_id, request.context, request.sessions
+        )
         await ctx.add_event(progress("routed", route=outcome.route.to_contract()))
         await ctx.send_message(outcome)
 
@@ -130,10 +142,20 @@ class SpecialistExecutor(Executor):
     @handler
     async def answer(self, outcome: TriageOutcome, ctx: WorkflowContext[SupportReply]) -> None:
         await ctx.add_event(progress("specialist", route={"status": "routed", "target": self._target}))
-        with begin_activity() as activity:
-            response = await self._agents.specialist(self._target).run(
-                [Message(role="user", contents=[outcome.original_message])]
+        agent = self._agents.specialist(self._target)
+        # The conversation's own native session for this specialist (L19): its bounded history comes back each turn.
+        session = outcome.sessions.for_agent(self._target, agent) if outcome.sessions is not None else None
+        messages = [Message(role="user", contents=[outcome.original_message])]
+        if outcome.order_id is None and (verified := outcome.context.verified_order_id) is not None:
+            # A follow-up that names no order gets the order a tool verified earlier, as a trusted note for this turn.
+            # It comes right after the customer's message (a mid-conversation system message is only accepted there).
+            messages.append(
+                context_note(
+                    f'Verified context: earlier in this conversation the customer\'s order {verified} was found. If they refer to "it" or "that order", they mean {verified}.'
+                )
             )
+        with begin_activity() as activity:
+            response = await agent.run(messages, session=session)
         # The reply kind comes from what the tools recorded, not from the model's wording.
         reply = response.text.strip() or FALLBACK
         await ctx.send_message(SupportReply(outcome.route, activity.reply_kind(), reply, activity.verified_order_id))

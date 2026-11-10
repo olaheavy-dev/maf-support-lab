@@ -137,7 +137,7 @@ async def complete_turn(
 ) -> None:
     """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once."""
     try:
-        turn = await run_turn(
+        turn, verified_order_id = await run_turn(
             agents, conversation, claim.turn_id, claim.client_turn_id, message, principal, claim.trace_id
         )
     except BaseException:
@@ -157,7 +157,7 @@ async def complete_turn(
         )
         conversation.complete(claim, turn)
         raise
-    conversation.complete(claim, turn)
+    conversation.complete(claim, turn, verified_order_id)
 
 
 async def run_turn(
@@ -168,14 +168,18 @@ async def run_turn(
     message: str,
     principal: Principal,
     turn_trace_id: str,
-) -> Turn:
-    """Runs the workflow as the caller (pinned) and returns the finished turn: completed, or failed with a safe code."""
+) -> tuple[Turn, str | None]:
+    """Runs the workflow as the caller (pinned) in this conversation's own sessions and context.
+
+    Returns the finished turn (completed, or failed with a safe code) and the order id a tool verified, if any.
+    """
     started = now()
     with pinned(principal):
         try:
-            result = await build_workflow(agents).run(RoutingRequest(message, conversation.conversation_id))
+            request = RoutingRequest(message, conversation.conversation_id, conversation.context, conversation.sessions)
+            result = await build_workflow(agents).run(request)
             reply: SupportReply = result.get_outputs()[0]
-            return Turn(
+            turn = Turn(
                 conversation.conversation_id,
                 turn_id,
                 client_turn_id,
@@ -186,10 +190,11 @@ async def run_turn(
                 started,
                 now(),
             )
+            return turn, reply.verified_order_id
         except Exception:
             log.exception("Turn %s failed in conversation %s", turn_id, conversation.conversation_id)
             failure = TurnError("internal_error", "Something went wrong while handling your message. Please try again.")
-            return Turn(
+            failed = Turn(
                 conversation.conversation_id,
                 turn_id,
                 client_turn_id,
@@ -202,3 +207,4 @@ async def run_turn(
                 "failed",
                 failure,
             )
+            return failed, None

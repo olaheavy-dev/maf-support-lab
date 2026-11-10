@@ -15,6 +15,7 @@ from typing import Any, Literal, cast
 from pydantic import BaseModel, ConfigDict
 
 from support_agent import contract
+from support_agent.sessions import ConversationContext, ConversationSessions
 
 
 class TriageDecision(BaseModel):
@@ -81,7 +82,8 @@ class TriageOutcome:
     decision: dict[str, Any] | None
     route: TurnRoute
     conversation_id: str | None = None
-    extra: dict[str, Any] = field(default_factory=dict[str, Any])
+    context: ConversationContext = field(default_factory=ConversationContext)
+    sessions: ConversationSessions | None = None
 
     @property
     def action(self) -> str | None:
@@ -92,8 +94,13 @@ class TriageOutcome:
         return None if self.decision is None else self.decision.get("order_id")
 
     @property
+    def effective_order_id(self) -> str | None:
+        """The order named in this message, else the one a tool verified earlier in this conversation (L19)."""
+        return self.order_id or self.context.verified_order_id
+
+    @property
     def is_missing_order_id(self) -> bool:
-        return self.route.target == "orders" and self.order_id is None and self.action in NEEDS_ORDER_ID
+        return self.route.target == "orders" and self.effective_order_id is None and self.action in NEEDS_ORDER_ID
 
     @property
     def is_write(self) -> bool:

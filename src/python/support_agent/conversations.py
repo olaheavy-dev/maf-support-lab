@@ -16,6 +16,7 @@ from typing import Any
 
 from support_agent.identity import Principal
 from support_agent.routing import TurnRoute
+from support_agent.sessions import ConversationContext, ConversationSessions
 
 
 def new_id(prefix: str) -> str:
@@ -108,6 +109,9 @@ class Conversation:
     claims: dict[str, Claim] = field(default_factory=dict[str, Claim])
     turns: dict[str, Turn] = field(default_factory=dict[str, Turn])
     active_turn_id: str | None = None
+    # This conversation's own state (L19): verified context and native sessions. Never shared, never global.
+    context: ConversationContext = field(default_factory=ConversationContext)
+    sessions: ConversationSessions = field(default_factory=ConversationSessions)
 
     def is_owned_by(self, principal: Principal) -> bool:
         return self.owner == principal.customer_id
@@ -130,8 +134,10 @@ class Conversation:
         self.active_turn_id = claim.turn_id
         return claim, Reservation.OWNER
 
-    def complete(self, claim: Claim, turn: Turn) -> None:
+    def complete(self, claim: Claim, turn: Turn, verified_order_id: str | None = None) -> None:
         self.turns[turn.turn_id] = turn
+        if turn.outcome == "completed":
+            self.context = self.context.after(turn.route.target if turn.route else None, verified_order_id)
         if self.active_turn_id == claim.turn_id:
             self.active_turn_id = None
         if not claim.done.done():
