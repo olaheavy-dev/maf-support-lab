@@ -16,12 +16,13 @@ namespace Support.Api.Modules.Conversations.Application.DecideApproval;
 /// and to one decision (a different one later: 409 approval_already_decided; too late: 410 approval_expired).
 /// Repeating the same decision returns the same turn and never runs the write twice.
 /// </summary>
-internal sealed class DecideApprovalCommandHandler(
+internal sealed partial class DecideApprovalCommandHandler(
     IConversationStore conversations,
     IOperationStore operations,
     IPrincipalSource principals,
     ISupportRouter router,
-    TimeProvider clock) : ICommandHandler<DecideApprovalCommand, Turn>
+    TimeProvider clock,
+    ILogger<DecideApprovalCommandHandler> logger) : ICommandHandler<DecideApprovalCommand, Turn>
 {
     public async Task<Result<Turn>> Handle(DecideApprovalCommand command, CancellationToken cancellationToken)
     {
@@ -71,29 +72,49 @@ internal sealed class DecideApprovalCommandHandler(
             return Result.Failure<Turn>(operation.Status == OperationStatus.Expired ? ConversationErrors.ApprovalExpired : ConversationErrors.ApprovalAlreadyDecided);
         }
 
+        SupportReply reply;
         try
         {
-            var reply = await router.ResumeAsync(new ApprovalResume(operation.OperationId, command.Reason), cancellationToken).ConfigureAwait(false);
-            var turn = new Turn(
-                conversation.ConversationId, reservation.TurnId, ClientTurnId: null, reply.Route, reply.Kind, reply.Text,
-                TraceIds.Current(), createdAt, clock.GetUtcNow())
-            {
-                ResumedFromTurnId = operation.SourceTurnId,
-                OperationIds = [operation.OperationId],
-            };
-            conversation.Complete(reservation, turn, reply);
-            operation.RecordDecisionTurn(turn.TurnId);
-            return Result.Success(turn);
+            reply = await router.ResumeAsync(new ApprovalResume(operation.OperationId, command.Reason), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception error)
         {
+            // The decision is recorded and the write may already have committed, so this turn must still finish, with
+            // the operation's factual state, and stay replayable. Never abandon it: a repeat would then be refused
+            // forever, and never run the write again (Codex review on PR #76).
+            Log.ResumeFailed(logger, error, operation.OperationId);
             if (operation.Status == OperationStatus.Running)
             {
                 operation.Fail("internal_error", "The approved action could not be completed.", clock.GetUtcNow());
             }
 
-            conversation.Abandon($"approval:{operation.ApprovalId}", reservation, error);
-            throw;
+            reply = new SupportReply(TurnRoute.Routed(operation.Specialist), ReplyKind.ApprovalResult, FactualText(operation));
         }
+
+        var turn = new Turn(
+            conversation.ConversationId, reservation.TurnId, ClientTurnId: null, reply.Route, reply.Kind, reply.Text,
+            TraceIds.Current(), createdAt, clock.GetUtcNow())
+        {
+            ResumedFromTurnId = operation.SourceTurnId,
+            OperationIds = [operation.OperationId],
+        };
+        conversation.Complete(reservation, turn, reply);
+        operation.RecordDecisionTurn(turn.TurnId);
+        return Result.Success(turn);
+    }
+
+    /// <summary>What the customer is told when the resumed run failed: only what the operation record says happened.</summary>
+    private static string FactualText(Operation operation) => operation.Status switch
+    {
+        OperationStatus.Committed => $"Done. {operation.Summary} (I couldn't write a fuller reply.)",
+        OperationStatus.Rejected => $"Okay, I did not go ahead. Nothing has been changed: {operation.Summary}",
+        OperationStatus.Failed => $"I couldn't complete that: {operation.Failure?.Detail} Nothing has been changed.",
+        _ => "That request was not carried out. Nothing has been changed.",
+    };
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Error, Message = "Resuming approved operation {OperationId} failed; the turn reports the operation's recorded state")]
+        public static partial void ResumeFailed(ILogger logger, Exception error, string operationId);
     }
 }

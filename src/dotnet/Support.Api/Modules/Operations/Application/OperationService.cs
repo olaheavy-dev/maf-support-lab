@@ -47,7 +47,7 @@ public sealed class OperationService(
 
         var now = clock.GetUtcNow();
         var operation = new Operation(
-            Ids("op_"), Ids("appr_"), conversationId, principals.Current.CustomerId, kind, arguments.Value, check.Value,
+            Ids("op_"), Ids("appr_"), conversationId, principals.Current.CustomerId, kind, arguments.Value, BoundSummary(check.Value),
             specialist, sourceTurnId, now, now.AddMinutes(policy.ApprovalExpiryMinutes));
         store.Add(operation);
         metrics.Record(kind, "awaiting_approval");
@@ -89,6 +89,12 @@ public sealed class OperationService(
 
         return result;
     }
+
+    /// <summary>The contract caps an approval summary at 500 characters. The full, exact values stay in the arguments.</summary>
+    public const int MaxSummaryLength = 500;
+
+    private static string BoundSummary(string summary) =>
+        summary.Length <= MaxSummaryLength ? summary : string.Concat(summary.AsSpan(0, MaxSummaryLength - 1), "…");
 
     private static string Ids(string prefix) =>
         prefix + Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();

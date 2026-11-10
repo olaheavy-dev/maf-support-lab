@@ -221,6 +221,50 @@ public sealed class ApprovalTests
         Assert.Equal("shipped", Order(factory, "ORD-1002"));
     }
 
+    [Theory]
+    [InlineData("approve", "committed", "cancelled")]
+    [InlineData("reject", "rejected", "processing")]
+    public async Task A_decision_stays_replayable_when_the_resumed_model_call_fails(string decision, string status, string orderStatus)
+    {
+        // The model fails on any call that follows a tool result: after the approved write commits, or after the
+        // rejection reaches it. The decision is recorded either way, so the turn must still finish and replay.
+        var model = new CountingScript(messages => messages[^1].Contents.OfType<FunctionResultContent>().Any()
+            ? throw new InvalidOperationException("Simulated provider failure after the decision.")
+            : FakeChatClient.DefaultScript(messages, new ChatOptions { Tools = [AIFunctionFactory.Create(() => 0, FakeChatClient.CancelOrderToolName)] }));
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001", chatClient: model.Client());
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+        var pending = (await api.AskAsync(conversation, "Please cancel order ORD-1003.")).GetProperty("pending_approval");
+        var approvalId = pending.GetProperty("approval_id").GetString()!;
+        var operationId = pending.GetProperty("operation_id").GetString()!;
+
+        var (first, decided) = await api.DecideAsync(conversation, approvalId, operationId, decision);
+        var (again, replayed) = await api.DecideAsync(conversation, approvalId, operationId, decision);
+
+        Assert.Equal(HttpStatusCode.OK, first);
+        Assert.Equal("approval_result", decided.ReplyKind());
+        Assert.Equal(HttpStatusCode.OK, again);
+        Assert.Equal(decided.GetProperty("turn_id").GetString(), replayed.GetProperty("turn_id").GetString());
+        Assert.Equal(status, (await api.GetOperationAsync(operationId)).GetProperty("status").GetString());
+        Assert.Equal(orderStatus, Order(factory, "ORD-1003"));
+    }
+
+    [Fact]
+    public async Task A_refund_with_the_longest_allowed_reason_still_has_a_contract_valid_summary()
+    {
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+        var message = "I want a refund for ORD-1001. " + new string('x', 500 - "I want a refund for ORD-1001. ".Length);
+
+        // AskAsync and GetConversationAsync validate against the contract (approval.summary is at most 500 characters).
+        var pending = (await api.AskAsync(conversation, message)).GetProperty("pending_approval");
+        await api.GetConversationAsync(conversation);
+
+        Assert.Equal(500, pending.GetProperty("arguments").GetProperty("reason").GetString()!.Length); // the full reason is what's approved
+        Assert.True(pending.GetProperty("summary").GetString()!.Length <= 500);
+    }
+
     private static string Canonical(string json) =>
         JsonSerializer.Serialize(JsonSerializer.Deserialize<SortedDictionary<string, string>>(json));
 
