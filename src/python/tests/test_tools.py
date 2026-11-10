@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import re
+import tempfile
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
 
 from support_agent.agents import SPECIALISTS, create_agents
+from support_agent.database import Database
 from support_agent.fake_model import FakeChatClient
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal, pinned, set_process_principal
@@ -16,7 +19,8 @@ from support_agent.operations import build_operations
 from support_agent.services import Services
 from support_agent.tools import billing_tools, order_tools, technical_tools
 
-SERVICES = Services.from_fixtures(Fixtures.load())
+DATABASE = Database(Path(tempfile.mkdtemp()) / "support.db")
+SERVICES = Services.create(Fixtures.load(), DATABASE)
 WRITE_VERBS = re.compile(
     r"^(cancel|refund|create|update|delete|issue|change|approve|open|pay|set|send)_", re.IGNORECASE
 )
@@ -77,7 +81,7 @@ def test_no_tool_takes_a_customer_id_or_a_confirmation() -> None:
 
 
 def test_each_specialist_has_its_reads_and_one_approval_gated_write_and_triage_has_none() -> None:
-    agents = create_agents(FakeChatClient(), SERVICES, build_operations(SERVICES.state))
+    agents = create_agents(FakeChatClient(), SERVICES, build_operations(SERVICES.state, DATABASE))
     tools: dict[str, list[str]] = {
         name: tool_names(agents.specialist(name).default_options.get("tools")) for name in SPECIALISTS
     }

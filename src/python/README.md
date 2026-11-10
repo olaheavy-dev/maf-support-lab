@@ -2,13 +2,13 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L37): the host, agents, per-conversation sessions, and approval-gated writes.
+Status (L38): the host, agents, per-conversation sessions, approval-gated writes, and durable state.
 - **Read-only agents:** triage plus the orders, billing and technical specialists.
 - **The routing workflow:** `support-routing`.
 - **The version-1 contract API** for conversations and turns (JSON).
 - **Python DevUI** (development only).
 
-Each specialist has one write tool (cancel, refund, ticket) that needs the customer's approval of the exact action. Durable state and atomic duplicate protection come in L38.
+Each specialist has one write tool (cancel, refund, ticket) that needs the customer's approval of the exact action. Everything a pending approval needs survives a restart, and each write applies at most once (L38).
 
 ## How it fits together
 
@@ -20,12 +20,13 @@ Each specialist has one write tool (cancel, refund, ticket) that needs the custo
 | `tools.py` | The agents' tools (`@tool`). Ids only; never a customer id. Each records its outcome in `activity.py`. |
 | `agents.py` | Triage plus three specialists, each with only its own tools (ported .NET instructions) |
 | `routing.py`, `contract.py` | Triage output validated against the **full** contract schema, then deterministic routing rules |
-| `workflow.py` | MAF workflow: triage → switch → ask-for-order-id / write-not-available / specialist / unrouted → reply |
+| `workflow.py` | MAF workflow: triage → switch → ask-for-order-id / specialist / unrouted → reply |
 | `api.py`, `conversations.py` | The contract API: schema-validated requests, the same 404 for foreign or missing, `client_turn_id` replay, `failed` results |
 | `fake_model.py`, `model_provider.py` | A deterministic fake model on MAF's real chat-client layers; Claude in live mode |
 | `devui.py` | Development-only DevUI process over the same agents and services |
 | `operations.py`, `write_tools.py`, `approval_gate.py`, `policy.py`, `state.py` | Bound approvals: operations, the approval-required write tools, the gate that turns a native approval request into an operation (or declines it), the eligibility rules, and the simulated state the writes change |
-| `sessions.py` | Per-conversation native `AgentSession`s, `BoundedHistory` (12 plain messages; no tool traffic or notes), and the verified `ConversationContext` |
+| `database.py` | The local SQLite store (L38): one file per backend and run, `atomically()` transactions |
+| `sessions.py` | Per-conversation native `AgentSession`s (stored after each run), `BoundedHistory` (12 plain messages; no tool traffic or notes), and the verified `ConversationContext` |
 
 ## Conversation memory (L19)
 
@@ -72,6 +73,28 @@ APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run p
 
 The tool call is re-sent before each native answer: stored history is plain text, and Anthropic rejects a tool result that doesn't follow its call. No note may sit between them. Both rules were found live; the fake model now enforces Anthropic's pairing rule.
 
+## Durable state (L38)
+
+One SQLite file per backend and run (`STORAGE__PATH`, default `.data/python/support.db`, ignored by Git; never the .NET file). The design and its limits are in `docs/decisions/0003-state-and-idempotency.md`.
+
+- **What survives a restart:**
+  - conversations and their verified context;
+  - finished turns, so a repeated `client_turn_id` or decision replays;
+  - operations, with their binding, expiry and status;
+  - the paused native `function_approval_request`;
+  - each specialist's `AgentSession`;
+  - the simulated business state.
+
+  A pending approval can be approved after a restart, and the paused run resumes in the restored session.
+- **At most once:**
+  - a write and its `committed` record are one transaction;
+  - every status change is guarded on the stored status;
+  - the first stored decision wins, and so does the first stored turn.
+
+  Duplicates, concurrent approvals (even from two hosts on one file), and a retry after a crash right after the commit all give one mutation.
+- **Recovery:** a retried decision whose write already committed is answered from the record (no model call). One whose write never ran resumes once.
+- **Not guaranteed:** exactly-once against a real external provider. That needs the provider's idempotency key, or intent/outcome records with reconciliation.
+
 ## DevUI (development only)
 
 ```bash
@@ -95,6 +118,7 @@ Read from the environment, validated before serving (`support_agent/settings.py`
 | `MODEL_PROVIDER__MODE` | `fake` (default) or `live`. |
 | `MODEL_PROVIDER__ANTHROPIC__MODEL` | Required in live mode (e.g. `claude-haiku-5-5`). |
 | `ANTHROPIC_API_KEY` | Required in live mode. Secret: environment or Aspire parameter only; never committed, logged, or returned. |
+| `STORAGE__PATH` | The SQLite file (default `.data/python/support.db`). Give each run or evaluation its own file. |
 
 ## Identity
 
@@ -104,7 +128,7 @@ The app learns the customer only through `get_principal` → `PrincipalSource`.
 
 ## Clients and credentials: who cleans up
 
-The FastAPI **lifespan owns every long-lived resource**. A client (later, the Anthropic client and the database) is created once, registered with `app.state.resources.own(name, close)`, and closed exactly once, newest first, at shutdown. No request creates its own long-lived client. The API key lives only in validated settings (`SecretStr`), and is passed to the client that needs it.
+The FastAPI **lifespan owns every long-lived resource**. A client (the model client, and the database since L38) is created once, registered with `app.state.resources.own(name, close)`, and closed exactly once, newest first, at shutdown. No request creates its own long-lived client. The API key lives only in validated settings (`SecretStr`), and is passed to the client that needs it.
 
 ## Live check (opt-in, costs a small amount)
 

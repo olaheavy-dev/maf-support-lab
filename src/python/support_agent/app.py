@@ -16,6 +16,7 @@ from fastapi.responses import PlainTextResponse
 from support_agent.agents import create_agents
 from support_agent.api import create_router
 from support_agent.conversations import ConversationStore
+from support_agent.database import Database
 from support_agent.dependencies import get_principal, get_principal_source, get_settings
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal, principal_source_for
@@ -46,10 +47,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # One model client per process, owned by the lifespan; the agents and the guarded services are built once.
     client = create_client(settings)
     resources.own("model client", _closer(client))
-    app.state.services = Services.from_fixtures(Fixtures.load())
-    app.state.operations = build_operations(app.state.services.state)
+    # One SQLite file per backend and run (L38), opened at startup and closed (checkpointed) at shutdown.
+    database = Database(settings.storage.path)
+    resources.own("database", _closing(database))
+    app.state.database = database
+    app.state.services = Services.create(Fixtures.load(), database)
+    app.state.operations = build_operations(app.state.services.state, database)
     app.state.agents = create_agents(client, app.state.services, app.state.operations)
-    app.state.conversations = ConversationStore()
+    app.state.conversations = ConversationStore(database)
     app.include_router(create_router(app.state.conversations, app.state.agents, app.state.operations))
 
     @app.get("/health", response_class=PlainTextResponse)
@@ -78,6 +83,13 @@ def _closer(client: object) -> Callable[[], Awaitable[None]]:
             outcome = closing()
             if hasattr(outcome, "__await__"):
                 await cast(Awaitable[None], outcome)
+
+    return close
+
+
+def _closing(database: Database) -> Callable[[], Awaitable[None]]:
+    async def close() -> None:
+        database.close()
 
     return close
 

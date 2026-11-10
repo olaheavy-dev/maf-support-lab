@@ -8,6 +8,7 @@ is committed, logged, or returned by any endpoint.
 from __future__ import annotations
 
 from enum import StrEnum
+from pathlib import Path
 from typing import Self
 
 from pydantic import BaseModel, Field, SecretStr, model_validator
@@ -34,6 +35,11 @@ class ModelProviderSettings(BaseModel):
     anthropic: AnthropicSettings = Field(default_factory=AnthropicSettings)
 
 
+class StorageSettings(BaseModel):
+    # One SQLite file per backend and per run (L38); relative paths are resolved from the working directory.
+    path: Path = Path(".data") / "python" / "support.db"
+
+
 class IdentitySettings(BaseModel):
     development_customer_id: str | None = None
 
@@ -49,6 +55,7 @@ class Settings(BaseSettings):
     app_environment: Environment = Environment.PRODUCTION
     model_provider: ModelProviderSettings = Field(default_factory=ModelProviderSettings)
     identity: IdentitySettings = Field(default_factory=IdentitySettings)
+    storage: StorageSettings = Field(default_factory=StorageSettings)
     # The standard Anthropic variable, used when MODEL_PROVIDER__ANTHROPIC__API_KEY is not set (as in .NET).
     anthropic_api_key: SecretStr | None = None
 

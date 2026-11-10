@@ -8,11 +8,14 @@ a tool verified, never something the customer or the model merely mentioned.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 from agent_framework import AgentSession, InMemoryHistoryProvider, Message, SupportsAgentRun
+
+from support_agent.database import Database
 
 CONTEXT_AUTHOR = "support-context"
 MAX_MESSAGES = 12
@@ -59,17 +62,49 @@ class ConversationContext:
         """A newly verified order replaces the old one; otherwise the old one stays. The same goes for the route."""
         return ConversationContext(target or self.last_target, verified_order_id or self.verified_order_id)
 
+    def to_json(self) -> str:
+        return json.dumps({"last_target": self.last_target, "verified_order_id": self.verified_order_id})
+
+    @classmethod
+    def from_json(cls, text: str) -> ConversationContext:
+        data: dict[str, Any] = json.loads(text)
+        return cls(data.get("last_target"), data.get("verified_order_id"))
+
 
 @dataclass
 class ConversationSessions:
-    """One native session per specialist for one conversation. Reached only through an owned conversation."""
+    """One native session per specialist for one conversation. Reached only through an owned conversation.
 
+    Durable since L38: a session is loaded from the database on first use and saved after each run that changed it,
+    so a conversation's history survives a restart. Without a database (unit tests), sessions live in memory only.
+    """
+
+    conversation_id: str | None = None
+    database: Database | None = None
     sessions: dict[str, AgentSession] = field(default_factory=dict[str, AgentSession])
 
     def for_agent(self, name: str, agent: SupportsAgentRun) -> AgentSession:
         if name not in self.sessions:
-            self.sessions[name] = agent.create_session()
+            stored = (
+                self.database.query(
+                    "SELECT json FROM agent_sessions WHERE conversation_id = ? AND agent = ?",
+                    (self.conversation_id, name),
+                )
+                if self.database is not None
+                else []
+            )
+            self.sessions[name] = AgentSession.from_dict(json.loads(stored[0][0])) if stored else agent.create_session()
         return self.sessions[name]
+
+    def save(self, name: str) -> None:
+        """Stores one specialist's session (its bounded history) after a run."""
+        if self.database is None or (session := self.sessions.get(name)) is None:
+            return
+        self.database.execute(
+            "INSERT INTO agent_sessions(conversation_id, agent, json) VALUES (?, ?, ?) "
+            "ON CONFLICT(conversation_id, agent) DO UPDATE SET json = excluded.json",
+            (self.conversation_id, name, json.dumps(session.to_dict())),
+        )
 
     def history(self, name: str) -> list[Message]:
         """For tests and diagnostics: the stored history of one specialist's session."""

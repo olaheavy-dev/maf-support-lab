@@ -4,7 +4,9 @@ Every request body is validated against the shared contract schema before anythi
 conversation, turn, approval, or operation is 404, exactly like a missing one. A turn that runs and fails is a result
 (200, outcome failed). Each turn runs as its own task (a dropped or cancelled request never stops it) with the
 caller's principal pinned. Approval decisions are bound to the customer, the conversation, the operation, and one
-decision; repeating the same decision returns the same turn and never runs the write twice.
+decision; repeating the same decision returns the same turn and never runs the write twice, also after a restart
+(L38): a decision recorded before a crash finishes from the stored record, resuming the paused run only if its write
+never happened.
 """
 
 from __future__ import annotations
@@ -96,7 +98,14 @@ def detach(work: Any) -> None:
     """Runs a turn as its own task: no request's cancellation can stop it or leave its result unset."""
     task: asyncio.Task[None] = asyncio.create_task(work)
     running_turns.add(task)
-    task.add_done_callback(running_turns.discard)
+    task.add_done_callback(finished)
+
+
+def finished(task: asyncio.Task[None]) -> None:
+    """The waiters already got the outcome (or the error, e.g. a turn that could not be stored); this only logs it."""
+    running_turns.discard(task)
+    if not task.cancelled() and (error := task.exception()) is not None:
+        log.error("A detached turn ended with an error", exc_info=error)
 
 
 def create_router(store: ConversationStore, agents: SupportAgents, operations: OperationService) -> APIRouter:
@@ -171,7 +180,7 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
         decision = Decision(body["decision"])
         if operation.decision is not None and operation.decision is not decision:
             return problem("approval_already_decided", "A different decision was already recorded for this approval.")
-        if operation.decision is None and operation.expire_if_due(datetime.now(UTC)):
+        if operation.decision is None and ops.expire_if_due(operation, datetime.now(UTC)):
             return problem("approval_expired", "The approval window has passed. Nothing was changed.")
         if operation.source_turn_id not in conversation.turns:
             return not_found()  # the asking turn never finished: this approval was never shown to the customer
@@ -187,13 +196,20 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
                     "approval_already_decided", "A different decision was already recorded for this approval."
                 )
             return turn_json(await asyncio.shield(claim.done))
-        if not operation.decide(decision, datetime.now(UTC)):
+        try:
+            # The first stored decision wins (guarded on the stored status). The same decision recorded earlier, by a
+            # run whose turn was never stored (a crash), is finished from the record below.
+            if operation.decision is None:
+                ops.decide(operation, decision, body.get("reason"), datetime.now(UTC))
+        except BaseException:
+            conversation.abandon(key, claim)
+            raise
+        if operation.decision is not decision:
             conversation.abandon(key, claim)
             expired = operation.status is Status.EXPIRED
             return problem(
                 "approval_expired" if expired else "approval_already_decided", "This approval can no longer be decided."
             )
-        operation.decision_reason = body.get("reason")
         detach(complete_decision(agents, operations, conversation, claim, operation, principal))
         return turn_json(await asyncio.shield(claim.done))
 
@@ -202,7 +218,7 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
         operation = ops.find(operation_id)
         if operation is None or operation.owner != principal.customer_id:
             return not_found()
-        operation.expire_if_due(datetime.now(UTC))
+        ops.expire_if_due(operation, datetime.now(UTC))
         return JSONResponse(operation.to_contract(contract.CONTRACT_VERSION))
 
     return router
@@ -220,24 +236,25 @@ async def complete_turn(
     try:
         turn, verified_order_id = await run_turn(agents, operations, conversation, claim, message, principal)
     except BaseException:
-        conversation.complete(
-            claim,
-            Turn(
-                conversation.conversation_id,
-                claim.turn_id,
-                claim.client_turn_id,
-                None,
-                None,
-                None,
-                claim.trace_id,
-                claim.started_at,
-                now(),
-                "failed",
-                FAILED,
-            ),
-        )
+        conversation.complete(claim, failed_turn(conversation, claim, claim.started_at), operations.store)
         raise
-    conversation.complete(claim, turn, verified_order_id)
+    conversation.complete(claim, turn, operations.store, verified_order_id)
+
+
+def failed_turn(conversation: Conversation, claim: Claim, started: datetime) -> Turn:
+    return Turn(
+        conversation.conversation_id,
+        claim.turn_id,
+        claim.client_turn_id,
+        None,
+        None,
+        None,
+        claim.trace_id,
+        started,
+        now(),
+        "failed",
+        FAILED,
+    )
 
 
 async def run_turn(
@@ -259,19 +276,7 @@ async def run_turn(
             reply: SupportReply = result.get_outputs()[0]
         except Exception:
             log.exception("Turn %s failed in conversation %s", claim.turn_id, conversation.conversation_id)
-            return Turn(
-                conversation.conversation_id,
-                claim.turn_id,
-                claim.client_turn_id,
-                None,
-                None,
-                None,
-                claim.trace_id,
-                started,
-                now(),
-                "failed",
-                FAILED,
-            ), None
+            return failed_turn(conversation, claim, started), None
     outcome = "awaiting_approval" if reply.pending_operation_id else "completed"
     turn = Turn(
         conversation.conversation_id,
@@ -289,6 +294,10 @@ async def run_turn(
         reply.operation_ids,
     )
     return turn, reply.verified_order_id
+
+
+def committed(operation: Operation) -> bool:
+    return operation.status is Status.COMMITTED
 
 
 def factual(operation: Operation) -> str:
@@ -314,7 +323,13 @@ async def complete_decision(
 ) -> None:
     """Resumes the paused specialist with the customer's decision, as a new turn; always completes the claim."""
     started = now()
-    text = await resume(agents, operations, conversation, operation, principal)
+    try:
+        text = await resume(agents, operations, conversation, operation, principal)
+    except BaseException as error:
+        conversation.abandon(claim.key, claim)
+        if not claim.done.done():
+            claim.done.set_exception(error)
+        raise
     turn = Turn(
         conversation.conversation_id,
         claim.turn_id,
@@ -331,8 +346,7 @@ async def complete_decision(
         (operation.operation_id,),
         operation.source_turn_id,
     )
-    conversation.complete(claim, turn)
-    operation.decision_turn_id = operation.decision_turn_id or turn.turn_id
+    conversation.complete(claim, turn, operations.store)
 
 
 async def resume(
@@ -343,10 +357,19 @@ async def resume(
     principal: Principal,
 ) -> str:
     """Answers the native request in the conversation's own session. Approve: the tool may run, inside an approval scope
-    naming exactly this operation. Reject: the tool never runs. Any new request in this run is declined (bounded)."""
-    native = operations.pending_requests.pop(operation.operation_id, None)
+    naming exactly this operation. Reject: the tool never runs. Any new request in this run is declined (bounded).
+
+    Only a paused request whose decision has not been carried out is resumed. Anything already finished (for example
+    a write committed just before a crash) is reported from the stored record, without a model call."""
+    ops = operations.store
+    native = ops.native_request(operation.operation_id)
     if native is None:
-        return factual(operation)  # nothing is paused any more: nothing runs
+        # Nothing is paused any more. An approval that can no longer run fails instead of staying "running".
+        ops.fail(operation, "The approved action could not be resumed.", datetime.now(UTC))
+        return factual(operation)
+    if operation.status not in (Status.RUNNING, Status.REJECTED):
+        ops.answered(operation.operation_id)
+        return factual(operation)
     approved = operation.status is Status.RUNNING
     agent = agents.specialist(operation.specialist)
     session = conversation.sessions.for_agent(operation.specialist, agent)
@@ -359,23 +382,16 @@ async def resume(
             else:
                 response = await decline(agent, session, [native])
                 response = await decline_follow_ups(agent, session, response)
+        ops.answered(operation.operation_id)
+        conversation.sessions.save(operation.specialist)
     except Exception:
         log.exception("Resuming operation %s failed", operation.operation_id)
-        if operation.status is Status.RUNNING:
-            operation.status, operation.failure, operation.updated_at = (
-                Status.FAILED,
-                ("internal_error", "The approved action could not be completed."),
-                datetime.now(UTC),
-            )
+        ops.fail(operation, "The approved action could not be completed.", datetime.now(UTC))
         return factual(operation)
-    if operation.status is Status.COMMITTED:
+    if committed(operation):  # the tool ran inside the approval scope and committed the write
         return response.text.strip() or factual(operation)
-    if operation.status is Status.RUNNING:  # approved, but the model never ran the tool
-        operation.status, operation.failure, operation.updated_at = (
-            Status.FAILED,
-            ("internal_error", "The approved action was not carried out."),
-            datetime.now(UTC),
-        )
+    # Approved, but the model never ran the tool: record it, and say so from the record.
+    ops.fail(operation, "The approved action was not carried out.", datetime.now(UTC))
     return factual(operation)
 
 

@@ -6,7 +6,7 @@ changes simulated state once and reports the facts. Native approval and business
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from support_agent.fake_model import ScriptedChatClient, default_script, last_user_text
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Kind, WriteError, approval_scope
-from tests.helpers import Api, assert_contract, host
+from tests.helpers import Api, assert_contract, host, let_expire
 
 WRITES = [
     ("Please cancel order ORD-1003.", "orders", "cancel_order", {"order_id": "ORD-1003"}),
@@ -187,7 +187,7 @@ def test_an_expired_approval_cannot_run() -> None:
         api = Api(client)
         conversation = api.create_conversation()
         pending = api.ask(conversation, "Please cancel order ORD-1003.")["pending_approval"]
-        app.state.operations.store.find(pending["operation_id"]).expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        let_expire(app, pending["operation_id"])
         status, problem = decide(client, conversation, pending, "approve")
         assert (status, problem["code"]) == (410, "approval_expired")
         assert client.get(f"/api/v1/operations/{pending['operation_id']}").json()["status"] == "expired"
