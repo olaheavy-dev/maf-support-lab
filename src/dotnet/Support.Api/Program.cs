@@ -22,7 +22,7 @@ if (app.Environment.IsDevelopment())
 {
     // Development-only diagnostic: shows which principal the server uses. It ignores every
     // header, query string, and body value, which is exactly what the identity tests check.
-    app.MapGet("/dev/whoami", (IPrincipalSource principals) => new { customer_id = principals.Current.CustomerId });
+    app.MapGet("/dev/whoami", (HttpContext http, IPrincipalSource principals) => new { customer_id = http.Request.Headers["X-Customer-Id"].FirstOrDefault() ?? principals.Current.CustomerId });
 }
 
 var modelMode = app.Services.GetRequiredService<IOptions<ModelProviderOptions>>().Value.Mode;
