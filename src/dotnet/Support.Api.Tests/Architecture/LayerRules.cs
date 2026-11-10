@@ -58,11 +58,13 @@ internal static class LayerRules
             .Because("commands and queries are immutable use-case inputs that live in Application");
 
     /// <summary>
-    /// Nothing sits outside a layer: under Common and Modules.X every type is in a layer folder,
-    /// except each module's single XModule wiring class at the module root.
+    /// Nothing sits outside a layer: every type under the root namespace is in a Common or module layer folder,
+    /// except each module's single XModule wiring class at the module root. This also catches code added in the
+    /// old by-topic layout (for example Support.Api.Orders), which the dependency rules would otherwise never see.
+    /// Program.cs is in the global namespace and is the only composition root outside the root namespace.
     /// </summary>
     public static IArchRule EveryTypeIsInALayer(string root) =>
-        Types().That().ResideInNamespaceMatching($"^{Regex.Escape(root)}\\.(Common|Modules)(\\..+)?$")
+        Types().That().ResideInNamespaceMatching($"^{Regex.Escape(root)}(\\..+)?$")
             .And().DoNotResideInNamespaceMatching(LayerPattern(root, AllLayers))
             .Should().ResideInNamespaceMatching($"^{Regex.Escape(root)}\\.Modules\\.[A-Za-z]+$")
             .AndShould().HaveNameEndingWith("Module")

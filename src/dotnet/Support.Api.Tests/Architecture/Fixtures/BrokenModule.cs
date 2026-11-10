@@ -85,3 +85,11 @@ namespace Support.Api.Tests.Architecture.Fixtures.Modules.Broken
     {
     }
 }
+
+namespace Support.Api.Tests.Architecture.Fixtures.Orders
+{
+    // The pre-L43 by-topic layout: outside Common and Modules entirely.
+    internal sealed class OldLayoutService
+    {
+    }
+}

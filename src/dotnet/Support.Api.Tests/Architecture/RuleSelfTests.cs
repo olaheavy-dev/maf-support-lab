@@ -32,8 +32,8 @@ public sealed class RuleSelfTests
         Assert.Equal(["UnsealedQuery"], Violators(LayerRules.MessagesAreSealedApplicationTypes(Root)));
 
     [Fact]
-    public void Placement_rule_reports_a_type_outside_the_layers() =>
-        Assert.Equal(["LooseHelper"], Violators(LayerRules.EveryTypeIsInALayer(Root)));
+    public void Placement_rule_reports_types_outside_the_layers_including_the_old_layout() =>
+        Assert.Equal(["LooseHelper", "OldLayoutService"], Violators(LayerRules.EveryTypeIsInALayer(Root)));
 
     [Fact]
     public void Agents_rule_reports_an_agents_type_using_a_feature_module() =>
