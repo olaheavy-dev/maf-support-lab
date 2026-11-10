@@ -46,6 +46,7 @@ public sealed class LayerTests
             "Modules.Orders.Domain", "Modules.Orders.Application", "Modules.Orders.Infrastructure", "Modules.Orders.Presentation",
             "Modules.Identity.Domain", "Modules.Identity.Application", "Modules.Identity.Infrastructure", "Modules.Identity.Presentation",
             "Modules.Agents.Application", "Modules.Agents.Infrastructure", "Modules.Agents.Presentation",
+            "Modules.Triage.Domain", "Modules.Triage.Application", "Modules.Triage.Infrastructure",
         ];
         var namespaces = Api.Types.Select(type => type.Namespace.FullName).ToHashSet(StringComparer.Ordinal);
         Assert.All(expected, layer => Assert.Contains(namespaces, ns => ns == $"{Root}.{layer}" || ns.StartsWith($"{Root}.{layer}.", StringComparison.Ordinal)));

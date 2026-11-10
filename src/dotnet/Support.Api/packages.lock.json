@@ -84,6 +84,23 @@
           "System.ClientModel": "1.16.0"
         }
       },
+      "Microsoft.Agents.AI.Workflows": {
+        "type": "Direct",
+        "requested": "[1.28.0, )",
+        "resolved": "1.28.0",
+        "contentHash": "080pHZ6z9Y3FMigIZfzd2zoeBghvog1yfdIkNSYH4A4/cJTh4FZynPdP54gsOQzLDyxo76uUbJAIuX7lKF9Tdw==",
+        "dependencies": {
+          "Microsoft.Agents.AI": "1.28.0",
+          "Microsoft.Agents.AI.Abstractions": "1.28.0",
+          "Microsoft.Extensions.AI": "10.11.0",
+          "Microsoft.Extensions.AI.Abstractions": "10.11.0",
+          "Microsoft.Extensions.AI.Evaluation": "10.11.0",
+          "Microsoft.Extensions.Compliance.Abstractions": "10.10.0",
+          "Microsoft.Extensions.VectorData.Abstractions": "10.10.0",
+          "Microsoft.ML.Tokenizers": "2.0.0",
+          "OpenTelemetry.Api": "1.18.0"
+        }
+      },
       "Microsoft.Extensions.AI": {
         "type": "Direct",
         "requested": "[10.11.0, )",
@@ -105,22 +122,6 @@
         "contentHash": "f0pcDqs9JUHffTMjdsktAF+pa7On+q3w8MoyuWzl8mYTT+U+tMuP5N2qvQtyfC3N2SvVWkdkdZNqnRdonySkjg==",
         "dependencies": {
           "Microsoft.Extensions.AI.Abstractions": "10.11.0"
-        }
-      },
-      "Microsoft.Agents.AI.Workflows": {
-        "type": "Transitive",
-        "resolved": "1.28.0",
-        "contentHash": "080pHZ6z9Y3FMigIZfzd2zoeBghvog1yfdIkNSYH4A4/cJTh4FZynPdP54gsOQzLDyxo76uUbJAIuX7lKF9Tdw==",
-        "dependencies": {
-          "Microsoft.Agents.AI": "1.28.0",
-          "Microsoft.Agents.AI.Abstractions": "1.28.0",
-          "Microsoft.Extensions.AI": "10.11.0",
-          "Microsoft.Extensions.AI.Abstractions": "10.11.0",
-          "Microsoft.Extensions.AI.Evaluation": "10.11.0",
-          "Microsoft.Extensions.Compliance.Abstractions": "10.10.0",
-          "Microsoft.Extensions.VectorData.Abstractions": "10.10.0",
-          "Microsoft.ML.Tokenizers": "2.0.0",
-          "OpenTelemetry.Api": "1.18.0"
         }
       },
       "Microsoft.Extensions.AI.Abstractions": {

@@ -22,9 +22,10 @@ internal sealed class CountingScript(Func<IReadOnlyList<ChatMessage>, ChatRespon
 
     public int Calls => calls;
 
-    public FakeChatClient Client() => new(messages =>
+    /// <summary>A fake model whose specialist calls are counted. Triage (JSON-format calls) is not counted; it can be scripted separately.</summary>
+    public FakeChatClient Client(Func<string, string>? triage = null) => new(messages =>
     {
         Interlocked.Increment(ref calls);
         return (inner ?? FakeChatClient.DefaultScript)(messages);
-    });
+    }, triage);
 }

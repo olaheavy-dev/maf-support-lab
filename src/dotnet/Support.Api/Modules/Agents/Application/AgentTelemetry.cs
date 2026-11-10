@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Support.Api.Modules.Agents.Application;
 
 /// <summary>
@@ -10,6 +12,12 @@ public static class AgentTelemetry
     public const string AgentSourceName = "Support.Agents";
 
     public const string ModelSourceName = "Support.Model";
+
+    /// <summary>Workflow layer: invoke_workflow and executor spans from MAF Workflows (L07).</summary>
+    public const string WorkflowSourceName = "Support.Workflows";
+
+    /// <summary>Handed to MAF's WithOpenTelemetry so workflow spans use our name instead of the library default.</summary>
+    public static readonly ActivitySource WorkflowActivitySource = new(WorkflowSourceName);
 }
 
 /// <summary>Bound from the "Telemetry" configuration section.</summary>

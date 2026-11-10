@@ -3,9 +3,10 @@ using Support.Api.Common.Application;
 using Support.Api.Common.Application.Messaging;
 using Support.Api.Common.Application.Observability;
 using Support.Api.Common.Domain;
-using Support.Api.Modules.Agents.Application;
 using Support.Api.Modules.Conversations.Domain;
 using Support.Api.Modules.Identity.Application;
+using Support.Api.Modules.Triage.Application;
+using Support.Api.Modules.Triage.Domain;
 
 namespace Support.Api.Modules.Conversations.Application.SubmitTurn;
 
@@ -18,7 +19,7 @@ namespace Support.Api.Modules.Conversations.Application.SubmitTurn;
 internal sealed partial class SubmitTurnCommandHandler(
     IConversationStore store,
     IPrincipalSource principals,
-    SupportAgents agents,
+    ISupportRouter router,
     TimeProvider clock,
     TurnMetrics metrics,
     ILogger<SubmitTurnCommandHandler> logger) : ICommandHandler<SubmitTurnCommand, Turn>
@@ -49,7 +50,7 @@ internal sealed partial class SubmitTurnCommandHandler(
             var existing = await reservation.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             span?.SetTag("support.turn.id", existing.TurnId);
             span?.SetTag("support.turn.outcome", "replayed");
-            metrics.Record(existing.RouteTarget, "replayed", ReplyKindName(existing.ReplyKind), clock.GetElapsedTime(started));
+            metrics.Record(RouteLabel(existing.Route), "replayed", Names.Of(existing.ReplyKind), clock.GetElapsedTime(started));
             return Result.Success(existing);
         }
 
@@ -58,26 +59,26 @@ internal sealed partial class SubmitTurnCommandHandler(
             var turn = await RunAsync(conversation, command, cancellationToken).ConfigureAwait(false);
             conversation.Complete(reservation, turn);
 
-            var replyKind = ReplyKindName(turn.ReplyKind);
+            var replyKind = Names.Of(turn.ReplyKind);
+            var route = RouteLabel(turn.Route);
             span?.SetTag("support.turn.id", turn.TurnId);
-            span?.SetTag("support.agent", turn.RouteTarget);
+            span?.SetTag("support.agent", route);
             span?.SetTag("support.turn.outcome", "completed");
             span?.SetTag("support.reply_kind", replyKind);
-            metrics.Record(turn.RouteTarget, "completed", replyKind, clock.GetElapsedTime(started));
-            Log.TurnCompleted(logger, turn.ConversationId, turn.TurnId, turn.RouteTarget, replyKind);
+            metrics.Record(route, "completed", replyKind, clock.GetElapsedTime(started));
+            Log.TurnCompleted(logger, turn.ConversationId, turn.TurnId, route, replyKind);
             return Result.Success(turn);
         }
         catch (Exception error)
         {
             conversation.Abandon(command.ClientTurnId, reservation, error);
 
-            span?.SetTag("support.agent", SupportAgents.OrdersAgentName);
             span?.SetTag("support.turn.outcome", "failed");
             span?.SetTag("error.type", error.GetType().FullName);
             span?.SetStatus(ActivityStatusCode.Error, "The turn failed while running the agent.");
             span?.AddException(error);
-            metrics.Record(SupportAgents.OrdersAgentName, "failed", replyKind: null, clock.GetElapsedTime(started));
-            Log.TurnFailed(logger, error, command.ConversationId, command.ClientTurnId, SupportAgents.OrdersAgentName);
+            metrics.Record("unknown", "failed", replyKind: null, clock.GetElapsedTime(started));
+            Log.TurnFailed(logger, error, command.ConversationId, command.ClientTurnId);
             throw;
         }
     }
@@ -85,51 +86,30 @@ internal sealed partial class SubmitTurnCommandHandler(
     private async Task<Turn> RunAsync(Conversation conversation, SubmitTurnCommand command, CancellationToken cancellationToken)
     {
         var createdAt = clock.GetUtcNow();
-        using var activity = TurnActivity.Begin();
-        var response = await agents.Orders.RunAsync(command.Message, cancellationToken: cancellationToken).ConfigureAwait(false);
+        // Triage, then the specialist the routing rules choose (L07). The reply kind is decided in code by the router.
+        var reply = await router.RouteAsync(command.Message, cancellationToken).ConfigureAwait(false);
 
         return new Turn(
             conversation.ConversationId,
             Ids.New("turn_"),
             command.ClientTurnId,
-            // Single orders agent until triage arrives in L07.
-            SupportAgents.OrdersAgentName,
-            ReplyKindFrom(activity.Activity),
-            ReplyText(response.Text),
+            reply.Route,
+            reply.Kind,
+            reply.Text,
             TraceIds.Current(),
             createdAt,
             clock.GetUtcNow());
     }
 
-    /// <summary>The reply kind comes from what the tools actually did, not from the model's wording.</summary>
-    private static ReplyKind ReplyKindFrom(TurnActivity activity)
-    {
-        var lookups = activity.OrderLookups;
-        if (lookups.Contains(OrderLookupOutcome.Found))
-        {
-            return ReplyKind.Answer;
-        }
-
-        return lookups.Contains(OrderLookupOutcome.NotFound) ? ReplyKind.NotFound : ReplyKind.Clarification;
-    }
-
-    private static string ReplyKindName(ReplyKind kind) => kind switch
-    {
-        ReplyKind.Answer => "answer",
-        ReplyKind.NotFound => "not_found",
-        ReplyKind.Clarification => "clarification",
-        _ => "unknown",
-    };
-
-    private static string ReplyText(string text) =>
-        string.IsNullOrWhiteSpace(text) ? "Sorry, I couldn't produce an answer. Please try again." : text.Trim();
+    /// <summary>The bounded "agent" label: the routed target, or "unrouted".</summary>
+    private static string RouteLabel(TurnRoute route) => route.Target is { } target ? Names.Of(target) : "unrouted";
 
     private static partial class Log
     {
-        [LoggerMessage(Level = LogLevel.Information, Message = "Turn {TurnId} completed in conversation {ConversationId} by agent {Agent} with reply kind {ReplyKind}")]
-        public static partial void TurnCompleted(ILogger logger, string conversationId, string turnId, string agent, string replyKind);
+        [LoggerMessage(Level = LogLevel.Information, Message = "Turn {TurnId} completed in conversation {ConversationId}, route {Route}, reply kind {ReplyKind}")]
+        public static partial void TurnCompleted(ILogger logger, string conversationId, string turnId, string route, string replyKind);
 
-        [LoggerMessage(Level = LogLevel.Error, Message = "Turn failed in conversation {ConversationId} (client turn {ClientTurnId}) while running agent {Agent}")]
-        public static partial void TurnFailed(ILogger logger, Exception error, string conversationId, string clientTurnId, string agent);
+        [LoggerMessage(Level = LogLevel.Error, Message = "Turn failed in conversation {ConversationId} (client turn {ClientTurnId})")]
+        public static partial void TurnFailed(ILogger logger, Exception error, string conversationId, string clientTurnId);
     }
 }

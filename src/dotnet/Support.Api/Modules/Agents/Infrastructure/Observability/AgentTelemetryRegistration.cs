@@ -13,9 +13,9 @@ internal static class AgentTelemetryRegistration
     public static IServiceCollection AddAgentTelemetry(this IServiceCollection services)
     {
         services.AddOpenTelemetry()
-            .WithTracing(tracing => tracing.AddSource(AgentTelemetry.AgentSourceName, AgentTelemetry.ModelSourceName))
+            .WithTracing(tracing => tracing.AddSource(AgentTelemetry.AgentSourceName, AgentTelemetry.ModelSourceName, AgentTelemetry.WorkflowSourceName))
             .WithMetrics(metrics => metrics
-                .AddMeter(AgentTelemetry.AgentSourceName, AgentTelemetry.ModelSourceName)
+                .AddMeter(AgentTelemetry.AgentSourceName, AgentTelemetry.ModelSourceName, AgentTelemetry.WorkflowSourceName)
                 // The agent layer re-records the whole run's token usage, which the model layer already recorded
                 // call by call. Keep the per-call figures (the provider bills per call) and drop the agent copy, so a
                 // dashboard summing token usage counts every token once.
