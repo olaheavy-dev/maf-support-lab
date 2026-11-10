@@ -380,18 +380,20 @@ public sealed class DurableStateTests
         Assert.Equal("tickets=1", State(restarted, "create_ticket"));
     }
 
-    [Fact]
-    public async Task A_decision_whose_turn_could_not_be_saved_can_be_retried_and_does_not_block_the_conversation()
+    [Theory]
+    [InlineData("BEFORE INSERT ON turns")] // saving the decision turn fails (after the write committed)
+    [InlineData("BEFORE UPDATE ON operations")] // recording the decision itself fails
+    public async Task A_decision_that_could_not_be_stored_can_be_retried_and_does_not_block_the_conversation(string failingWrite)
     {
-        // Codex review on PR #77: saving the decision turn fails after the write committed. The reservation is released,
-        // so the retry answers from the operation record (no second write) and other turns are not stuck.
+        // Codex review on PR #77: storing the decision or its turn fails. The reservation is released, so the retry
+        // finishes from what was stored (never writing twice) and other turns are not stuck.
         await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
         var api = new ApiClient(factory.CreateClient());
         var conversation = await api.CreateConversationAsync();
         var pending = (await api.AskAsync(conversation, "Please open a support ticket: my fridge shows error Z-77.")).GetProperty("pending_approval");
         var (approvalId, operationId) = (pending.GetProperty("approval_id").GetString()!, pending.GetProperty("operation_id").GetString()!);
         var database = factory.Services.GetRequiredService<SupportDatabase>();
-        database.Execute("CREATE TRIGGER stop_here BEFORE INSERT ON turns BEGIN SELECT RAISE(ABORT, 'simulated failure'); END;");
+        database.Execute($"CREATE TRIGGER stop_here {failingWrite} BEGIN SELECT RAISE(ABORT, 'simulated failure'); END;");
         using (var response = await factory.CreateClient().PostAsync(
             new Uri($"/api/v1/conversations/{conversation}/approvals/{approvalId}", UriKind.Relative),
             System.Net.Http.Json.JsonContent.Create(new { operation_id = operationId, decision = "approve" }),
@@ -404,7 +406,7 @@ public sealed class DurableStateTests
         var (status, retried) = await api.DecideAsync(conversation, approvalId, operationId, "approve").WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, status);
-        Assert.StartsWith("Done.", retried.ReplyText(), StringComparison.Ordinal);
+        Assert.Equal("approval_result", retried.ReplyKind());
         Assert.Equal("committed", (await api.GetOperationAsync(operationId)).GetProperty("status").GetString());
         Assert.Equal("tickets=1", State(factory, "create_ticket"));
         Assert.Equal("completed", (await api.AskAsync(conversation, "Where is my order ORD-1002?")).GetProperty("outcome").GetString());
