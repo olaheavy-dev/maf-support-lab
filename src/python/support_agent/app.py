@@ -6,31 +6,23 @@ Uvicorn as ``support_agent.app:app``. Agents and the contract API arrive in late
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, cast
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
 from fastapi.responses import PlainTextResponse
 
-from support_agent.identity import Principal, PrincipalSource, principal_source_for
+from support_agent.agents import create_agents
+from support_agent.api import create_router
+from support_agent.conversations import ConversationStore
+from support_agent.dependencies import get_principal, get_principal_source, get_settings
+from support_agent.fixtures import Fixtures
+from support_agent.identity import Principal, principal_source_for
+from support_agent.model_provider import create_client
 from support_agent.resources import Resources
+from support_agent.services import Services
 from support_agent.settings import Environment, Settings
-
-
-def get_settings(request: Request) -> Settings:
-    settings: Settings = request.app.state.settings
-    return settings
-
-
-def get_principal_source(request: Request) -> PrincipalSource:
-    source: PrincipalSource = request.app.state.principal_source
-    return source
-
-
-def get_principal(source: Annotated[PrincipalSource, Depends(get_principal_source)]) -> Principal:
-    """The only way a request learns who the customer is."""
-    return source.current()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -49,6 +41,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.principal_source = principal_source_for(settings)
     app.state.resources = resources
+
+    # One model client per process, owned by the lifespan; the agents and the guarded services are built once.
+    client = create_client(settings)
+    resources.own("model client", _closer(client))
+    app.state.services = Services.from_fixtures(Fixtures.load())
+    app.state.agents = create_agents(client, app.state.services)
+    app.state.conversations = ConversationStore()
+    app.include_router(create_router(app.state.conversations, app.state.agents))
 
     @app.get("/health", response_class=PlainTextResponse)
     def health(current: Annotated[Settings, Depends(get_settings)]) -> str:
@@ -69,8 +69,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     return app
 
 
+def _closer(client: object) -> Callable[[], Awaitable[None]]:
+    async def close() -> None:
+        closing = getattr(client, "close", None)
+        if callable(closing):
+            outcome = closing()
+            if hasattr(outcome, "__await__"):
+                await cast(Awaitable[None], outcome)
+
+    return close
+
+
 def _create_default_app() -> FastAPI:
     return create_app()
 
 
 app = _create_default_app()
+
+
+__all__ = ["app", "create_app", "get_principal", "get_principal_source", "get_settings"]

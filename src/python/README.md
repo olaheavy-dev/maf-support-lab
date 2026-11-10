@@ -2,13 +2,28 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L17): the host shell only.
-- Validated configuration; fake mode needs no secrets.
-- The development identity boundary.
-- `/health` and `/alive`, plus `/dev/whoami` in development.
-- Resource ownership (`Resources`), and Aspire integration.
+Status (L18): the host plus read-only agents.
+- **Read-only agents:** triage plus the orders, billing and technical specialists.
+- **The routing workflow:** `support-routing`.
+- **The version-1 contract API** for conversations and turns (JSON).
+- **Python DevUI** (development only).
 
-Agents, tools, and the contract API arrive in L18 and later.
+There are no tools that change anything. Writes arrive with the approval gate (L37); sessions arrive in L19.
+
+## How it fits together
+
+| Module | What it does |
+| --- | --- |
+| `settings.py`, `identity.py`, `dependencies.py` | Validated configuration; the server-owned principal, pinned per turn (`identity.pinned`) |
+| `fixtures.py`, `domain.py` | The shared synthetic fixtures (`fixtures/data`), as validated Pydantic records |
+| `services.py` | Owner-checked, read-only lookups. Another customer's record looks exactly like a missing one. |
+| `tools.py` | The agents' tools (`@tool`). Ids only; never a customer id. Each records its outcome in `activity.py`. |
+| `agents.py` | Triage plus three specialists, each with only its own tools (ported .NET instructions) |
+| `routing.py`, `contract.py` | Triage output validated against the **full** contract schema, then deterministic routing rules |
+| `workflow.py` | MAF workflow: triage → switch → ask-for-order-id / write-not-available / specialist / unrouted → reply |
+| `api.py`, `conversations.py` | The contract API: schema-validated requests, the same 404 for foreign or missing, `client_turn_id` replay, `failed` results |
+| `fake_model.py`, `model_provider.py` | A deterministic fake model on MAF's real chat-client layers; Claude in live mode |
+| `devui.py` | Development-only DevUI process over the same agents and services |
 
 ## Prerequisites
 
@@ -29,6 +44,18 @@ APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run p
 ## Run it with Aspire
 
 `aspire start --apphost apphost/Support.AppHost.csproj` starts both backends. The AppHost runs `uv sync --locked` for this project, then starts Uvicorn with `support_agent.app:app`. It sets `APP_ENVIRONMENT=development` and the development customer, and checks `/health`.
+
+## DevUI (development only)
+
+```bash
+APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run python -m support_agent.devui
+# → http://127.0.0.1:5290  (orders, billing, technical, support-routing)
+```
+
+DevUI runs as its own process on loopback (port 5290 by default, or `PORT`), and the AppHost starts it as `support-devui-python`.
+- **Why a separate process:** DevUI's UI calls `/v1/...` at the root, and a mounted sub-app's lifespan doesn't run.
+- **Its customer:** DevUI has no request identity, so this process serves the one configured development customer (`set_process_principal`). The API process never uses that fallback: every API turn pins the caller, and anything unpinned fails closed.
+- **Its guards:** it refuses to start outside development, and rejects requests not addressed to loopback (DevUI's own guard).
 
 ## Configuration
 
@@ -51,6 +78,12 @@ The app learns the customer only through `get_principal` → `PrincipalSource`.
 ## Clients and credentials: who cleans up
 
 The FastAPI **lifespan owns every long-lived resource**. A client (later, the Anthropic client and the database) is created once, registered with `app.state.resources.own(name, close)`, and closed exactly once, newest first, at shutdown. No request creates its own long-lived client. The API key lives only in validated settings (`SecretStr`), and is passed to the client that needs it.
+
+## Live check (opt-in, costs a small amount)
+
+```bash
+ANTHROPIC_API_KEY=... uv run pytest -m live   # the shared scenarios with claude-haiku-5-5
+```
 
 ## Checks (the same as CI)
 
