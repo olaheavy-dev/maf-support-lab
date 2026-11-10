@@ -35,4 +35,7 @@
     <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.5" />
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>
+  <ItemGroup Label="Aspire">
+    <PackageVersion Include="Aspire.Hosting.Python" Version="13.6.4" />
+  </ItemGroup>
 </Project>

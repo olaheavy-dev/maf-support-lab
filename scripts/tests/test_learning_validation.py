@@ -17,7 +17,7 @@ class LearningValidationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name) / "repository"
-        shutil.copytree(ROOT, self.root, ignore=shutil.ignore_patterns(".git", "__pycache__"))
+        shutil.copytree(ROOT, self.root, ignore=shutil.ignore_patterns(".git", "__pycache__", ".venv", "bin", "obj", ".data", ".pytest_cache", ".ruff_cache", "node_modules"))
 
     def tearDown(self) -> None:
         self.temp.cleanup()
