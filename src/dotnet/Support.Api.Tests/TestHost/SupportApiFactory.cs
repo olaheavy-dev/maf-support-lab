@@ -54,7 +54,9 @@ internal static class SupportApiFactory
 
                 if (principalSource is not null || principal is not null)
                 {
-                    services.Replace(ServiceDescriptor.Singleton(principalSource ?? new FixedPrincipalSource(new SupportPrincipal(principal!))));
+                    // The configured source, under the application's pinning wrapper, exactly where the real one sits.
+                    var source = principalSource ?? new FixedPrincipalSource(new SupportPrincipal(principal!));
+                    services.Replace(ServiceDescriptor.KeyedSingleton<IPrincipalSource>(Support.Api.Modules.Identity.IdentityModule.ConfiguredSourceKey, source));
                 }
 
                 configureServices?.Invoke(services);

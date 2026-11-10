@@ -126,7 +126,9 @@ In fake mode, a message containing `[fake:model-error]` produces a failed turn t
 - The API gets the customer **only** from `IPrincipalSource`.
 - In Development that is a fixed customer from server configuration (`Identity:DevelopmentCustomerId`, `CUST-1001`).
 - Headers, query strings, request bodies, and model output are never used for identity. Tests prove headers and query strings are ignored.
-- Tests run as other customers by replacing `IPrincipalSource` in the test host. That injection point is in server code, so a client can't reach it.
+- Tests run as other customers by replacing the *configured* principal source in the test host (`IdentityModule.ConfiguredSourceKey`). That injection point is in server code, so a client can't reach it.
+- **Pinned per turn (L13):** a turn outlives its request (L12). Its handler reads the principal once when it accepts the turn and pins it (`PrincipalScope`) for the whole detached run.
+- **Cross-customer matrix (L13):** `AccessMatrixTests` covers every route, tool, service and DevUI entry point, in both directions. A foreign record is indistinguishable from a missing one. See `docs/threat-model.md`.
 - Outside Development there is no identity provider yet, and resolving a principal fails closed.
 - This is **not** authentication. Production authentication is out of scope (see `docs/threat-model.md`).
 

@@ -8,17 +8,25 @@ namespace Support.Api.Modules.Identity;
 /// <summary>Wires the Identity module: who the current customer is, and nothing a client can influence.</summary>
 internal static class IdentityModule
 {
+    /// <summary>
+    /// The configured principal source (development customer, or a test's principal). The application resolves
+    /// <see cref="IPrincipalSource"/>, which wraps it so a detached turn's pinned principal wins (L13).
+    /// </summary>
+    public const string ConfiguredSourceKey = "configured";
+
     public static IServiceCollection AddIdentityModule(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
+        services.AddSingleton<IPrincipalSource>(provider => new PinnedPrincipalSource(provider.GetRequiredKeyedService<IPrincipalSource>(ConfiguredSourceKey)));
+
         // Fail closed: outside Development there is no identity provider until production authentication exists.
         if (!environment.IsDevelopment())
         {
-            services.AddSingleton<IPrincipalSource>(_ => throw new InvalidOperationException(
+            services.AddKeyedSingleton<IPrincipalSource>(ConfiguredSourceKey, (_, _) => throw new InvalidOperationException(
                 "No identity provider is configured for this environment. The development principal is only available in Development."));
             return services;
         }
 
-        services.AddSingleton<IPrincipalSource>(_ =>
+        services.AddKeyedSingleton<IPrincipalSource>(ConfiguredSourceKey, (_, _) =>
         {
             var customerId = configuration.GetSection(IdentityOptions.SectionName).Get<IdentityOptions>()?.DevelopmentCustomerId;
             if (string.IsNullOrWhiteSpace(customerId))

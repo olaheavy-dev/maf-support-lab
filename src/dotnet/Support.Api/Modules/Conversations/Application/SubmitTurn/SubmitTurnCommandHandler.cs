@@ -36,7 +36,8 @@ internal sealed partial class SubmitTurnCommandHandler(
     public async Task<Result<Turn>> Handle(SubmitTurnCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
-        var conversation = store.FindOwned(command.ConversationId, principals.Current);
+        var principal = principals.Current; // read once: the same principal checks ownership and runs the turn
+        var conversation = store.FindOwned(command.ConversationId, principal);
         if (conversation is null)
         {
             return Result.Failure<Turn>(ConversationErrors.NotFound);
@@ -69,7 +70,18 @@ internal sealed partial class SubmitTurnCommandHandler(
         reservation.ClientTurnId = command.ClientTurnId;
         reservation.StartedAt = clock.GetUtcNow();
         command.Observer.Started(new(command.ConversationId, reservation.TurnId, command.ClientTurnId, null));
-        _ = Task.Run(() => ExecuteAsync(conversation, reservation, command), CancellationToken.None);
+        // The caller's principal is pinned for the whole detached run (L13): identity never changes mid-turn and never
+        // depends on a request that has ended.
+        var caller = principal;
+        _ = Task.Run(
+            async () =>
+            {
+                using (PrincipalScope.Begin(caller))
+                {
+                    await ExecuteAsync(conversation, reservation, command).ConfigureAwait(false);
+                }
+            },
+            CancellationToken.None);
         return Result.Success(await reservation.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false));
     }
 
