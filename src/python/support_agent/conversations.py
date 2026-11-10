@@ -83,6 +83,21 @@ class Claim:
     turn_id: str
     message: str
     done: asyncio.Future[Turn]
+    client_turn_id: str = ""
+    started_at: datetime = field(default_factory=now)
+    trace_id: str = ""
+
+    def running_contract(self, conversation_id: str, contract_version: str) -> dict[str, Any]:
+        """A turn still running: what a status lookup can say before it finishes (no outcome yet)."""
+        return {
+            "contract_version": contract_version,
+            "conversation_id": conversation_id,
+            "turn_id": self.turn_id,
+            "client_turn_id": self.client_turn_id,
+            "state": "running",
+            "trace_id": self.trace_id,
+            "created_at": _timestamp(self.started_at),
+        }
 
 
 @dataclass
@@ -103,7 +118,14 @@ class Conversation:
             return existing, Reservation.DUPLICATE
         if self.active_turn_id is not None:
             return None, Reservation.BUSY
-        claim = Claim(new_id("turn_"), message, asyncio.get_running_loop().create_future())
+        claim = Claim(
+            new_id("turn_"),
+            message,
+            asyncio.get_running_loop().create_future(),
+            client_turn_id,
+            now(),
+            secrets.token_hex(16),
+        )
         self.claims[client_turn_id.lower()] = claim
         self.active_turn_id = claim.turn_id
         return claim, Reservation.OWNER
@@ -112,7 +134,14 @@ class Conversation:
         self.turns[turn.turn_id] = turn
         if self.active_turn_id == claim.turn_id:
             self.active_turn_id = None
-        claim.done.set_result(turn)
+        if not claim.done.done():
+            claim.done.set_result(turn)
+
+    def running(self, turn_id: str) -> Claim | None:
+        """The claim for this turn if it is the one running now."""
+        if self.active_turn_id != turn_id:
+            return None
+        return next((claim for claim in self.claims.values() if claim.turn_id == turn_id), None)
 
     def to_contract(self, contract_version: str, backend: str) -> dict[str, Any]:
         return {

@@ -212,9 +212,13 @@ class ScriptedChatClient(BaseChatClient[Any]):
         self.script: Script = script or default_script
         self.triage: Triage = triage or default_triage
         self.calls = 0
+        # Tests may hold a call here (for example to observe a running turn); awaited before the script runs.
+        self.before_call: Callable[[], Awaitable[None]] | None = None
 
     async def _respond(self, messages: Sequence[Message], options: Mapping[str, Any]) -> ChatResponse:
         self.calls += 1
+        if self.before_call is not None:
+            await self.before_call()
         if options.get("response_format") is not None:
             return text(self.triage(last_user_text(messages)))
         return self.script(messages, options)

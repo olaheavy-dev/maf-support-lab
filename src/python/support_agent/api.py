@@ -8,6 +8,7 @@ pinned for the turn's work, so tools never read identity from anywhere else.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import secrets
@@ -18,7 +19,7 @@ from fastapi.responses import JSONResponse
 
 from support_agent import contract
 from support_agent.agents import SupportAgents
-from support_agent.conversations import Conversation, ConversationStore, Reservation, Turn, TurnError, now
+from support_agent.conversations import Claim, Conversation, ConversationStore, Reservation, Turn, TurnError, now
 from support_agent.dependencies import Caller
 from support_agent.identity import Principal, pinned
 from support_agent.workflow import RoutingRequest, SupportReply, build_workflow
@@ -105,22 +106,58 @@ def create_router(store: ConversationStore, agents: SupportAgents) -> APIRouter:
             return problem("turn_in_progress", "Another turn is still running in this conversation.")
         if claim.message != message:
             return problem("client_turn_id_reused", "This client_turn_id was already used with a different message.")
-        if outcome is Reservation.DUPLICATE:
-            return JSONResponse((await claim.done).to_contract(contract.CONTRACT_VERSION))
-
-        turn = await run_turn(agents, conversation, claim.turn_id, client_turn_id, message, principal)
-        conversation.complete(claim, turn)
-        return JSONResponse(turn.to_contract(contract.CONTRACT_VERSION))
+        if outcome is Reservation.OWNER:
+            # The turn runs as its own task (as in .NET since L12): a client that disconnects, or a duplicate that is
+            # cancelled, never stops it or leaves its result unset. Every request only waits, through a shield.
+            task = asyncio.create_task(complete_turn(agents, conversation, claim, message, principal))
+            running_turns.add(task)
+            task.add_done_callback(running_turns.discard)
+        return JSONResponse((await asyncio.shield(claim.done)).to_contract(contract.CONTRACT_VERSION))
 
     @router.get("/{conversation_id}/turns/{turn_id}")
     async def get_turn(conversation_id: str, turn_id: str, principal: Caller) -> JSONResponse:
         conversation = store.find_owned(conversation_id, principal)
-        turn = None if conversation is None else conversation.turns.get(turn_id)
-        if turn is None:
+        if conversation is None:
             return not_found()
-        return JSONResponse(turn.to_contract(contract.CONTRACT_VERSION))
+        if (turn := conversation.turns.get(turn_id)) is not None:
+            return JSONResponse(turn.to_contract(contract.CONTRACT_VERSION))
+        if (running := conversation.running(turn_id)) is not None:
+            # A known turn still running (the contract's running state), as the .NET backend reports it.
+            return JSONResponse(running.running_contract(conversation_id, contract.CONTRACT_VERSION))
+        return not_found()
 
     return router
+
+
+running_turns: set[asyncio.Task[None]] = set()
+
+
+async def complete_turn(
+    agents: SupportAgents, conversation: Conversation, claim: Claim, message: str, principal: Principal
+) -> None:
+    """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once."""
+    try:
+        turn = await run_turn(
+            agents, conversation, claim.turn_id, claim.client_turn_id, message, principal, claim.trace_id
+        )
+    except BaseException:
+        failure = TurnError("internal_error", "Something went wrong while handling your message. Please try again.")
+        turn = Turn(
+            conversation.conversation_id,
+            claim.turn_id,
+            claim.client_turn_id,
+            None,
+            None,
+            None,
+            claim.trace_id,
+            claim.started_at,
+            now(),
+            "failed",
+            failure,
+        )
+        conversation.complete(claim, turn)
+        raise
+    conversation.complete(claim, turn)
 
 
 async def run_turn(
@@ -130,6 +167,7 @@ async def run_turn(
     client_turn_id: str,
     message: str,
     principal: Principal,
+    turn_trace_id: str,
 ) -> Turn:
     """Runs the workflow as the caller (pinned) and returns the finished turn: completed, or failed with a safe code."""
     started = now()
@@ -144,7 +182,7 @@ async def run_turn(
                 reply.route,
                 reply.kind,
                 reply.text,
-                trace_id(),
+                turn_trace_id,
                 started,
                 now(),
             )
@@ -158,7 +196,7 @@ async def run_turn(
                 None,
                 None,
                 None,
-                trace_id(),
+                turn_trace_id,
                 started,
                 now(),
                 "failed",
