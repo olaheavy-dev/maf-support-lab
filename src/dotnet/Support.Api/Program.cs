@@ -23,6 +23,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(_ => FixturePolicy.Load());
 builder.Services.AddSupportStorage(builder.Configuration, builder.Environment);
+builder.Services.AddSingleton<Support.Api.Common.Application.Safety.InjectionSignals>();
 
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddOperationsModule();

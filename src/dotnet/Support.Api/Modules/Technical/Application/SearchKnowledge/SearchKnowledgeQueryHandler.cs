@@ -11,10 +11,19 @@ internal sealed partial class SearchKnowledgeQueryHandler(IKnowledgeBase knowled
 {
     private const int MaxResults = 3;
 
+    public const int MaxQueryLength = 200;
+
     public Task<Result<IReadOnlyList<KnowledgeArticle>>> Handle(SearchKnowledgeQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var terms = Terms().Matches(query.Text ?? string.Empty).Select(match => match.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Tool arguments are model output (L14): bounded and printable, or rejected.
+        var text = query.Text ?? string.Empty;
+        if (text.Length > MaxQueryLength || text.Any(character => char.IsControl(character) && character is not ('\n' or '\t')))
+        {
+            return Task.FromResult(Result.Failure<IReadOnlyList<KnowledgeArticle>>(Error.Validation("invalid_query", $"The search query must be at most {MaxQueryLength} printable characters.")));
+        }
+
+        var terms = Terms().Matches(text).Select(match => match.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
         IReadOnlyList<KnowledgeArticle> matches =
         [
             .. knowledge.Articles
