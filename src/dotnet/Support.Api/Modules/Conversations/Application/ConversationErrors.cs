@@ -7,5 +7,8 @@ public static class ConversationErrors
     /// <summary>Used for missing conversations and turns and for other customers' ones alike.</summary>
     public static readonly Error NotFound = Error.NotFound("not_found", "The resource does not exist or is not available to you.");
 
+    /// <summary>One turn at a time per conversation: a different turn while one runs is rejected, never queued.</summary>
+    public static readonly Error TurnInProgress = Error.Conflict("turn_in_progress", "Another turn is still running in this conversation.");
+
     public static readonly Error ClientTurnIdReused = Error.Conflict("client_turn_id_reused", "This client_turn_id was already used with a different message.");
 }

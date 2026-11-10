@@ -139,9 +139,13 @@ Implemented so far (see [contracts/README.md](../../contracts/README.md)):
 The rules:
 - Requests with unknown fields (such as `customer_id`) get `400 invalid_request`.
 - Someone else's conversation or turn returns `404 not_found`.
-- Re-sending a `client_turn_id` returns the original turn; reusing it with a different message returns `409`.
+- Re-sending a `client_turn_id` returns the original turn; reusing it with a different message returns `409 client_turn_id_reused`.
+- **One turn at a time per conversation:**
+  - while a turn runs, `GET /conversations/{id}` shows its `active_turn_id`;
+  - a *different* turn is rejected with `409 turn_in_progress`. It is not queued, so the client decides whether to retry.
+  - Other conversations aren't affected.
 
-Not yet implemented: the one-turn-at-a-time rule and conversation memory (L09), writes and approvals (L10), and streaming (L12). Write requests (cancel, refund, ticket) get a deterministic "not available yet" reply until L10 (see Routing).
+Not yet implemented: writes and approvals (L10), durable state across restarts (L11), and streaming (L12). Write requests (cancel, refund, ticket) get a deterministic "not available yet" reply until L10 (see Routing).
 
 ```bash
 curl -s -X POST localhost:5180/api/v1/conversations -H 'content-type: application/json' -d '{}'
@@ -177,6 +181,21 @@ The reply kind comes from what the tools recorded, not from the model's wording:
 - **A valid answer can still be ambiguous.** If the action is `other`, or doesn't belong to the chosen target (e.g. `invoice` → `orders`), the result is `unrouted / ambiguous_request`.
 - **`confidence` is recorded on the triage span only.** It never affects routing: it is model-generated and uncalibrated.
 - **The specialist receives the original message**, alongside the validated fields. The customer stays in trusted server context, and the triage `order_id` is only a claim: ownership is still checked by the orders handler.
+
+## Conversation memory (L09)
+
+The agents are shared singletons; **a conversation's state lives with the conversation**, never in an agent object:
+- **Native sessions:** each conversation has its own MAF `AgentSession` per specialist, created on first use and reused on later turns (`Triage/Infrastructure/Routing/ConversationSessions.cs`).
+- **Bounded history:** a specialist keeps the last **12** plain conversation messages (`ConversationHistory.MaxMessages`, `BoundedHistoryReducer`).
+  - Tool calls and results are dropped from history, so trimming never separates them. The specialist re-reads fresh data with its tools.
+  - The storage filter keeps MAF's default of not re-saving messages that came from history. A custom filter replaces that default; forgetting this duplicated history every turn until a test caught it.
+- **Verified context (application state, not history):** the conversation remembers its last route and a **verified order id**, meaning one a tool *found for this customer*, never one that was merely mentioned. On a follow-up that names no order:
+  - the routing rules use the verified id, so there's no "which order?" question;
+  - the specialist gets a one-turn context note right after the customer's message. Anthropic accepts a mid-conversation system message only after a user message.
+
+  Triage stays stateless and gets the previous route as a hint.
+- **Isolation:** sessions are reached only through an owned conversation (another customer gets `404`). Separate conversations share nothing.
+- **Limits:** everything is in memory until L11; DevUI workflow chats are stateless.
 
 ## Agents, tools, and the model boundary
 

@@ -12,15 +12,33 @@ namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 /// only its own read tools; the principal reaches those tools through trusted DI, never through this payload.
 /// </summary>
 [SendsMessage(typeof(SupportReply))]
-internal sealed partial class SpecialistExecutor(SupportAgents agents, RouteTarget target) : Executor<TriageOutcome>($"{Names.Of(target)}-specialist")
+internal sealed partial class SpecialistExecutor(SupportAgents agents, ConversationSessions sessions, RouteTarget target)
+    : Executor<TriageOutcome>($"{Names.Of(target)}-specialist")
 {
     public override async ValueTask HandleAsync(TriageOutcome request, IWorkflowContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(context);
+        var name = Names.Of(target);
+        var agent = agents.Get(name);
+
+        // The conversation's own native session for this specialist (L09): its bounded history comes back each turn.
+        AgentSession? session = request.ConversationId is { } conversationId
+            ? await sessions.GetOrCreateAsync(conversationId, name, agent, cancellationToken).ConfigureAwait(false)
+            : null;
+
+        // A follow-up that names no order gets the order a tool verified earlier, as a trusted note for this turn only.
+        // The note comes right after the customer's message: Anthropic accepts a mid-conversation system message only
+        // after a user message (a note placed after the previous assistant reply was rejected with HTTP 400 in L09).
+        List<ChatMessage> input = [new ChatMessage(ChatRole.User, request.OriginalMessage)];
+        if (request.Triage?.OrderId is null && request.Context.VerifiedOrderId is { } verified)
+        {
+            input.Add(ConversationHistory.ContextNote(
+                $"Verified context: earlier in this conversation the customer's order {verified} was found. If they refer to \"it\" or \"that order\", they mean {verified}."));
+        }
         using var activity = TurnActivity.Begin();
-        var response = await agents.Get(Names.Of(target)).RunAsync(request.OriginalMessage, cancellationToken: cancellationToken).ConfigureAwait(false);
-        var reply = new SupportReply(request.Route, ReplyKindFrom(activity.Activity), ReplyText(response.Text));
+        var response = await agent.RunAsync(input, session, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var reply = new SupportReply(request.Route, ReplyKindFrom(activity.Activity), ReplyText(response.Text), activity.Activity.VerifiedOrderId);
         await context.SendMessageAsync(reply, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -129,15 +147,16 @@ internal sealed partial class ChatReplyExecutor() : Executor<SupportReply>("repl
 /// </summary>
 internal sealed class ChatInputExecutor() : ChatProtocolExecutor("chat-input", new ChatProtocolExecutorOptions { AutoSendTurnToken = false })
 {
-    /// <summary>Declares the string it forwards to triage. (The SendsMessage attribute is not applied to ChatProtocolExecutor subclasses.)</summary>
+    /// <summary>Declares the request it forwards to triage. (The SendsMessage attribute is not applied to ChatProtocolExecutor subclasses.)</summary>
     protected override ProtocolBuilder ConfigureProtocol(ProtocolBuilder protocolBuilder) =>
-        base.ConfigureProtocol(protocolBuilder).SendsMessage<string>();
+        base.ConfigureProtocol(protocolBuilder).SendsMessage<RoutingRequest>();
 
     protected override ValueTask TakeTurnAsync(List<ChatMessage> messages, IWorkflowContext context, bool? emitEvents, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(messages);
         ArgumentNullException.ThrowIfNull(context);
         var text = messages.LastOrDefault(message => message.Role == ChatRole.User)?.Text ?? string.Empty;
-        return context.SendMessageAsync(text, cancellationToken: cancellationToken);
+        // DevUI workflow chats are stateless: no conversation id, no verified context.
+        return context.SendMessageAsync(new RoutingRequest(null, text, ConversationContext.Empty), cancellationToken: cancellationToken);
     }
 }

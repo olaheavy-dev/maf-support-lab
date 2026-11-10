@@ -24,6 +24,7 @@ public sealed class TurnActivity
 {
     private static readonly AsyncLocal<TurnActivity?> CurrentTurn = new();
     private readonly List<ToolOutcome> outcomes = [];
+    private string? verifiedOrderId;
     private readonly Lock gate = new();
 
     public static TurnActivity? Current => CurrentTurn.Value;
@@ -39,6 +40,18 @@ public sealed class TurnActivity
         }
     }
 
+    /// <summary>The last order a tool found for the current customer during this turn, if any.</summary>
+    public string? VerifiedOrderId
+    {
+        get
+        {
+            lock (gate)
+            {
+                return verifiedOrderId;
+            }
+        }
+    }
+
     public static Scope Begin()
     {
         var activity = new TurnActivity();
@@ -46,11 +59,19 @@ public sealed class TurnActivity
         return new Scope(activity);
     }
 
-    public void Record(ToolOutcome outcome)
+    /// <summary>
+    /// Records what a tool found. Pass <paramref name="orderId"/> only for <see cref="ToolOutcome.Found"/> results
+    /// owned by the current customer: it becomes the verified order a follow-up can refer to.
+    /// </summary>
+    public void Record(ToolOutcome outcome, string? orderId = null)
     {
         lock (gate)
         {
             outcomes.Add(outcome);
+            if (outcome == ToolOutcome.Found && orderId is not null)
+            {
+                verifiedOrderId = orderId;
+            }
         }
     }
 

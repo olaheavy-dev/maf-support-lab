@@ -26,6 +26,7 @@ public static class TechnicalAgentFactory
             {
                 Name = SupportAgents.TechnicalAgentName,
                 Description = "Answers product troubleshooting questions from the knowledge base (read-only).",
+                ChatHistoryProvider = ConversationHistory.CreateProvider(),
                 ChatOptions = new ChatOptions { Instructions = Instructions, Tools = [tool.AsAIFunction()] },
             },
             loggerFactory);

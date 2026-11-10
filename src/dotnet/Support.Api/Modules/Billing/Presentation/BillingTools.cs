@@ -37,7 +37,7 @@ public sealed partial class BillingTools(
     {
         var result = await getInvoice.Handle(new GetInvoiceQuery(reference), cancellationToken).ConfigureAwait(false);
         return result.Match(
-            invoice => Record(InvoiceToolName, ToolOutcome.Found, "found", InvoiceResult.From(invoice)),
+            invoice => Record(InvoiceToolName, ToolOutcome.Found, "found", InvoiceResult.From(invoice), invoice.OrderId),
             error => error == BillingErrors.InvalidReference
                 ? Record(InvoiceToolName, ToolOutcome.InvalidInput, "invalid_reference", InvoiceResult.Missing("invalid_reference", null))
                 : Record(InvoiceToolName, ToolOutcome.NotFound, "not_found", InvoiceResult.Missing("not_found", InvoiceReference.Normalize(reference))));
@@ -51,9 +51,9 @@ public sealed partial class BillingTools(
         return Record(PaymentHistoryToolName, ToolOutcome.Found, "found", new PaymentHistoryResult([.. payments.Select(PaymentLine.From)]));
     }
 
-    private T Record<T>(string tool, ToolOutcome outcome, string outcomeName, T result)
+    private T Record<T>(string tool, ToolOutcome outcome, string outcomeName, T result, string? verifiedOrderId = null)
     {
-        TurnActivity.Current?.Record(outcome);
+        TurnActivity.Current?.Record(outcome, verifiedOrderId);
         metrics.Record(tool, outcomeName);
         Log.LookupFinished(logger, tool, outcomeName);
         return result;

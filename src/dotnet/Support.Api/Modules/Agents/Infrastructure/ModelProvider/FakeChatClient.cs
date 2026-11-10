@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
+using Support.Api.Modules.Agents.Application;
 
 namespace Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 
@@ -115,7 +116,9 @@ public sealed partial class FakeChatClient : IChatClient
 
         var tools = options?.Tools?.OfType<AIFunctionDeclaration>().Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal)
             ?? [OrderStatusToolName];
-        var orderId = OrderIdPattern().Match(userText);
+        // Like a real model, use the trusted context note when the customer refers to "it" without an id.
+        var contextText = string.Join(" ", messages.Where(ConversationHistory.IsContextNote).Select(message => message.Text));
+        var orderId = OrderIdPattern().Match(userText) is { Success: true } named ? named : OrderIdPattern().Match(contextText);
         var invoiceId = InvoiceIdPattern().Match(userText);
         var upper = userText.ToUpperInvariant();
 

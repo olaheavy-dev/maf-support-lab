@@ -17,14 +17,18 @@ namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 ///         └─ default                           ─▶ unrouted (invalid or ambiguous triage)
 /// </code>
 /// </summary>
-internal sealed class SupportWorkflowRouter(SupportAgents agents, TriageMetrics metrics, ILogger<SupportWorkflowRouter> logger) : ISupportRouter
+internal sealed class SupportWorkflowRouter(
+    SupportAgents agents,
+    ConversationSessions sessions,
+    TriageMetrics metrics,
+    ILogger<SupportWorkflowRouter> logger) : ISupportRouter
 {
     public const string WorkflowName = "support-routing";
 
-    public async Task<SupportReply> RouteAsync(string message, CancellationToken cancellationToken)
+    public async Task<SupportReply> RouteAsync(RoutingRequest request, CancellationToken cancellationToken)
     {
         var workflow = Build();
-        await using var run = await InProcessExecution.RunAsync(workflow, message, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await using var run = await InProcessExecution.RunAsync(workflow, request, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         SupportReply? reply = null;
         foreach (var workflowEvent in run.NewEvents)
@@ -58,9 +62,9 @@ internal sealed class SupportWorkflowRouter(SupportAgents agents, TriageMetrics 
         var triage = new TriageExecutor(agents, metrics, logger);
         var writeNotAvailable = new WriteNotAvailableExecutor();
         var askForOrderId = new AskForOrderIdExecutor();
-        var orders = new SpecialistExecutor(agents, RouteTarget.Orders);
-        var billing = new SpecialistExecutor(agents, RouteTarget.Billing);
-        var technical = new SpecialistExecutor(agents, RouteTarget.Technical);
+        var orders = new SpecialistExecutor(agents, sessions, RouteTarget.Orders);
+        var billing = new SpecialistExecutor(agents, sessions, RouteTarget.Billing);
+        var technical = new SpecialistExecutor(agents, sessions, RouteTarget.Technical);
         var unrouted = new UnroutedExecutor();
         ExecutorBinding reply = forChat ? new ChatReplyExecutor() : new ReplyOutputExecutor();
         ExecutorBinding[] endings = [writeNotAvailable, askForOrderId, orders, billing, technical, unrouted];
