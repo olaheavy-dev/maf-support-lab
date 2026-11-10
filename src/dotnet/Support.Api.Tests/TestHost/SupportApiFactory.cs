@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 using Support.Api.Modules.Identity.Application;
 using Support.Api.Modules.Identity.Domain;
 
@@ -21,7 +22,8 @@ internal static class SupportApiFactory
         string? principal = null,
         string environment = "Development",
         IPrincipalSource? principalSource = null,
-        IChatClient? chatClient = null)
+        IChatClient? chatClient = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -48,9 +50,12 @@ internal static class SupportApiFactory
                     services.Replace(ServiceDescriptor.Singleton(principalSource ?? new FixedPrincipalSource(new SupportPrincipal(principal!))));
                 }
 
+                configureServices?.Invoke(services);
+
                 if (chatClient is not null)
                 {
-                    services.Replace(ServiceDescriptor.Singleton(chatClient));
+                    // Swap the raw provider client, so the scripted model still runs through the telemetry wrapper.
+                    services.Replace(ServiceDescriptor.KeyedSingleton(ModelProviderRegistration.ProviderClientKey, chatClient));
                 }
             });
         });

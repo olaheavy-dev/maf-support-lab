@@ -18,6 +18,17 @@ public sealed partial class FakeChatClient(Func<IReadOnlyList<ChatMessage>, Chat
     /// </summary>
     public const string OrderStatusToolName = "get_order_status";
 
+    /// <summary>
+    /// A message containing this marker makes the fake model fail, so a failed turn can be produced and inspected in
+    /// Aspire without a real provider outage. Fake mode only; Live mode never sees this code.
+    /// </summary>
+    public const string FailureTrigger = "[fake:model-error]";
+
+    /// <summary>Fixed token counts on every fake response, so token-usage metrics have real samples in fake mode.</summary>
+    public const int FakeInputTokens = 100;
+
+    public const int FakeOutputTokens = 20;
+
     private readonly Func<IReadOnlyList<ChatMessage>, ChatResponse> script = script ?? DefaultScript;
 
     public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
@@ -57,6 +68,11 @@ public sealed partial class FakeChatClient(Func<IReadOnlyList<ChatMessage>, Chat
         }
 
         var userText = messages.LastOrDefault(message => message.Role == ChatRole.User)?.Text ?? string.Empty;
+        if (userText.Contains(FailureTrigger, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("The fake model failed because the message asked it to.");
+        }
+
         var orderId = OrderIdPattern().Match(userText);
         if (orderId.Success)
         {
@@ -66,10 +82,23 @@ public sealed partial class FakeChatClient(Func<IReadOnlyList<ChatMessage>, Chat
         return Text("Which order do you mean? Please share the order id, for example ORD-1234.");
     }
 
-    public static ChatResponse Text(string text) => new(new ChatMessage(ChatRole.Assistant, text));
+    public static ChatResponse Text(string text) =>
+        WithUsage(new ChatResponse(new ChatMessage(ChatRole.Assistant, text)));
 
     public static ChatResponse ToolCall(string name, IDictionary<string, object?> arguments) =>
-        new(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent($"call_{Guid.NewGuid():N}", name, arguments)]));
+        WithUsage(new ChatResponse(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent($"call_{Guid.NewGuid():N}", name, arguments)])));
+
+    private static ChatResponse WithUsage(ChatResponse response)
+    {
+        response.ModelId = "fake-orders-model";
+        response.Usage = new UsageDetails
+        {
+            InputTokenCount = FakeInputTokens,
+            OutputTokenCount = FakeOutputTokens,
+            TotalTokenCount = FakeInputTokens + FakeOutputTokens,
+        };
+        return response;
+    }
 
     private static string DescribeLookup(object? result)
     {
