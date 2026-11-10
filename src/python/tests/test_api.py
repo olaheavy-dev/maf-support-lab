@@ -113,14 +113,14 @@ def test_invalid_triage_output_reaches_the_controlled_fallback(marker: str) -> N
         assert turn["reply"]["kind"] == "clarification"
 
 
-def test_a_write_request_is_answered_without_changing_anything() -> None:
+def test_a_write_request_only_asks_for_approval_and_changes_nothing() -> None:
     app, _ = host()
     with TestClient(app) as client:
         api = Api(client)
         turn = api.ask(api.create_conversation(), "Please cancel order ORD-1003.")
-        assert turn["reply"]["kind"] == "escalation_offer"
-        assert "Nothing has been changed" in turn["reply"]["text"]
-        assert turn["operations"] == []
+        assert turn["outcome"] == "awaiting_approval"  # a pause, not success
+        assert turn["reply"]["kind"] == "approval_request"
+        assert app.state.services.state.orders["ORD-1003"].status == "processing"
 
 
 @pytest.mark.parametrize(

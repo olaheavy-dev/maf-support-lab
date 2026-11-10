@@ -106,3 +106,10 @@ def test_devui_rejects_requests_not_addressed_to_loopback() -> None:
     with TestClient(server.get_app(), base_url="http://attacker.example") as client:
         assert client.get("/v1/entities").status_code == 400
     set_process_principal(None)
+
+
+def test_a_devui_workflow_chat_cannot_request_a_change(devui: TestClient) -> None:
+    # DevUI workflow chats are stateless (no conversation), so a write request is declined natively: nothing changes.
+    text = ask(devui, listed(devui)["support-routing"]["id"], "Please cancel order ORD-1003.")
+    assert "[route: orders" in text
+    assert "approval_request" not in text

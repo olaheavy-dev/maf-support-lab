@@ -92,3 +92,47 @@ def test_claude_answers_a_follow_up_from_the_conversations_own_session() -> None
         assert "30" in follow_up["reply"]["text"]  # shipped on October 30
         assert invoice["route"]["target"] == "billing"
         assert "INV-5002" in invoice["reply"]["text"]
+
+
+def test_claude_pauses_a_write_for_approval_and_completes_it_only_when_approved() -> None:
+    key = LIVE_KEY
+    if not key:
+        pytest.skip("Set ANTHROPIC_API_KEY to run live checks.")
+    settings = Settings(
+        app_environment=Environment.DEVELOPMENT,
+        identity=IdentitySettings(development_customer_id="CUST-1001"),
+        model_provider=ModelProviderSettings(
+            mode=ModelMode.LIVE, anthropic=AnthropicSettings(model="claude-haiku-5-5", api_key=SecretStr(key))
+        ),
+    )
+    app = create_app(settings)
+    with TestClient(app) as client:
+        api = Api(client)
+        conversation = api.create_conversation()
+        asked = api.ask(conversation, "Please cancel order ORD-1003.")
+        print(f"cancel asked: {asked['outcome']} {asked.get('pending_approval', {}).get('arguments')}")
+        assert asked["outcome"] == "awaiting_approval"
+        pending = asked["pending_approval"]
+        assert pending["arguments"] == {"order_id": "ORD-1003"}
+        assert app.state.services.state.orders["ORD-1003"].status == "processing"
+        decided = client.post(
+            f"/api/v1/conversations/{conversation}/approvals/{pending['approval_id']}",
+            json={"operation_id": pending["operation_id"], "decision": "approve"},
+        ).json()
+        print(f"cancel approved: {decided['reply']['text'][:160]}")
+        # Claude's own report, not the factual fallback used when the resumed call fails (that failure was found live).
+        assert not decided["reply"]["text"].startswith("Done. Cancel order")
+        assert client.get(f"/api/v1/operations/{pending['operation_id']}").json()["status"] == "committed"
+        assert app.state.services.state.orders["ORD-1003"].status == "cancelled"
+
+        refund = api.ask(conversation, "I want a refund for ORD-1001, the headphones crackle.")
+        print(f"refund asked: {refund['outcome']} {refund.get('pending_approval', {}).get('kind')}")
+        assert refund["outcome"] == "awaiting_approval"
+        rp = refund["pending_approval"]
+        rejected = client.post(
+            f"/api/v1/conversations/{conversation}/approvals/{rp['approval_id']}",
+            json={"operation_id": rp["operation_id"], "decision": "reject"},
+        ).json()
+        print(f"refund rejected: {rejected['reply']['text'][:160]}")
+        assert client.get(f"/api/v1/operations/{rp['operation_id']}").json()["status"] == "rejected"
+        assert app.state.services.state.orders["ORD-1001"].refund_status == "none"

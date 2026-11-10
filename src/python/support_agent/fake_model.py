@@ -144,7 +144,18 @@ def _as_dict(result: Any) -> dict[str, Any]:
 
 
 def _describe(tool: str | None, result: Any) -> str:
+    if isinstance(result, str) and "rejected" in result.lower():
+        return "Understood, I won't go ahead with that."
     data = _as_dict(result)
+    if tool in ("cancel_order", "refund_order", "create_ticket"):
+        outcome = cast(dict[str, Any], data.get("result") or {})
+        if data.get("status") != "committed":
+            return f"I couldn't do that: {data.get('detail')}"
+        if tool == "cancel_order":
+            return f"Done: order {outcome.get('order_id')} is cancelled."
+        if tool == "refund_order":
+            return f"Done: refund {outcome.get('refund_id')} for order {outcome.get('order_id')} has been recorded."
+        return f"Done: support ticket {outcome.get('ticket_id')} is open."
     if tool == names.INVOICE:
         match data.get("lookup"):
             case "found":
@@ -192,6 +203,15 @@ def default_script(messages: Sequence[Message], options: Mapping[str, Any]) -> C
     invoice_id = INVOICE_ID.search(user_text)
     upper = user_text.upper()
 
+    # Write requests first, like a model that does what was asked: the framework then pauses for approval (L37).
+    if "cancel_order" in tools and "CANCEL" in upper and order_id:
+        return tool_call("cancel_order", {"order_id": order_id.group(0).upper()})
+    if "refund_order" in tools and "REFUND" in upper and order_id:
+        return tool_call("refund_order", {"order_id": order_id.group(0).upper(), "reason": user_text})
+    if "create_ticket" in tools and "TICKET" in upper:
+        return tool_call(
+            "create_ticket", {"subject": "Support request", "description": user_text, "priority": "normal"}
+        )
     if names.KNOWLEDGE_SEARCH in tools:
         return tool_call(names.KNOWLEDGE_SEARCH, {"query": user_text})
     if names.PAYMENT_HISTORY in tools and _contains_any(upper, "PAYMENT", "HISTORY", "CHARGE", "PAID"):
@@ -204,6 +224,24 @@ def default_script(messages: Sequence[Message], options: Mapping[str, Any]) -> C
     if names.ORDER_STATUS in tools and order_id:
         return tool_call(names.ORDER_STATUS, {"order_id": order_id.group(0).upper()})
     return text("Which order do you mean? Please share the order id, for example ORD-1234.")
+
+
+def check_tool_pairing(messages: Sequence[Message]) -> None:
+    """Rejects what Anthropic rejects (HTTP 400): every tool result must answer a tool call made in the message just
+    before it. The fake enforces this so tests catch history or resume bugs that only a real provider would expose."""
+    for index, message in enumerate(messages):
+        results = [content.call_id for content in message.contents if content.type == "function_result"]
+        if not results:
+            continue
+        previous = messages[index - 1] if index > 0 else None
+        calls = (
+            {content.call_id for content in previous.contents if content.type == "function_call"}
+            if previous is not None and previous.role == "assistant"
+            else set[str | None]()
+        )
+        missing = [call_id for call_id in results if call_id not in calls]
+        if missing:
+            raise FakeModelError(f"A tool result answers no tool call in the previous assistant message: {missing}")
 
 
 class ScriptedChatClient(BaseChatClient[Any]):
@@ -219,6 +257,7 @@ class ScriptedChatClient(BaseChatClient[Any]):
 
     async def _respond(self, messages: Sequence[Message], options: Mapping[str, Any]) -> ChatResponse:
         self.calls += 1
+        check_tool_pairing(messages)
         if self.before_call is not None:
             await self.before_call()
         if options.get("response_format") is not None:

@@ -11,9 +11,11 @@ from typing import Any
 
 from agent_framework import Agent, SupportsChatGetResponse
 
+from support_agent.operations import OperationService
 from support_agent.services import Services
 from support_agent.sessions import BoundedHistory
 from support_agent.tools import billing_tools, order_tools, technical_tools
+from support_agent.write_tools import cancel_tool, refund_tool, ticket_tool
 
 TRIAGE = "triage"
 ORDERS = "orders"
@@ -36,7 +38,10 @@ ORDERS_INSTRUCTIONS = """You are the orders specialist for VoltCart customer sup
 Use the get_order_status tool for any question about a specific order; never guess order details.
 If the customer has not given an order id, ask for it (format ORD-1234) instead of calling the tool.
 If the tool reports not_found, say you could not find that order on their account and ask them to check the id.
-You cannot change orders. Never ask for or mention customer ids, and never discuss other customers' orders.
+If the customer asks to cancel an order, call cancel_order with its id. The customer will be asked to approve the
+exact action; never claim it is done until the tool reports "committed". If a request is declined, explain why and
+do not ask again.
+Never ask for or mention customer ids, and never discuss other customers' orders.
 Keep replies short and factual."""
 
 BILLING_INSTRUCTIONS = """You are the billing specialist for VoltCart customer support.
@@ -45,14 +50,18 @@ Answer only from tool results; never guess amounts, dates, or ids.
 Always state the invoice id and order id (or payment id) your answer is based on.
 If the tool reports not_found, say you could not find that invoice on their account and ask them to check the id.
 If the customer has not said which order or invoice they mean, ask for the order id (ORD-1234) or invoice id (INV-1234).
-You cannot issue refunds or change payments. Never ask for or mention customer ids, and never discuss other customers' billing.
+If the customer asks for a refund, call refund_order with the order id and their reason. The customer will be asked
+to approve the exact action; never claim a refund happened until the tool reports "committed". If a request is
+declined, explain why and do not ask again. You cannot change payments in any other way.
+Never ask for or mention customer ids, and never discuss other customers' billing.
 Keep replies short and factual."""
 
 TECHNICAL_INSTRUCTIONS = """You are the technical support specialist for VoltCart customer support.
 Always call search_knowledge_base first, using the product and the symptom as the query.
 If it returns articles, walk the customer through the steps of the best one and name its article id (for example KB-102).
-If it returns no articles, say honestly that you could not find a documented fix, and offer to pass it to a human agent.
-You cannot open tickets yet. Do not invent steps. Never ask for or mention customer ids. Keep replies short and practical."""
+If it returns no articles, say honestly that you could not find a documented fix, and offer to open a support ticket.
+If the customer asks for a ticket, call create_ticket with a short subject and their description. The customer will
+be asked to approve it; never say a ticket exists until the tool reports "committed". Do not invent steps. Never ask for or mention customer ids. Keep replies short and practical."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,8 +76,10 @@ class SupportAgents:
         return [self.triage, *self.specialists.values()]
 
 
-def create_agents(client: SupportsChatGetResponse[Any], services: Services) -> SupportAgents:
-    """One client shared by all agents; each specialist gets only its own read tools."""
+def create_agents(
+    client: SupportsChatGetResponse[Any], services: Services, operations: OperationService
+) -> SupportAgents:
+    """One client shared by all agents; each specialist gets only its own read tools and its one approval-gated write."""
     return SupportAgents(
         triage=Agent(
             client,
@@ -84,7 +95,7 @@ def create_agents(client: SupportsChatGetResponse[Any], services: Services) -> S
                 id=ORDERS,
                 name=ORDERS,
                 description="Answers order-status questions for the current customer.",
-                tools=order_tools(services),
+                tools=[*order_tools(services), cancel_tool(operations)],
                 context_providers=[BoundedHistory()],
             ),
             BILLING: Agent(
@@ -93,7 +104,7 @@ def create_agents(client: SupportsChatGetResponse[Any], services: Services) -> S
                 id=BILLING,
                 name=BILLING,
                 description="Answers invoice and payment-history questions (read-only).",
-                tools=billing_tools(services),
+                tools=[*billing_tools(services), refund_tool(operations)],
                 context_providers=[BoundedHistory()],
             ),
             TECHNICAL: Agent(
@@ -102,7 +113,7 @@ def create_agents(client: SupportsChatGetResponse[Any], services: Services) -> S
                 id=TECHNICAL,
                 name=TECHNICAL,
                 description="Answers troubleshooting questions from the knowledge base (read-only).",
-                tools=technical_tools(services),
+                tools=[*technical_tools(services), ticket_tool(operations)],
                 context_providers=[BoundedHistory()],
             ),
         },
