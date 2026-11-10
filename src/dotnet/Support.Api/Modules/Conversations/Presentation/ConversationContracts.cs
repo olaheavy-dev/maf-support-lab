@@ -1,3 +1,4 @@
+using Support.Api.Common.Application;
 using System.Text.Json.Serialization;
 using Support.Api.Common.Presentation;
 using Support.Api.Modules.Conversations.Domain;
@@ -63,19 +64,22 @@ public sealed record TurnResult(
     string TurnId,
     string? ClientTurnId,
     string State,
-    string Outcome,
-    RouteResult Route,
-    ReplyResult Reply,
-    IReadOnlyList<OperationSummary> Operations,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Outcome,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] RouteResult? Route,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ReplyResult? Reply,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<OperationSummary>? Operations,
     string TraceId,
     DateTimeOffset CreatedAt,
-    DateTimeOffset FinishedAt)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DateTimeOffset? FinishedAt)
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ResumedFromTurnId { get; init; }
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PendingApproval? PendingApproval { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public TurnErrorResult? Error { get; init; }
 
     /// <summary>The turn as finished, with each operation's <em>current</em> status (the authoritative record).</summary>
     public static TurnResult From(Turn turn, IOperationStore operations)
@@ -89,9 +93,10 @@ public sealed record TurnResult(
             turn.TurnId,
             turn.ClientTurnId,
             State: "finished",
-            Outcome: turn.Outcome == TurnOutcome.AwaitingApproval ? "awaiting_approval" : "completed",
-            RouteResult.From(turn.Route),
-            new ReplyResult(Names.Of(turn.ReplyKind), turn.ReplyText),
+            Outcome: Application.SubmitTurn.SubmitTurnCommandHandler.OutcomeName(turn.Outcome),
+            turn.Route is { } route ? RouteResult.From(route) : null,
+            // A failed turn has no reply (contract): its error says what happened.
+            turn.Outcome == TurnOutcome.Failed ? null : new ReplyResult(Names.Of(turn.ReplyKind), turn.ReplyText),
             [.. touched.Select(OperationSummary.From)],
             turn.TraceId,
             turn.CreatedAt,
@@ -101,6 +106,25 @@ public sealed record TurnResult(
             PendingApproval = turn.Outcome == TurnOutcome.AwaitingApproval && turn.PendingOperationId is { } pending && operations.Find(pending) is { } operation
                 ? PendingApproval.From(operation)
                 : null,
+            Error = turn.Error is { } error ? new TurnErrorResult(error.Code, error.Detail, error.RetryAfterSeconds) : null,
+        };
+    }
+
+    /// <summary>A turn still running (L12): what a status lookup can say before it finishes. No outcome yet.</summary>
+    public static TurnResult Running(string conversationId, TurnReservation reservation)
+    {
+        ArgumentNullException.ThrowIfNull(reservation);
+        return new(
+            Common.Presentation.ContractVersion.Current, conversationId, reservation.TurnId, reservation.ClientTurnId, State: "running",
+            Outcome: null, Route: null, Reply: null, Operations: null,
+            string.IsNullOrEmpty(reservation.TraceId) ? TraceIds.Current() : reservation.TraceId, reservation.StartedAt, FinishedAt: null)
+        {
+            ResumedFromTurnId = reservation.ResumedFromTurnId,
         };
     }
 }
+
+public sealed record TurnErrorResult(
+    string Code,
+    string Detail,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] int? RetryAfterSeconds);

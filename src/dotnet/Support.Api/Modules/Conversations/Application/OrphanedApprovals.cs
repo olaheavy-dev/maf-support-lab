@@ -23,6 +23,19 @@ internal static class OrphanedApprovals
         }
     }
 
+    /// <summary>
+    /// Closes the approvals a turn proposed when that turn ends failed or cancelled (Codex review on PR #78): an
+    /// unsuccessful turn never leaves an actionable approval behind, and its session may not hold the paused request.
+    /// </summary>
+    public static void ExpireFromTurn(string conversationId, string turnId, IOperationStore operations, DateTimeOffset now)
+    {
+        foreach (var operation in operations.ForConversation(conversationId)
+            .Where(operation => operation.Status == OperationStatus.AwaitingApproval && operation.SourceTurnId == turnId))
+        {
+            Expire(operation, operations, now);
+        }
+    }
+
     public static void Expire(Operation operation, IOperationStore operations, DateTimeOffset now)
     {
         if (operation.ExpireNow(now))

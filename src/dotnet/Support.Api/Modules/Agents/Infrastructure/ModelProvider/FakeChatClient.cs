@@ -79,9 +79,24 @@ public sealed partial class FakeChatClient : IChatClient
         ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // Text comes out word by word, like a real model's tokens (L12), so streaming has several deltas to show.
         var response = await GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
         foreach (var update in response.ToChatResponseUpdates())
         {
+            if (update.Contents is [TextContent { Text: { Length: > 0 } text }])
+            {
+                foreach (var word in System.Text.RegularExpressions.Regex.Split(text, @"(?<=\s)"))
+                {
+                    if (word.Length > 0)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        yield return new ChatResponseUpdate(update.Role, word) { MessageId = update.MessageId, ResponseId = update.ResponseId, ModelId = update.ModelId };
+                    }
+                }
+
+                continue;
+            }
+
             yield return update;
         }
     }

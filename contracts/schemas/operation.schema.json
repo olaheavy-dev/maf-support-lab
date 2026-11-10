@@ -23,7 +23,7 @@
       "required": ["code", "detail"],
       "additionalProperties": false,
       "properties": {
-        "code": { "enum": ["not_eligible", "not_found", "timeout", "internal_error"] },
+        "code": { "enum": ["not_eligible", "not_found", "timeout", "cancelled", "internal_error"] },
         "detail": { "type": "string", "minLength": 1, "maxLength": 500 }
       }
     }

@@ -1,5 +1,6 @@
 using Support.Api.Common.Application.Messaging;
 using Support.Api.Common.Presentation;
+using Support.Api.Modules.Conversations.Application.CancelTurn;
 using Support.Api.Modules.Conversations.Application.CreateConversation;
 using Support.Api.Modules.Conversations.Application.DecideApproval;
 using Support.Api.Modules.Conversations.Application.GetConversation;
@@ -13,7 +14,8 @@ namespace Support.Api.Modules.Conversations.Presentation;
 
 /// <summary>
 /// Version-1 conversation and turn routes (contracts/README.md). Each endpoint only translates:
-/// HTTP in, a command or query to its handler, the result back out as contract JSON. Streaming arrives in L12.
+/// HTTP in, a command or query to its handler, the result back out as contract JSON, or as Server-Sent Events when
+/// the client asks for <c>text/event-stream</c> (L12).
 /// </summary>
 internal static class ConversationEndpoints
 {
@@ -24,6 +26,7 @@ internal static class ConversationEndpoints
         conversations.MapGet("/{conversationId}", GetConversation);
         conversations.MapPost("/{conversationId}/turns", SubmitTurn);
         conversations.MapGet("/{conversationId}/turns/{turnId}", GetTurn);
+        conversations.MapPost("/{conversationId}/turns/{turnId}/cancel", CancelTurn);
         conversations.MapPost("/{conversationId}/approvals/{approvalId}", DecideApproval);
         return app;
     }
@@ -63,6 +66,7 @@ internal static class ConversationEndpoints
         IQueryHandler<GetConversationQuery, Conversation> getConversation,
         ICommandHandler<SubmitTurnCommand, Turn> submitTurn,
         IOperationStore operations,
+        TimeProvider clock,
         CancellationToken cancellationToken)
     {
         // A conversation you can't see is 404 before anything else, so the body's validity reveals nothing about it.
@@ -78,6 +82,15 @@ internal static class ConversationEndpoints
             return problem;
         }
 
+        if (TurnStream.IsRequested(request))
+        {
+            return await TurnStream.RunAsync(
+                observer => submitTurn.Handle(new SubmitTurnCommand(conversationId, turnRequest!.ClientTurnId, turnRequest.Message, observer), cancellationToken),
+                operations,
+                clock,
+                cancellationToken).ConfigureAwait(false);
+        }
+
         var result = await submitTurn.Handle(new SubmitTurnCommand(conversationId, turnRequest!.ClientTurnId, turnRequest.Message), cancellationToken).ConfigureAwait(false);
         return result.Match(turn => ApiResults.Ok(TurnResult.From(turn, operations)), ApiResults.Problem);
     }
@@ -85,12 +98,26 @@ internal static class ConversationEndpoints
     private static async Task<IResult> GetTurn(
         string conversationId,
         string turnId,
-        IQueryHandler<GetTurnQuery, Turn> handler,
+        IQueryHandler<GetTurnQuery, TurnStatus> handler,
         IOperationStore operations,
         CancellationToken cancellationToken)
     {
         var result = await handler.Handle(new GetTurnQuery(conversationId, turnId), cancellationToken).ConfigureAwait(false);
-        return result.Match(turn => ApiResults.Ok(TurnResult.From(turn, operations)), ApiResults.Problem);
+        return result.Match(
+            status => ApiResults.Ok(status.Finished is { } finished ? TurnResult.From(finished, operations) : TurnResult.Running(status.ConversationId, status.Running!)),
+            ApiResults.Problem);
+    }
+
+    private static async Task<IResult> CancelTurn(
+        string conversationId,
+        string turnId,
+        ICommandHandler<CancelTurnCommand, string> handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.Handle(new CancelTurnCommand(conversationId, turnId), cancellationToken).ConfigureAwait(false);
+        return result.Match(
+            cancelled => ApiResults.Ok(new CancelTurnResponse(ContractVersion.Current, cancelled, CancelRequested: true), StatusCodes.Status202Accepted),
+            ApiResults.Problem);
     }
 
     private static async Task<IResult> DecideApproval(
@@ -100,6 +127,7 @@ internal static class ConversationEndpoints
         IQueryHandler<GetConversationQuery, Conversation> getConversation,
         ICommandHandler<DecideApprovalCommand, Turn> decide,
         IOperationStore operations,
+        TimeProvider clock,
         CancellationToken cancellationToken)
     {
         // A conversation you can't see is 404 before anything else, as for turns.
@@ -116,7 +144,19 @@ internal static class ConversationEndpoints
         }
 
         var decision = body!.Decision == "approve" ? ApprovalDecision.Approve : ApprovalDecision.Reject;
+        if (TurnStream.IsRequested(request))
+        {
+            return await TurnStream.RunAsync(
+                observer => decide.Handle(new DecideApprovalCommand(conversationId, approvalId, body.OperationId, decision, body.Reason, observer), cancellationToken),
+                operations,
+                clock,
+                cancellationToken).ConfigureAwait(false);
+        }
+
         var result = await decide.Handle(new DecideApprovalCommand(conversationId, approvalId, body.OperationId, decision, body.Reason), cancellationToken).ConfigureAwait(false);
         return result.Match(turn => ApiResults.Ok(TurnResult.From(turn, operations)), ApiResults.Problem);
     }
 }
+
+/// <summary>202 body for a cancel request: recorded, not yet necessarily observed by the turn.</summary>
+public sealed record CancelTurnResponse(string ContractVersion, string TurnId, bool CancelRequested);

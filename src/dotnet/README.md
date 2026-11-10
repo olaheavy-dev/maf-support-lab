@@ -134,8 +134,9 @@ In fake mode, a message containing `[fake:model-error]` produces a failed turn t
 
 Implemented so far (see [contracts/README.md](../../contracts/README.md)):
 - `POST /api/v1/conversations` and `GET /api/v1/conversations/{id}`;
-- `POST /api/v1/conversations/{id}/turns`: JSON responses only;
-- `GET /api/v1/conversations/{id}/turns/{turn_id}`;
+- `POST /api/v1/conversations/{id}/turns`: JSON, or Server-Sent Events with `Accept: text/event-stream` (L12);
+- `GET /api/v1/conversations/{id}/turns/{turn_id}`: a finished turn, or `state: running` while it runs (L12);
+- `POST /api/v1/conversations/{id}/turns/{turn_id}/cancel`: cooperative cancel, `202` (L12);
 - `POST /api/v1/conversations/{id}/approvals/{approval_id}`: the customer's decision, which resumes the paused write as a new turn (L10);
 - `GET /api/v1/operations/{operation_id}`: the authoritative status of a write (L10).
 
@@ -148,7 +149,7 @@ The rules:
   - a *different* turn is rejected with `409 turn_in_progress`. It is not queued, so the client decides whether to retry.
   - Other conversations aren't affected.
 
-Since L11 conversations, finished turns, approvals and simulated changes survive a restart (see "Durable state" below). Not yet implemented: streaming (L12) and turn cancellation.
+Since L11 conversations, finished turns, approvals and simulated changes survive a restart (see "Durable state" below). Streaming and cancellation are described below (L12).
 
 ```bash
 curl -s -X POST localhost:5180/api/v1/conversations -H 'content-type: application/json' -d '{}'
@@ -245,6 +246,33 @@ Everything a conversation needs survives a restart. It lives in one local SQLite
   - every status change is guarded (`… WHERE status = @expected`). A duplicate, a retry or a second host that finds the operation already finished rolls its whole write back.
   - After a crash, a retried decision is answered from the stored record if the operation already finished. If it's still `running`, the paused request is resumed, which is safe because nothing was applied.
 - **No workflow checkpoints:** the workflow never pauses mid-run, because an approval ends the turn. See `docs/decisions/0003-state-and-idempotency.md`, which also explains why this is *not* exactly-once against a real external provider.
+
+## Streaming and cancellation (L12)
+
+- **A turn is detached from its HTTP request.**
+  - It runs on its own cancellation, which **only** `POST …/turns/{turn_id}/cancel` triggers.
+  - A client that disconnects (plain JSON or a stream) stops nothing and undoes nothing. The turn finishes and is stored.
+  - Recover the result with `GET …/turns/{turn_id}` and `GET /api/v1/operations/{id}`. Repeating the same submission or decision returns the stored turn.
+- **Outcomes:** `completed`, `awaiting_approval` (a pause, not success), `failed` (200 with `error`, not an HTTP 500; stored, so a repeat returns it), and `cancelled`.
+- **Streaming** (`Accept: text/event-stream`) uses contract 1.1:
+  - `turn.started`;
+  - `turn.progress`: triage, routed, specialist, tool_call, awaiting_approval, executing_operation;
+  - `reply.delta`: **the model's tokens, live**;
+  - `reply.reset`;
+  - exactly one `turn.final`, carrying the stored turn.
+- **How it's wired:**
+  - Executors raise progress and text events with `IWorkflowContext.AddEventAsync`.
+  - The router reads them from MAF's native stream (`InProcessExecution.RunStreamingAsync` + `WatchStreamAsync`). The specialist runs with `RunStreamingAsync`.
+  - `TurnStream` writes SSE with ASP.NET Core's `TypedResults.ServerSentEvents`.
+- **Why `reply.reset` exists:** the native stream can send the model's words ("Sure, I will cancel…") *before* the approval request. When the reply the server settles on differs from what was streamed (an approval request, a declined write, a failure), the stream sends `reply.reset`, then the final text. The deltas after the last reset always equal `turn.final`'s `reply.text`.
+- **Cancellation boundaries:**
+  - before the run;
+  - inside every model call (a cancelled token);
+  - before a resumed approval;
+  - **the pre-commit boundary:** `OperationService` checks just before the write's transaction, and the unit of work refuses to start one once cancelled.
+  - **Cancelled before the commit:** nothing changes, the turn is `cancelled`, and an approved operation becomes `failed`/`cancelled`.
+  - **After the commit:** too late. The write stays committed, and the turn reports it as completed.
+- **Measured live** (Haiku): the first progress event arrives in about 30 ms, the first reply text at about 3.7 s, and the final event at about 4.2 s. The model's answer streams for its last part; triage and the tool calls come first.
 
 ## Agents, tools, and the model boundary
 

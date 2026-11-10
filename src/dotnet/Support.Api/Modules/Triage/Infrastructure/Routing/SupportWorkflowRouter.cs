@@ -1,4 +1,6 @@
+using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
+using Support.Api.Common.Application.Streaming;
 using Microsoft.Extensions.AI;
 using Support.Api.Modules.Operations.Application;
 using Support.Api.Modules.Operations.Domain;
@@ -31,16 +33,25 @@ internal sealed class SupportWorkflowRouter(
 {
     public const string WorkflowName = "support-routing";
 
-    public async Task<SupportReply> RouteAsync(RoutingRequest request, CancellationToken cancellationToken)
+    public async Task<SupportReply> RouteAsync(RoutingRequest request, ITurnObserver observer, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(observer);
         var workflow = Build();
-        await using var run = await InProcessExecution.RunAsync(workflow, request, cancellationToken: cancellationToken).ConfigureAwait(false);
 
+        // Streamed run (L12): the workflow's native event stream carries our executors' progress and reply-text events
+        // as they happen; the single SupportReply output is still the turn's authoritative result.
+        await using var run = await InProcessExecution.RunStreamingAsync(workflow, request, cancellationToken: cancellationToken).ConfigureAwait(false);
         SupportReply? reply = null;
-        foreach (var workflowEvent in run.NewEvents)
+        await foreach (var workflowEvent in run.WatchStreamAsync(cancellationToken).ConfigureAwait(false))
         {
             switch (workflowEvent)
             {
+                case SupportProgressEvent progress:
+                    observer.Progress(progress.Progress);
+                    break;
+                case SupportReplyDeltaEvent delta:
+                    observer.Delta(delta.Text);
+                    break;
                 case ExecutorFailedEvent { Data: Exception error }:
                     throw new InvalidOperationException($"Workflow executor '{((ExecutorFailedEvent)workflowEvent).ExecutorId}' failed.", error);
                 case WorkflowErrorEvent { Data: Exception error }:
@@ -60,9 +71,10 @@ internal sealed class SupportWorkflowRouter(
     /// the tool never runs. Either way, any new approval request in the resumed run is declined: a decision never chains
     /// into another request (after a rejection, this is the "do not ask again" rule).
     /// </summary>
-    public async Task<SupportReply> ResumeAsync(ApprovalResume decided, CancellationToken cancellationToken)
+    public async Task<SupportReply> ResumeAsync(ApprovalResume decided, ITurnObserver observer, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(decided);
+        ArgumentNullException.ThrowIfNull(observer);
         var operation = operations.Find(decided.OperationId) ?? throw new InvalidOperationException("Unknown operation.");
         var route = TurnRoute.Routed(operation.Specialist);
         var native = operation.Status is OperationStatus.Running or OperationStatus.Rejected ? pending.Find(operation.OperationId) : null;
@@ -86,10 +98,24 @@ internal sealed class SupportWorkflowRouter(
 
         using (approved ? ApprovalScope.Begin(operation) : null)
         {
-            var response = await agent.RunAsync(
+            // Cancellation boundary (L12): a cancel seen before the run resumes starts nothing.
+            cancellationToken.ThrowIfCancellationRequested();
+            if (approved)
+            {
+                observer.Progress(new TurnProgress(TurnStage.ExecutingOperation, Names.Of(operation.Specialist)));
+            }
+
+            List<AgentResponseUpdate> updates = [];
+            await foreach (var update in agent.RunStreamingAsync(
                 new ChatMessage(ChatRole.User, [native.CreateResponse(approved, approved ? null : decided.Reason ?? "The customer rejected this request.")]),
                 session,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
+                cancellationToken: cancellationToken).ConfigureAwait(false))
+            {
+                updates.Add(update);
+                await SpecialistExecutor.ForwardAsync(update, (workflowEvent, _) => Forward(workflowEvent, observer), cancellationToken).ConfigureAwait(false);
+            }
+
+            var response = updates.ToAgentResponse();
             response = await ApprovalGate.DeclineFollowUpRequestsAsync(agent, session, response, cancellationToken).ConfigureAwait(false);
             await sessions.SaveAsync(operation.ConversationId, name, agent, session, cancellationToken).ConfigureAwait(false);
             pending.Remove(operation.OperationId);
@@ -152,5 +178,21 @@ internal sealed class SupportWorkflowRouter(
             .WithOutputFrom(reply)
             .WithOpenTelemetry(activitySource: AgentTelemetry.WorkflowActivitySource)
             .Build();
+    }
+
+    /// <summary>The resumed run is not a workflow, so its stream events go to the observer directly.</summary>
+    private static ValueTask Forward(WorkflowEvent workflowEvent, ITurnObserver observer)
+    {
+        switch (workflowEvent)
+        {
+            case SupportProgressEvent progress:
+                observer.Progress(progress.Progress);
+                break;
+            case SupportReplyDeltaEvent delta:
+                observer.Delta(delta.Text);
+                break;
+        }
+
+        return ValueTask.CompletedTask;
     }
 }

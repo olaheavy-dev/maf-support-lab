@@ -11,6 +11,22 @@ public static class Names
         _ => throw new ArgumentOutOfRangeException(nameof(target), target, null),
     };
 
+    /// <summary>The route target with this contract name, if there is one.</summary>
+    public static bool TryParseTarget(string name, out RouteTarget target)
+    {
+        foreach (var candidate in Enum.GetValues<RouteTarget>())
+        {
+            if (Of(candidate) == name)
+            {
+                target = candidate;
+                return true;
+            }
+        }
+
+        target = default;
+        return false;
+    }
+
     public static string Of(UnroutedReason reason) => reason switch
     {
         UnroutedReason.InvalidModelOutput => "invalid_model_output",

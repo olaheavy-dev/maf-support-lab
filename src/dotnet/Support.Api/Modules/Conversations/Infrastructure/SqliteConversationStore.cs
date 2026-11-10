@@ -93,21 +93,22 @@ internal sealed class SqliteConversationStore(SupportDatabase database) : IConve
     private sealed record StoredTurnJson(
         string ConversationId, string TurnId, string? ClientTurnId, RouteTarget? RouteTarget, UnroutedReason? UnroutedReason,
         ReplyKind ReplyKind, string ReplyText, string TraceId, DateTimeOffset CreatedAt, DateTimeOffset FinishedAt, TurnOutcome Outcome,
-        string? PendingOperationId, string? ResumedFromTurnId, IReadOnlyList<string> OperationIds)
+        string? PendingOperationId, string? ResumedFromTurnId, IReadOnlyList<string> OperationIds, TurnError? Error = null)
     {
         public static StoredTurnJson From(Turn turn) => new(
-            turn.ConversationId, turn.TurnId, turn.ClientTurnId, turn.Route.Target, turn.Route.UnroutedReason, turn.ReplyKind, turn.ReplyText,
-            turn.TraceId, turn.CreatedAt, turn.FinishedAt, turn.Outcome, turn.PendingOperationId, turn.ResumedFromTurnId, turn.OperationIds);
+            turn.ConversationId, turn.TurnId, turn.ClientTurnId, turn.Route?.Target, turn.Route?.UnroutedReason, turn.ReplyKind, turn.ReplyText,
+            turn.TraceId, turn.CreatedAt, turn.FinishedAt, turn.Outcome, turn.PendingOperationId, turn.ResumedFromTurnId, turn.OperationIds, turn.Error);
 
         public Turn ToTurn() => new(
             ConversationId, TurnId, ClientTurnId,
-            RouteTarget is { } target ? TurnRoute.Routed(target) : TurnRoute.Unrouted(UnroutedReason ?? Triage.Domain.UnroutedReason.AmbiguousRequest),
+            RouteTarget is { } target ? TurnRoute.Routed(target) : UnroutedReason is { } reason ? TurnRoute.Unrouted(reason) : null,
             ReplyKind, ReplyText, TraceId, CreatedAt, FinishedAt)
         {
             Outcome = Outcome,
             PendingOperationId = PendingOperationId,
             ResumedFromTurnId = ResumedFromTurnId,
             OperationIds = OperationIds,
+            Error = Error,
         };
     }
 }

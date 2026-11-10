@@ -41,6 +41,7 @@ internal static class ApiResults
         "not_found" => "Not found",
         "client_turn_id_reused" => "client_turn_id reused",
         "turn_in_progress" => "Turn in progress",
+        "turn_already_finished" => "Turn already finished",
         "approval_mismatch" => "Approval mismatch",
         "approval_already_decided" => "Approval already decided",
         "approval_expired" => "Approval expired",

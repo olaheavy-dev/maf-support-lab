@@ -174,7 +174,12 @@ public sealed class TelemetryTests
             new Uri($"/api/v1/conversations/{conversation}/turns", UriKind.Relative),
             new { client_turn_id = Guid.NewGuid().ToString(), message = $"Where is ORD-1002? {FakeChatClient.FailureTrigger}" },
             TestContext.Current.CancellationToken);
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        // A turn that runs and fails is a result, not an HTTP error (contract; L12): 200 with outcome failed.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(TestContext.Current.CancellationToken);
+        ContractSchemas.AssertValid("turn-result", body);
+        Assert.Equal("failed", body.GetProperty("outcome").GetString());
+        Assert.Equal("internal_error", body.GetProperty("error").GetProperty("code").GetString());
 
         var turnSpan = await WaitForAsync(() => capture.Spans.SingleOrDefault(span => span.DisplayName == "support.turn"));
         var spans = await capture.TraceAsync(factory, turnSpan.TraceId);
@@ -183,10 +188,10 @@ public sealed class TelemetryTests
         Assert.Equal("failed", Tag(turnSpan, "support.turn.outcome"));
         Assert.Equal(typeof(InvalidOperationException).FullName, Tag(turnSpan, "error.type"));
         Assert.Contains(turnSpan.Events, e => e.Name == "exception");
-        Assert.Equal("500", Tag(Assert.Single(spans, span => span.Kind == ActivityKind.Server), "http.response.status_code"));
+        Assert.Equal("200", Tag(Assert.Single(spans, span => span.Kind == ActivityKind.Server), "http.response.status_code"));
 
-        var error = Assert.Single(capture.Logs, log => log.CategoryName!.EndsWith("SubmitTurnCommandHandler", StringComparison.Ordinal));
-        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Error, error.LogLevel);
+        // One error log for the failure (the turn's "finished" line is information level).
+        var error = Assert.Single(capture.Logs, log => log.CategoryName!.EndsWith("SubmitTurnCommandHandler", StringComparison.Ordinal) && log.LogLevel == Microsoft.Extensions.Logging.LogLevel.Error);
         Assert.Equal(turnSpan.TraceId, error.TraceId);
         Assert.IsType<InvalidOperationException>(error.Exception);
 

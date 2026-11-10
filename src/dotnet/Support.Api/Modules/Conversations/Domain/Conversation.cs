@@ -73,6 +73,7 @@ public sealed class Conversation
             {
                 var reservation = new TurnReservation(stored.Turn.TurnId, stored.Message ?? string.Empty);
                 reservation.Completion.TrySetResult(stored.Turn);
+                reservation.Dispose();
                 conversation.reservations[key] = reservation;
             }
         }
@@ -111,14 +112,14 @@ public sealed class Conversation
     }
 
     /// <summary>Stores the finished turn, remembers what it verified, and frees the conversation for the next turn.</summary>
-    public void Complete(TurnReservation reservation, Turn turn, SupportReply reply)
+    public void Complete(TurnReservation reservation, Turn turn, SupportReply? reply)
     {
         ArgumentNullException.ThrowIfNull(reservation);
         ArgumentNullException.ThrowIfNull(turn);
         lock (gate)
         {
             finishedTurns[turn.TurnId] = turn;
-            context = context.After(reply);
+            context = reply is null ? context : context.After(reply);
             if (ReferenceEquals(activeTurn, reservation))
             {
                 activeTurn = null;
@@ -126,6 +127,7 @@ public sealed class Conversation
         }
 
         reservation.Completion.TrySetResult(turn);
+        reservation.Dispose();
     }
 
     /// <summary>Releases a reservation whose run failed, so the client can retry with the same id.</summary>
@@ -146,6 +148,30 @@ public sealed class Conversation
         }
 
         reservation.Completion.TrySetException(error);
+        reservation.Dispose();
+    }
+
+    /// <summary>
+    /// A turn's state for a status lookup, read under one lock (Codex review on PR #78): finishing a turn stores it and
+    /// clears the running one in the same lock, so a lookup sees one or the other, never neither.
+    /// </summary>
+    public (Turn? Finished, TurnReservation? Running) FindForStatus(string turnId)
+    {
+        lock (gate)
+        {
+            var finished = finishedTurns.GetValueOrDefault(turnId);
+            var running = finished is null && activeTurn is { } active && string.Equals(active.TurnId, turnId, StringComparison.Ordinal) ? active : null;
+            return (finished, running);
+        }
+    }
+
+    /// <summary>The running turn with this id, if it is the one running now (L12: status lookup and cancel).</summary>
+    public TurnReservation? FindRunning(string turnId)
+    {
+        lock (gate)
+        {
+            return activeTurn is { } running && string.Equals(running.TurnId, turnId, StringComparison.Ordinal) ? running : null;
+        }
     }
 
     public Turn? FindTurn(string turnId)

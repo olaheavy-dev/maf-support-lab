@@ -286,8 +286,9 @@ public sealed class DurableStateTests
                 "CREATE TRIGGER stop_here BEFORE INSERT ON native_approval_requests BEGIN SELECT RAISE(ABORT, 'simulated stop'); END;");
             var api = new ApiClient(host.CreateClient());
             conversation = await api.CreateConversationAsync();
-            var status = await PostTurnStatusAsync(host, conversation, Guid.NewGuid().ToString(), "Please cancel order ORD-1003.");
-            Assert.Equal(HttpStatusCode.InternalServerError, status);
+            // The turn ran and failed (stored as outcome failed since L12), so the client gets a result, not a 500.
+            var failed = await api.AskAsync(conversation, "Please cancel order ORD-1003.");
+            Assert.Equal("failed", failed.GetProperty("outcome").GetString());
             host.Services.GetRequiredService<SupportDatabase>().Execute("DROP TRIGGER stop_here");
         }
 
@@ -410,6 +411,28 @@ public sealed class DurableStateTests
         Assert.Equal("committed", (await api.GetOperationAsync(operationId)).GetProperty("status").GetString());
         Assert.Equal("tickets=1", State(factory, "create_ticket"));
         Assert.Equal("completed", (await api.AskAsync(conversation, "Where is my order ORD-1002?")).GetProperty("outcome").GetString());
+    }
+
+    [Fact]
+    public async Task A_turn_that_fails_after_proposing_a_write_leaves_no_actionable_approval()
+    {
+        // Codex review on PR #78: the proposal is stored, then saving the session fails, so the turn ends failed. Its
+        // approval must not stay actionable: the customer was told the turn failed, and the paused state is incomplete.
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+        factory.Services.GetRequiredService<SupportDatabase>().Execute(
+            "CREATE TRIGGER stop_here BEFORE INSERT ON agent_sessions BEGIN SELECT RAISE(ABORT, 'simulated failure'); END;");
+
+        var failed = await api.AskAsync(conversation, "Please cancel order ORD-1003.");
+
+        Assert.Equal("failed", failed.GetProperty("outcome").GetString());
+        Assert.Empty((await api.GetConversationAsync(conversation)).GetProperty("pending_approvals").EnumerateArray());
+        var operation = Assert.Single(factory.Services.GetRequiredService<IOperationStore>().ForConversation(conversation));
+        Assert.Equal(OperationStatus.Expired, operation.Status);
+        var (status, _) = await api.DecideAsync(conversation, operation.ApprovalId, operation.OperationId, "approve");
+        Assert.Equal(HttpStatusCode.Gone, status);
+        Assert.Equal("processing", Order(factory, "ORD-1003"));
     }
 
     /// <summary>Posts a turn and returns only the status: a failed turn's body is a developer error page, not JSON.</summary>
