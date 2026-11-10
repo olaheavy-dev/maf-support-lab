@@ -2,78 +2,193 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.maf-support-lab.example/v1/stream-event.schema.json",
   "title": "Turn stream event",
-  "description": "One Server-Sent Event payload. The SSE 'event' field equals type and the SSE 'id' field equals sequence. turn.final is the only terminal event.",
+  "description": "One Server-Sent Event payload. The SSE 'event' field equals type and the SSE 'id' field equals sequence. turn.final is the only terminal event. reply.reset (1.1) tells the client to discard the reply text streamed so far.",
   "type": "object",
-  "required": ["contract_version", "type", "conversation_id", "turn_id", "sequence", "data"],
+  "required": [
+    "contract_version",
+    "type",
+    "conversation_id",
+    "turn_id",
+    "sequence",
+    "data"
+  ],
   "additionalProperties": false,
   "properties": {
-    "contract_version": { "$ref": "common.schema.json#/$defs/contract_version" },
-    "type": { "enum": ["turn.started", "turn.progress", "reply.delta", "turn.final"] },
-    "conversation_id": { "$ref": "common.schema.json#/$defs/conversation_id" },
-    "turn_id": { "$ref": "common.schema.json#/$defs/turn_id" },
-    "sequence": { "type": "integer", "minimum": 1 },
-    "data": { "type": "object" }
+    "contract_version": {
+      "$ref": "common.schema.json#/$defs/contract_version"
+    },
+    "type": {
+      "enum": [
+        "turn.started",
+        "turn.progress",
+        "reply.delta",
+        "reply.reset",
+        "turn.final"
+      ]
+    },
+    "conversation_id": {
+      "$ref": "common.schema.json#/$defs/conversation_id"
+    },
+    "turn_id": {
+      "$ref": "common.schema.json#/$defs/turn_id"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "data": {
+      "type": "object"
+    }
   },
   "allOf": [
     {
-      "if": { "properties": { "type": { "const": "turn.started" } } },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "turn.started"
+          }
+        }
+      },
       "then": {
         "properties": {
           "data": {
             "type": "object",
-            "required": ["client_turn_id"],
+            "required": [
+              "client_turn_id"
+            ],
             "additionalProperties": false,
             "properties": {
-              "client_turn_id": { "oneOf": [{ "$ref": "common.schema.json#/$defs/client_turn_id" }, { "type": "null" }] },
-              "resumed_from_turn_id": { "$ref": "common.schema.json#/$defs/turn_id" }
+              "client_turn_id": {
+                "oneOf": [
+                  {
+                    "$ref": "common.schema.json#/$defs/client_turn_id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resumed_from_turn_id": {
+                "$ref": "common.schema.json#/$defs/turn_id"
+              }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "type": { "const": "turn.progress" } } },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "turn.progress"
+          }
+        }
+      },
       "then": {
         "properties": {
           "data": {
             "type": "object",
-            "required": ["stage"],
+            "required": [
+              "stage"
+            ],
             "additionalProperties": false,
             "properties": {
-              "stage": { "enum": ["triage", "routed", "specialist", "tool_call", "awaiting_approval", "executing_operation"] },
-              "route": { "$ref": "common.schema.json#/$defs/route" },
-              "tool": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" }
+              "stage": {
+                "enum": [
+                  "triage",
+                  "routed",
+                  "specialist",
+                  "tool_call",
+                  "awaiting_approval",
+                  "executing_operation"
+                ]
+              },
+              "route": {
+                "$ref": "common.schema.json#/$defs/route"
+              },
+              "tool": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$"
+              }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "type": { "const": "reply.delta" } } },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "reply.delta"
+          }
+        }
+      },
       "then": {
         "properties": {
           "data": {
             "type": "object",
-            "required": ["text"],
+            "required": [
+              "text"
+            ],
             "additionalProperties": false,
-            "properties": { "text": { "type": "string", "minLength": 1, "maxLength": 2000 } }
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            }
           }
         }
       }
     },
     {
-      "if": { "properties": { "type": { "const": "turn.final" } } },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "reply.reset"
+          }
+        }
+      },
       "then": {
         "properties": {
           "data": {
             "type": "object",
-            "required": ["result"],
+            "additionalProperties": false,
+            "maxProperties": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "turn.final"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "result"
+            ],
             "additionalProperties": false,
             "properties": {
               "result": {
                 "allOf": [
-                  { "$ref": "turn-result.schema.json" },
-                  { "properties": { "state": { "const": "finished" } } }
+                  {
+                    "$ref": "turn-result.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "state": {
+                        "const": "finished"
+                      }
+                    }
+                  }
                 ]
               }
             }

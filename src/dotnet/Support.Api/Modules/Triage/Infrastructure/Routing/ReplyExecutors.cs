@@ -1,6 +1,7 @@
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
+using Support.Api.Common.Application.Streaming;
 using Support.Api.Modules.Agents.Application;
 using Support.Api.Modules.Triage.Application;
 using Support.Api.Modules.Triage.Domain;
@@ -37,10 +38,26 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
                 $"Verified context: earlier in this conversation the customer's order {verified} was found. If they refer to \"it\" or \"that order\", they mean {verified}."));
         }
         using var activity = TurnActivity.Begin();
-        var response = await agent.RunAsync(input, session, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await context.AddEventAsync(new SupportProgressEvent(new TurnProgress(TurnStage.Specialist, Names.Of(target))), cancellationToken).ConfigureAwait(false);
+
+        // Streamed (L12): the model's text goes out as it arrives, and each tool call as a progress step. The collected
+        // updates are the same response a non-streaming run returns, so everything below is unchanged.
+        List<AgentResponseUpdate> updates = [];
+        await foreach (var update in agent.RunStreamingAsync(input, session, cancellationToken: cancellationToken).ConfigureAwait(false))
+        {
+            updates.Add(update);
+            await ForwardAsync(update, context.AddEventAsync, cancellationToken).ConfigureAwait(false);
+        }
+
+        var response = updates.ToAgentResponse();
 
         // A write tool pauses natively for approval; the gate binds it to an operation or declines it (L10).
         var gated = await gate.AfterRunAsync(agent, session, response, request, target, cancellationToken).ConfigureAwait(false);
+        if (gated.Proposed is not null)
+        {
+            await context.AddEventAsync(new SupportProgressEvent(new TurnProgress(TurnStage.AwaitingApproval)), cancellationToken).ConfigureAwait(false);
+        }
+
         if (session is not null)
         {
             await sessions.SaveAsync(request.ConversationId!, name, agent, session, cancellationToken).ConfigureAwait(false);
@@ -59,6 +76,20 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
             _ => new SupportReply(request.Route, ReplyKindFrom(activity.Activity), ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
         };
         await context.SendMessageAsync(reply, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Turns one streamed update into stream events: a tool call becomes a progress step, text becomes a delta.</summary>
+    internal static async ValueTask ForwardAsync(AgentResponseUpdate update, Func<WorkflowEvent, CancellationToken, ValueTask> raise, CancellationToken cancellationToken)
+    {
+        foreach (var call in update.Contents.OfType<FunctionCallContent>())
+        {
+            await raise(new SupportProgressEvent(new TurnProgress(TurnStage.ToolCall, Tool: call.Name)), cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!string.IsNullOrEmpty(update.Text))
+        {
+            await raise(new SupportReplyDeltaEvent(update.Text), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

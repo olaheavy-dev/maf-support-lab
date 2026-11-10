@@ -16,5 +16,7 @@ public static class ConversationErrors
 
     public static readonly Error ApprovalExpired = Error.Gone("approval_expired", "The approval window has passed. Nothing was changed.");
 
+    public static readonly Error TurnAlreadyFinished = Error.Conflict("turn_already_finished", "This turn has already finished, so it can no longer be cancelled.");
+
     public static readonly Error ClientTurnIdReused = Error.Conflict("client_turn_id_reused", "This client_turn_id was already used with a different message.");
 }

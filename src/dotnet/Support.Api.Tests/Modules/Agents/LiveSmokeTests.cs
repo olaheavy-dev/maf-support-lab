@@ -152,4 +152,62 @@ public sealed class LiveSmokeTests
         Assert.Equal("approval_result", decided.ReplyKind());
         Assert.Equal("committed", (await restarted.GetOperationAsync(pending.GetProperty("operation_id").GetString()!)).GetProperty("status").GetString());
     }
+
+    [Fact(Explicit = true)]
+    public async Task Claude_streams_tokens_before_the_final_event_and_resets_text_replaced_by_an_approval_request()
+    {
+        var key = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(key), "Set ANTHROPIC_API_KEY to run the live smoke check.");
+        await using var factory = SupportApiFactory.Create(new Dictionary<string, string?>
+        {
+            ["ModelProvider:Mode"] = "Live",
+            ["ModelProvider:Anthropic:Model"] = "claude-haiku-5-5",
+            ["ModelProvider:Anthropic:ApiKey"] = key,
+        });
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+
+        // L12 with real Claude: the reply's first token arrives before the final event, and the measured latencies
+        // (first progress, first text, final) are written to the test output for the evidence note.
+        var answer = await TimedStreamAsync(api, conversation, "Where is my order ORD-1002?");
+        Assert.Equal("completed", answer.Final.GetProperty("outcome").GetString());
+        Assert.True(answer.FirstDelta < answer.Total, "The first reply text must arrive before the final event.");
+        Assert.Equal(answer.Final.ReplyText(), SseClient.CountedText(answer.Events));
+
+        var write = await TimedStreamAsync(api, conversation, "Please cancel order ORD-1003.");
+        Assert.Equal("awaiting_approval", write.Final.GetProperty("outcome").GetString());
+        Assert.Equal(write.Final.ReplyText(), SseClient.CountedText(write.Events));
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        await api.AskAsync(conversation, "Where is my order ORD-1001?");
+        TestContext.Current.TestOutputHelper?.WriteLine($"plain JSON turn: {started.ElapsedMilliseconds} ms");
+    }
+
+    private static async Task<(IReadOnlyList<JsonElement> Events, JsonElement Final, TimeSpan FirstProgress, TimeSpan FirstDelta, TimeSpan Total)> TimedStreamAsync(ApiClient api, string conversation, string message)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri($"/api/v1/conversations/{conversation}/turns", UriKind.Relative))
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { client_turn_id = Guid.NewGuid().ToString(), message }),
+        };
+        request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        using var response = await api.Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, TestContext.Current.CancellationToken);
+        using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
+        var text = new System.Text.StringBuilder();
+        TimeSpan firstProgress = TimeSpan.Zero, firstDelta = TimeSpan.Zero;
+        string? line;
+        while ((line = await reader.ReadLineAsync(TestContext.Current.CancellationToken)) is not null)
+        {
+            text.Append(line).Append('\n');
+            if (line == "event: turn.progress" && firstProgress == TimeSpan.Zero) firstProgress = clock.Elapsed;
+            if (line == "event: reply.delta" && firstDelta == TimeSpan.Zero) firstDelta = clock.Elapsed;
+        }
+
+        var total = clock.Elapsed;
+        var events = SseClient.Parse(text.ToString());
+        var resets = events.Count(e => e.GetProperty("type").GetString() == "reply.reset");
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"{message} -> first progress {firstProgress.TotalMilliseconds:0} ms, first text {firstDelta.TotalMilliseconds:0} ms, final {total.TotalMilliseconds:0} ms, {events.Count} events, {resets} reset(s)");
+        return (events, SseClient.Final(events), firstProgress, firstDelta, total);
+    }
 }

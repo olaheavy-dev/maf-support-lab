@@ -184,6 +184,32 @@
       "stream": true
     },
     {
+      "file": "valid/stream-reply-reset.json",
+      "schema": "stream-event",
+      "valid": true,
+      "covers": [
+        "stream_pause"
+      ],
+      "stream": true
+    },
+    {
+      "file": "valid/stream-cancelled.json",
+      "schema": "stream-event",
+      "valid": true,
+      "covers": [
+        "stream_error"
+      ],
+      "stream": true
+    },
+    {
+      "file": "valid/operation-failed-cancelled.json",
+      "schema": "operation",
+      "valid": true,
+      "covers": [
+        "operation_status"
+      ]
+    },
+    {
       "file": "valid/turn-result-running.json",
       "schema": "turn-result",
       "valid": true,
@@ -406,6 +432,15 @@
         "forbidden_access"
       ],
       "reason": "not_found must use HTTP 404"
+    },
+    {
+      "file": "invalid/stream-reset-with-text.json",
+      "schema": "stream-event",
+      "valid": false,
+      "covers": [
+        "stream_pause"
+      ],
+      "reason": "reply.reset carries no data: the text that follows it is sent as reply.delta"
     }
   ]
 }

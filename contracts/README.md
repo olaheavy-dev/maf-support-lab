@@ -72,7 +72,7 @@ Operation `status` is the authoritative record, independent of any connection:
 | `expired` | No decision in time. Nothing changed. |
 | `running` | Approved and executing. |
 | `committed` | The change is recorded; `result` holds the facts (refund id and amount, cancelled order, ticket id). |
-| `failed` | Approved but not executed; `failure.code` is `not_eligible`, `not_found`, `timeout`, or `internal_error`. Nothing changed. |
+| `failed` | Approved but not executed; `failure.code` is `not_eligible`, `not_found`, `timeout`, `cancelled` (1.1), or `internal_error`. Nothing changed. |
 
 Decision errors: wrong `operation_id` → `409 approval_mismatch`; a different decision after one is recorded → `409 approval_already_decided`; too late → `410 approval_expired`. **Repeating the same decision is idempotent:** it returns the current result and never runs the write twice.
 
@@ -87,8 +87,15 @@ data: {"contract_version":"1.0","type":"reply.delta","conversation_id":"conv_…
 ```
 
 - Each event's `data` line is one `stream-event` JSON document. The SSE `event` equals `type`, and the SSE `id` equals `sequence`, which starts at 1 and increases by 1.
-- Event types: `turn.started`, `turn.progress` (stage, route, tool name; never message content), `reply.delta` (text), and **`turn.final`**, the one terminal event, carrying the finished `turn-result`.
-- The concatenated `reply.delta` texts equal the final `reply.text`. Partial text is display-only and never drives routing or decisions.
+- **Event types:**
+  - `turn.started`;
+  - `turn.progress`: stage, route and tool name; never message content;
+  - `reply.delta`: text, which may be the model's tokens as they arrive;
+  - `reply.reset` (1.1): discard the reply text shown so far;
+  - **`turn.final`**: the one terminal event, carrying the finished `turn-result`.
+- **Reply text:** the `reply.delta` texts sent after the last `reply.reset` (or from the start, if there was none) concatenate to the final `reply.text`. If the final result has no reply, a stream that sent text ends with `reply.reset` before `turn.final`.
+  - The server sends `reply.reset` when the text it streamed is not the reply it settles on. For example, the model starts "Sure, I will refund…" but the turn pauses for approval with a server-written request.
+  - Partial text is display-only and never drives routing, approval or any decision. `turn.final` is authoritative.
 - `turn.final` is sent only while the connection still works. **A client that disconnects may never receive it.** Recover with `GET …/turns/{turn_id}` and `GET /api/v1/operations/{operation_id}`. Version 1 does not replay deltas (`Last-Event-ID` is ignored).
 - A comment line `: keepalive` may be sent every 15 seconds.
 - Errors detected before the stream starts are normal HTTP problem responses. After `turn.started`, failures end with `turn.final` and outcome `failed`.
@@ -98,7 +105,7 @@ data: {"contract_version":"1.0","type":"reply.delta","conversation_id":"conv_…
 `POST …/turns/{turn_id}/cancel` asks the turn to stop and returns 202. Cancellation is cooperative:
 
 - Work checks for cancellation at a defined pre-commit boundary and starts nothing new once it sees it.
-- Cancelled before a write commits: outcome `cancelled`, no change.
+- Cancelled before a write commits: outcome `cancelled`, no change. An approved operation that was stopped this way becomes `failed` with `failure.code` `cancelled` (1.1).
 - A write already committed stays committed. The turn and operation report the factual committed state; nothing is rolled back.
 - A dropped connection is **not** a cancellation request and does not prevent or undo a write. Cancelling a finished turn returns `409 turn_already_finished`.
 
@@ -158,3 +165,4 @@ python3 -m venv .venv
 ```
 
 `requirements.txt` is generated from `requirements.in` with hashes (command at the top of `requirements.in`). These are test tools only, not application dependencies.
+| 1.1 | L12 | **Streaming checked against the native .NET SDK** (MAF 1.28.0: `AIAgent.RunStreamingAsync` → `AgentResponseUpdate`; workflows `InProcessExecution.RunStreamingAsync` + `WatchStreamAsync`). **Added the `reply.reset` event and the operation failure code `cancelled`.** Live model tokens show the model's words before the server knows the final reply. A native stream delivers text *before* a `ToolApprovalRequestContent`, and the server may then replace it (approval request, declined write), so the client needs a way to discard it. The text rule now counts only deltas after the last reset. An approved write stopped by cancellation before it commits needed a truthful status. | Additive (new event type, new enum value). A 1.0 client that ignores `reply.reset` may show stale partial text until `turn.final`, whose `reply.text` stays authoritative; streams without a reset are unchanged. Readers of operation `failure.code` must accept `cancelled`. |

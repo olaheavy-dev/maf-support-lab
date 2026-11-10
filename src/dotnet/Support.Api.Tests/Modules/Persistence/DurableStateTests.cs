@@ -286,8 +286,9 @@ public sealed class DurableStateTests
                 "CREATE TRIGGER stop_here BEFORE INSERT ON native_approval_requests BEGIN SELECT RAISE(ABORT, 'simulated stop'); END;");
             var api = new ApiClient(host.CreateClient());
             conversation = await api.CreateConversationAsync();
-            var status = await PostTurnStatusAsync(host, conversation, Guid.NewGuid().ToString(), "Please cancel order ORD-1003.");
-            Assert.Equal(HttpStatusCode.InternalServerError, status);
+            // The turn ran and failed (stored as outcome failed since L12), so the client gets a result, not a 500.
+            var failed = await api.AskAsync(conversation, "Please cancel order ORD-1003.");
+            Assert.Equal("failed", failed.GetProperty("outcome").GetString());
             host.Services.GetRequiredService<SupportDatabase>().Execute("DROP TRIGGER stop_here");
         }
 

@@ -1,0 +1,10 @@
+{
+  "contract_version": "1.1",
+  "type": "reply.reset",
+  "conversation_id": "conv_7Hq2Lm9Xa1",
+  "turn_id": "turn_A1b2C3d4E5",
+  "sequence": 6,
+  "data": {
+    "text": "leftover"
+  }
+}

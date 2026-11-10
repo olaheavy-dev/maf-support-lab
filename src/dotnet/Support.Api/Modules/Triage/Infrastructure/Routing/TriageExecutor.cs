@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
+using Support.Api.Common.Application.Streaming;
 using Support.Api.Modules.Agents.Application;
 using Support.Api.Modules.Triage.Application;
 using Support.Api.Modules.Triage.Domain;
@@ -18,6 +19,8 @@ internal sealed partial class TriageExecutor(SupportAgents agents, TriageMetrics
     public override async ValueTask<TriageOutcome> HandleAsync(RoutingRequest request, IWorkflowContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(context);
+        await context.AddEventAsync(new SupportProgressEvent(new TurnProgress(TurnStage.Triage)), cancellationToken).ConfigureAwait(false);
         // Triage is stateless (no session): it classifies this one message. A follow-up such as "and the invoice for it?"
         // gets the previous route as a short, code-written hint; the message itself is still what gets classified.
         List<ChatMessage> input = [];
@@ -37,6 +40,12 @@ internal sealed partial class TriageExecutor(SupportAgents agents, TriageMetrics
         { ConversationId = request.ConversationId, TurnId = request.TurnId, Context = request.Context };
 
         Describe(outcome, parsed.IsSuccess ? null : parsed.Error.Description);
+        await context.AddEventAsync(
+            new SupportProgressEvent(new TurnProgress(
+                TurnStage.Routed,
+                outcome.Route.Target is { } target ? Names.Of(target) : null,
+                outcome.Route.UnroutedReason is { } reason ? Names.Of(reason) : null)),
+            cancellationToken).ConfigureAwait(false);
         return outcome;
     }
 

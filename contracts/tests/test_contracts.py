@@ -91,12 +91,18 @@ class StreamRuleTests(unittest.TestCase):
                 self.assertEqual((events[0]["conversation_id"], events[0]["turn_id"]), (final["conversation_id"], final["turn_id"]))
 
     def test_streamed_text_matches_the_final_reply(self):
+        # 1.1: only the deltas after the last reply.reset count. A final result without a reply leaves no counted text.
+        # A stream that sent no text at all (a replayed duplicate, for example) has nothing to check.
         for entry in self.streams():
             events = load_json(EXAMPLES / entry["file"])
-            deltas = "".join(event["data"]["text"] for event in events if event["type"] == "reply.delta")
-            if deltas:
-                with self.subTest(stream=entry["file"]):
-                    self.assertEqual(events[-1]["data"]["result"]["reply"]["text"], deltas)
+            resets = [index for index, event in enumerate(events) if event["type"] == "reply.reset"]
+            counted = events[resets[-1] + 1:] if resets else events
+            deltas = "".join(event["data"]["text"] for event in counted if event["type"] == "reply.delta")
+            reply = events[-1]["data"]["result"].get("reply")
+            if not any(event["type"] in ("reply.delta", "reply.reset") for event in events):
+                continue
+            with self.subTest(stream=entry["file"]):
+                self.assertEqual(reply["text"] if reply else "", deltas)
 
 
 class TransportSeparationTests(unittest.TestCase):
