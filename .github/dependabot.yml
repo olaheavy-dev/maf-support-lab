@@ -10,4 +10,21 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
-# Add NuGet, uv, and frontend updates when their manifests are introduced.
+  - package-ecosystem: nuget
+    # Central versions live in /Directory.Packages.props; lock files are refreshed with each update.
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      aspire:
+        patterns: ["Aspire.*"]
+      opentelemetry:
+        patterns: ["OpenTelemetry*"]
+      agents-and-ai:
+        patterns: ["Microsoft.Agents.*", "Microsoft.Extensions.AI*", "Anthropic"]
+      microsoft-extensions:
+        patterns: ["Microsoft.Extensions.*", "Microsoft.AspNetCore.*"]
+      tests:
+        patterns: ["xunit*"]
+# Add uv and frontend updates when their manifests are introduced.

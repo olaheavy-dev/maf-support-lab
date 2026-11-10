@@ -9,4 +9,17 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
+
+  <!-- Reproducible restore: every project records exact package versions in packages.lock.json.
+       Local restores update the lock when a version changes; CI restores in locked mode and fails on drift. -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
+
+  <!-- Vulnerability advisories come from the network and change over time. Show them, but do not let a
+       newly published advisory fail unrelated builds; the dependency-audit workflow fails on them instead. -->
+  <PropertyGroup>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
 </Project>

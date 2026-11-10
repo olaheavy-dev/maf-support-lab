@@ -1,0 +1,36 @@
+name: Dependency audit
+# Network-backed vulnerability check, kept apart from the deterministic required checks:
+# advisories are published over time, so this can start failing without any code change.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "Directory.Packages.props"
+      - "**/packages.lock.json"
+permissions:
+  contents: read
+jobs:
+  nuget:
+    name: nuget-vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install .NET SDK from global.json
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore maf-support-lab.slnx
+      - name: Fail on known vulnerable packages (direct and transitive)
+        run: |
+          dotnet list maf-support-lab.slnx package --vulnerable --include-transitive | tee "$RUNNER_TEMP/audit.txt"
+          if grep -q "has the following vulnerable packages" "$RUNNER_TEMP/audit.txt"; then
+            echo "::error::Vulnerable NuGet packages found"
+            exit 1
+          fi

@@ -6,6 +6,11 @@
     <!-- Keep the dashboard and orchestrator as NuGet packages so a clean checkout and CI run without
          the Aspire CLI installed. ASPIRE010 only notes that CLI-bundle-only features are off. -->
     <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+    <!-- Aspire restores a different dashboard/orchestrator package per operating system, so a lock file
+         made on macOS cannot be restored on Linux CI. The AppHost stays pinned through the exact
+         Aspire.AppHost.Sdk version and Directory.Packages.props instead of a lock file. -->
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <RestoreLockedMode>false</RestoreLockedMode>
   </PropertyGroup>
 
   <ItemGroup>

@@ -30,6 +30,8 @@ dotnet run --project src/dotnet/Support.Api
 dotnet test --solution maf-support-lab.slnx
 ```
 
+Package versions are locked: after changing a version in `Directory.Packages.props`, run `dotnet restore` and commit the updated `packages.lock.json` files. CI restores in locked mode and fails on drift. See [testing](../../docs/testing.md).
+
 With the API running (port 5180 in the `http` profile): `GET /health` returns `Healthy`, and in Development `GET /dev/whoami` shows the server-side principal.
 
 ## Model mode
