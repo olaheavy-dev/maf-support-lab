@@ -6,7 +6,8 @@ namespace Support.Api.Modules.Operations.Domain;
 /// <summary>
 /// A proposed write and its approval, bound when created to the customer, the conversation, the kind, and the exact
 /// arguments. Its status is the authoritative record of what happened, whatever happened to any connection.
-/// State changes are guarded: a decision is recorded once, and the write runs at most once.
+/// State changes are guarded: a decision is recorded once, and the write runs at most once. The durable store
+/// (L11) guards the same transitions by status, so they hold across restarts too.
 /// </summary>
 public sealed class Operation
 {
@@ -145,4 +146,51 @@ public sealed class Operation
     }
 
     private bool executing;
+
+    /// <summary>The operation's full state, for durable storage (L11).</summary>
+    public OperationSnapshot ToSnapshot()
+    {
+        lock (gate)
+        {
+            return new OperationSnapshot(
+                OperationId, ApprovalId, ConversationId, OwnerCustomerId, Kind, Arguments.Values.ToDictionary(), Summary, Specialist, SourceTurnId,
+                CreatedAt, ExpiresAt, UpdatedAt, Status, Decision, DecisionTurnId, Result?.ToJsonString(), Failure?.Code, Failure?.Detail);
+        }
+    }
+
+    public static Operation FromSnapshot(OperationSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        var operation = new Operation(
+            snapshot.OperationId, snapshot.ApprovalId, snapshot.ConversationId, snapshot.OwnerCustomerId, snapshot.Kind,
+            new OperationArguments(snapshot.Arguments), snapshot.Summary, snapshot.Specialist, snapshot.SourceTurnId, snapshot.CreatedAt, snapshot.ExpiresAt);
+        operation.Reload(snapshot);
+        return operation;
+    }
+
+    /// <summary>
+    /// Replaces this instance's changing state with the stored state, e.g. after a guarded store update lost a race or
+    /// an atomic write rolled back, so callers holding this instance never report a state that was not stored.
+    /// </summary>
+    public void Reload(OperationSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        lock (gate)
+        {
+            Status = snapshot.Status;
+            Decision = snapshot.Decision;
+            DecisionTurnId = snapshot.DecisionTurnId;
+            Result = snapshot.ResultJson is null ? null : System.Text.Json.Nodes.JsonNode.Parse(snapshot.ResultJson)!.AsObject();
+            Failure = snapshot.FailureCode is null ? null : (snapshot.FailureCode, snapshot.FailureDetail ?? string.Empty);
+            UpdatedAt = snapshot.UpdatedAt;
+            executing = false;
+        }
+    }
 }
+
+/// <summary>An operation as stored: plain values only.</summary>
+public sealed record OperationSnapshot(
+    string OperationId, string ApprovalId, string ConversationId, string OwnerCustomerId, OperationKind Kind,
+    IReadOnlyDictionary<string, string> Arguments, string Summary, RouteTarget Specialist, string SourceTurnId,
+    DateTimeOffset CreatedAt, DateTimeOffset ExpiresAt, DateTimeOffset UpdatedAt, OperationStatus Status,
+    ApprovalDecision? Decision, string? DecisionTurnId, string? ResultJson, string? FailureCode, string? FailureDetail);

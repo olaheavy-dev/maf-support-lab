@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Support.Api.Common.Application;
 using Support.Api.Common.Domain;
 using Support.Api.Modules.Identity.Application;
 using Support.Api.Modules.Operations.Domain;
@@ -16,7 +17,8 @@ public sealed class OperationService(
     IPrincipalSource principals,
     SupportPolicy policy,
     TimeProvider clock,
-    OperationMetrics metrics)
+    OperationMetrics metrics,
+    IUnitOfWork unitOfWork)
 {
     private readonly Dictionary<OperationKind, IWriteHandler> handlersByKind = handlers.ToDictionary(handler => handler.Kind);
 
@@ -74,16 +76,53 @@ public sealed class OperationService(
             return operation.Result is { } done ? Result.Success(done) : Result.Failure<JsonObject>(Error.Conflict("not_approved", "This action is not awaiting execution."));
         }
 
-        var result = await handlersByKind[kind].ExecuteAsync(operation.Arguments, cancellationToken).ConfigureAwait(false);
-        var now = clock.GetUtcNow();
+        // The business change and the operation's "committed" record are one transaction (L11): both are stored or
+        // neither is. The commit is guarded on the stored status still being "running", so if any other run (a retry,
+        // a duplicate, another host after a restart) finished this operation first, this write rolls back.
+        Result<JsonObject> result;
+        try
+        {
+            result = await unitOfWork.AtomicallyAsync(
+                async () =>
+                {
+                    var executed = await handlersByKind[kind].ExecuteAsync(operation.Arguments, cancellationToken).ConfigureAwait(false);
+                    if (executed.IsSuccess)
+                    {
+                        operation.Commit(executed.Value, clock.GetUtcNow());
+                        if (!store.TryUpdate(operation, OperationStatus.Running))
+                        {
+                            throw new RollbackException("The operation was already finished by another run.");
+                        }
+                    }
+
+                    return executed;
+                },
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (RollbackException)
+        {
+            // TryUpdate reloaded the stored state: report what the other run recorded, change nothing.
+            return operation.Result is { } stored ? Result.Success(stored) : Result.Failure<JsonObject>(Error.Conflict("not_approved", "This action is not awaiting execution."));
+        }
+        catch
+        {
+            // Rolled back: forget the in-memory commit so nobody reports a change that was not stored.
+            if (store.Find(operation.OperationId) is { } stored)
+            {
+                operation.Reload(stored.ToSnapshot());
+            }
+
+            throw;
+        }
+
         if (result.IsSuccess)
         {
-            operation.Commit(result.Value, now);
             metrics.Record(kind, "committed");
         }
         else
         {
-            operation.Fail(result.Error.Code is "not_eligible" or "not_found" ? result.Error.Code : "internal_error", result.Error.Description, now);
+            operation.Fail(result.Error.Code is "not_eligible" or "not_found" ? result.Error.Code : "internal_error", result.Error.Description, clock.GetUtcNow());
+            store.TryUpdate(operation, OperationStatus.Running);
             metrics.Record(kind, "failed");
         }
 

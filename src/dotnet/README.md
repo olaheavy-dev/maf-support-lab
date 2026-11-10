@@ -21,13 +21,14 @@ Support.Api/
 ├─ Common/
 │  ├─ Domain/                 Result, Error, ErrorType
 │  ├─ Application/            ICommand/IQuery + handler interfaces, TraceIds, SupportTelemetry (span/meter name)
-│  ├─ Infrastructure/         SupportTelemetryRegistration (subscribes the OTel pipeline, service version)
+│  ├─ Infrastructure/         SupportTelemetryRegistration (subscribes the OTel pipeline, service version);
+│  │                          Persistence/ SupportDatabase (SQLite file, schema, atomic unit of work; L11)
 │  └─ Presentation/           ContractJson, ApiResults (every problem response), Result.Match
 └─ Modules/
    ├─ Conversations/          the contract API
    │  ├─ Domain/              Conversation (idempotent turn reservation), Turn, ReplyKind
    │  ├─ Application/         CreateConversation, GetConversation, SubmitTurn, GetTurn handlers; IConversationStore
-   │  ├─ Infrastructure/      InMemoryConversationStore  ← storage lives here (durable in L11)
+   │  ├─ Infrastructure/      SqliteConversationStore  ← storage lives here (SQLite since L11)
    │  └─ Presentation/        ConversationEndpoints (thin), ConversationRequests (contract validation), contract shapes
    ├─ Orders/
    │  ├─ Domain/              Order, OrderId
@@ -147,7 +148,7 @@ The rules:
   - a *different* turn is rejected with `409 turn_in_progress`. It is not queued, so the client decides whether to retry.
   - Other conversations aren't affected.
 
-Not yet implemented: durable state across restarts (L11), streaming (L12), and turn cancellation.
+Since L11 conversations, finished turns, approvals and simulated changes survive a restart (see "Durable state" below). Not yet implemented: streaming (L12) and turn cancellation.
 
 ```bash
 curl -s -X POST localhost:5180/api/v1/conversations -H 'content-type: application/json' -d '{}'
@@ -208,7 +209,7 @@ POST …/approvals/appr_… { "operation_id": "op_…", "decision": "approve" | 
 
 **Where each rule lives:**
 - **Eligibility:** `OrderRules` (cancel only `processing`; refund only `delivered`, within 30 days of the fixtures' reference time, not already refunded), using `fixtures/data/policies.json`.
-- **Writes:** each module performs its own: `CancelOrderWriteHandler` (Orders), `RefundOrderWriteHandler` (Billing: full refund, `RFD-…`, a refund payment), `CreateTicketWriteHandler` (Technical: `TKT-…`). They change **in-memory** state only (lost on restart until L11) and never touch the fixture files.
+- **Writes:** each module performs its own: `CancelOrderWriteHandler` (Orders), `RefundOrderWriteHandler` (Billing: full refund, `RFD-…`, a refund payment), `CreateTicketWriteHandler` (Technical: `TKT-…`). They change simulated state in the local SQLite file, atomically with the operation's `committed` record (L11), and never touch the fixture files.
 - **The approval record:** `Operations` module (`Operation`, `OperationService`, `GET /api/v1/operations/{id}`).
 - **No model-supplied authority:** no tool takes a customer id or a "confirmed" flag.
 - **History:** native approval requests and responses are dropped from conversation history, because approvals are operation state, not chat.
@@ -226,7 +227,24 @@ The agents are shared singletons; **a conversation's state lives with the conver
 
   Triage stays stateless and gets the previous route as a hint.
 - **Isolation:** sessions are reached only through an owned conversation (another customer gets `404`). Separate conversations share nothing.
-- **Limits:** everything is in memory until L11; DevUI workflow chats are stateless.
+- **Limits:** DevUI workflow chats are stateless. Sessions are stored after every run since L11, with no expiry yet.
+
+## Durable state (L11)
+
+Everything a conversation needs survives a restart. It lives in one local SQLite file: `Storage:Path`, by default `.data/dotnet/support.db`, which Git ignores. Delete the file to start fresh. The Python backend and each evaluation run use their own file.
+
+- **Stored:**
+  - conversations (owner, verified context) and their finished turns, so a repeated `client_turn_id` or decision replays;
+  - operations and approvals (exact arguments, expiry, status);
+  - the paused native approval request;
+  - each specialist's `AgentSession` (MAF `SerializeSessionAsync`);
+  - the simulated changes: cancelled orders, refund payments, tickets and their id counters.
+- **Agents have stable ids** (`orders`, `billing`, `technical`, `triage`), so a stored session belongs to the same agent after a restart.
+- **One write, at most once:**
+  - the business change and `status = 'committed'` are one SQLite transaction;
+  - every status change is guarded (`… WHERE status = @expected`). A duplicate, a retry or a second host that finds the operation already finished rolls its whole write back.
+  - After a crash, a retried decision is answered from the stored record if the operation already finished. If it's still `running`, the paused request is resumed, which is safe because nothing was applied.
+- **No workflow checkpoints:** the workflow never pauses mid-run, because an approval ends the turn. See `docs/decisions/0003-state-and-idempotency.md`, which also explains why this is *not* exactly-once against a real external provider.
 
 ## Agents, tools, and the model boundary
 

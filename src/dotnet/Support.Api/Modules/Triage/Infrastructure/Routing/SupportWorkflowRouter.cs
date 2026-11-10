@@ -64,10 +64,10 @@ internal sealed class SupportWorkflowRouter(
         ArgumentNullException.ThrowIfNull(decided);
         var operation = operations.Find(decided.OperationId) ?? throw new InvalidOperationException("Unknown operation.");
         var route = TurnRoute.Routed(operation.Specialist);
-        var native = pending.Take(operation.OperationId);
+        var native = operation.Status is OperationStatus.Running or OperationStatus.Rejected ? pending.Find(operation.OperationId) : null;
         if (native is null)
         {
-            // The paused request is gone (it can only be resumed once). Nothing runs.
+            // Nothing is paused for this operation any more (or it was not decided). Nothing runs.
             return new SupportReply(route, ReplyKind.ApprovalResult, "That request can no longer be resumed. Nothing has been changed.") { OperationIds = [operation.OperationId] };
         }
 
@@ -83,6 +83,11 @@ internal sealed class SupportWorkflowRouter(
                 session,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             response = await ApprovalGate.DeclineFollowUpRequestsAsync(agent, session, response, cancellationToken).ConfigureAwait(false);
+            await sessions.SaveAsync(operation.ConversationId, name, agent, session, cancellationToken).ConfigureAwait(false);
+            pending.Remove(operation.OperationId);
+
+            // The run may have finished the operation (or another run may have): report what is stored.
+            operation = operations.Find(operation.OperationId) ?? operation;
 
             var text = operation.Status switch
             {

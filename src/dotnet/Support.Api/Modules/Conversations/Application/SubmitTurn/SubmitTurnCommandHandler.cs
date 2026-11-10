@@ -63,7 +63,8 @@ internal sealed partial class SubmitTurnCommandHandler(
 
         try
         {
-            var (turn, reply) = await RunAsync(conversation, reservation, command, cancellationToken).ConfigureAwait(false);
+            var (ran, reply) = await RunAsync(conversation, reservation, command, cancellationToken).ConfigureAwait(false);
+            var turn = store.SaveTurn(conversation.ConversationId, command.ClientTurnId, reservation.Message, ran, conversation.Context.After(reply));
             conversation.Complete(reservation, turn, reply);
 
             var replyKind = Names.Of(turn.ReplyKind);

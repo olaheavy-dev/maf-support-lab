@@ -20,7 +20,10 @@ internal sealed class GetOperationQueryHandler(IOperationStore store, IPrincipal
             return Task.FromResult(Result.Failure<Operation>(Error.NotFound("not_found", "The operation does not exist or is not available to you.")));
         }
 
-        operation.ExpireIfDue(clock.GetUtcNow());
+        if (operation.Decision is null && operation.ExpireIfDue(clock.GetUtcNow()))
+        {
+            store.TryUpdate(operation, OperationStatus.AwaitingApproval);
+        }
         return Task.FromResult(Result.Success(operation));
     }
 }

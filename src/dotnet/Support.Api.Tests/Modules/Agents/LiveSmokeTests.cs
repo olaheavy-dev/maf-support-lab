@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -116,5 +117,39 @@ public sealed class LiveSmokeTests
         Assert.Equal(System.Net.HttpStatusCode.OK, status);
         Assert.Equal("approval_result", decided.ReplyKind());
         Assert.Equal("committed", (await api.GetOperationAsync(pending.GetProperty("operation_id").GetString()!)).GetProperty("status").GetString());
+    }
+
+    [Fact(Explicit = true)]
+    public async Task Claude_resumes_an_approval_after_a_restart_from_the_stored_session()
+    {
+        var key = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(key), "Set ANTHROPIC_API_KEY to run the live smoke check.");
+        using var database = new TestDatabase();
+        var settings = new Dictionary<string, string?>(database.Settings)
+        {
+            ["ModelProvider:Mode"] = "Live",
+            ["ModelProvider:Anthropic:Model"] = "claude-haiku-5-5",
+            ["ModelProvider:Anthropic:ApiKey"] = key,
+        };
+
+        // L11 with real Claude: ask in one host, stop it, approve in a new host on the same file. The stored session
+        // and native request must be accepted by the real provider when the run resumes.
+        string conversation;
+        JsonElement pending;
+        await using (var before = SupportApiFactory.Create(settings))
+        {
+            var api = new ApiClient(before.CreateClient());
+            conversation = await api.CreateConversationAsync();
+            var asked = await api.AskAsync(conversation, "Please cancel order ORD-1003.");
+            Assert.Equal("awaiting_approval", asked.GetProperty("outcome").GetString());
+            pending = asked.GetProperty("pending_approval").Clone();
+        }
+
+        await using var after = SupportApiFactory.Create(settings);
+        var restarted = new ApiClient(after.CreateClient());
+        var (status, decided) = await restarted.DecideAsync(conversation, pending.GetProperty("approval_id").GetString()!, pending.GetProperty("operation_id").GetString()!, "approve");
+        Assert.Equal(System.Net.HttpStatusCode.OK, status);
+        Assert.Equal("approval_result", decided.ReplyKind());
+        Assert.Equal("committed", (await restarted.GetOperationAsync(pending.GetProperty("operation_id").GetString()!)).GetProperty("status").GetString());
     }
 }

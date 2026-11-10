@@ -28,6 +28,7 @@ Node and the frontend/Gatsby toolchains are selected when they are introduced (L
 | Anthropic (C# SDK) | 13.7.0 | Stable. **Risk:** this is a newer major version than the 12.x floor MAF declares. L03 must prove it compiles and runs with MAF 1.28.0; if not, use the latest compatible 12.x and record the reason. |
 | Microsoft.Extensions.AI | 10.11.0 | Stable |
 | OpenTelemetry.Extensions.Hosting / Exporter.OpenTelemetryProtocol | 1.20.1 | Stable (1.21.0 is still RC). |
+| Microsoft.Data.Sqlite | 10.0.15 | Stable. Added in L11 (checked 2026-11-10). 11.0.0 also exists, but it is the release paired with .NET 11, which is still a release candidate, so the latest 10.0.x patch matching our runtime is selected. |
 | Microsoft.Agents.AI.DevUI | 1.28.0-preview.261106.1 | **Prerelease, unavoidable**: no stable release exists. It brings in `Microsoft.Agents.AI.Hosting` 1.28.0-preview and `Microsoft.Agents.AI.Hosting.OpenAI` 1.28.0-alpha. Restricted to the development environment (L05). |
 
 Not selected: `Microsoft.Agents.AI.OpenAI` and `Microsoft.Extensions.AI.OpenAI` (we don't use an OpenAI provider), and the course's direct use of `Hosting.OpenAI` (`MapOpenAIResponses`). Our API serves the L02 version-1 contract instead. Hosting.OpenAI arrives only as a DevUI dependency.

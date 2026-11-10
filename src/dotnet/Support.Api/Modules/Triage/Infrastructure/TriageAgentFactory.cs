@@ -51,6 +51,7 @@ public static class TriageAgentFactory
             chatClient,
             new ChatClientAgentOptions
             {
+                Id = AgentName,
                 Name = AgentName,
                 Description = "Classifies a support message into a route and action. Does not answer the customer.",
                 ChatOptions = new ChatOptions

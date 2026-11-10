@@ -1,0 +1,94 @@
+# 0003 - Durable state and idempotent writes
+
+- Status: Accepted (L11, 2026-11-10). Assistant-drafted; the owner reviews it with the L11 PR.
+- Applies to: `src/dotnet/Support.Api`. The Python backend (L17 onwards) makes the same guarantees with its own store and file.
+
+## Context
+
+Up to L10 everything lived in process memory:
+
+- conversations and their finished turns;
+- operations and approvals;
+- the paused native approval requests (`ToolApprovalRequestContent`);
+- the specialists' `AgentSession`s;
+- the simulated business state (cancelled orders, refunds, tickets).
+
+A restart between "please cancel" and "approve" lost the approval, so resuming reported "nothing has been changed". Within one process, a write ran at most once because of an in-memory flag. But the business change and the operation's "committed" status were two separate steps, and nothing durable stopped a retry after a crash from applying the write again.
+
+## Decision
+
+### 1. Store: one local SQLite file per backend and per run
+
+- **Microsoft.Data.Sqlite 10.0.15**, a single file at `Storage:Path`. The default is `.data/dotnet/support.db` under the content root, and `.data/` is ignored by Git. Tests give each host its own temporary file.
+- **Why SQLite:**
+  - it's a real ACID store, with transactions, unique keys and guarded updates;
+  - it's in-process, with no server or container to run;
+  - it's supported on every platform the lab targets;
+  - one file per run is easy to isolate and delete.
+- **What we didn't choose:**
+  - *A JSON file:* no atomic multi-record updates.
+  - *Postgres or Redis:* infrastructure no ticket needs yet.
+  - *EF Core:* six small tables don't justify an ORM and its migrations. The SQL is short and kept in each module's Infrastructure folder.
+- **Isolation:** the .NET backend, the Python backend and each evaluation run use **separate files**. Mutable state is never shared between backends (out of scope by the ticket). An evaluation run points `Storage:Path` at a fresh file.
+
+### 2. What survives a restart
+
+| State | Where | Restored by |
+| --- | --- | --- |
+| Conversation: owner, verified context | `conversations` | `SqliteConversationStore` (only through `FindOwned`, so only its owner) |
+| Finished turns, with the key they were claimed with (`client_turn_id` or `approval:{id}`) | `turns` (unique per conversation and key) | the same; a repeat replays the stored turn |
+| Operations: binding, exact arguments, expiry, status, decision, result, failure | `operations` | `SqliteOperationStore`; the status endpoint still checks the owner |
+| Paused native approval request (MAF/M.E.AI JSON form) | `native_approval_requests` | `PendingNativeApprovals` |
+| Each specialist's `AgentSession` per conversation | `agent_sessions` | `ConversationSessions` (`SerializeSessionAsync` / `DeserializeSessionAsync`) |
+| Simulated business state: changed orders, refund payments, tickets, id counters | `changed_orders`, `payments`, `tickets`, `counters` | the module repositories (fixture files are never changed) |
+
+**Stable identities:**
+- Agents have fixed ids (`orders`, `billing`, `technical`, `triage`), so a stored session belongs to the same agent after a restart.
+- The workflow name is fixed (`support-routing`).
+- Conversation, turn, operation and approval ids are random and stored.
+
+A turn that was **still running** when the process stopped is not stored. It's as if it never happened, and the client retries it with the same `client_turn_id`.
+
+### 3. Sessions, not workflow checkpoints
+
+MAF workflow checkpoints save a run's state at superstep boundaries, so a paused or interrupted *workflow run* can be resumed. **We don't use them.** Our workflow never pauses mid-run:
+
+- every turn runs triage, then one executor, then the reply, to completion;
+- an approval *ends* the turn (`awaiting_approval`).
+
+The paused state that must survive is:
+- the specialist's **agent session** (its history),
+- the stored **native approval request**, and
+- the **operation record**.
+
+The decision resumes them as a new turn (`ResumeAsync`). Checkpoints would add a second copy of state with nothing to restore. If a later ticket makes the workflow itself wait (for example, human-in-the-loop *inside* a run), that is when checkpoints become the right tool.
+
+### 4. One write, applied at most once
+
+- **The operation id is the durable key.** Each write runs only through `OperationService.ExecuteApprovedAsync`, inside an approved `ApprovalScope` for that operation.
+- **Atomic:** the module's business change (cancel, refund plus payment, ticket) and `operations.status = 'committed'` are written in **one `BEGIN IMMEDIATE` transaction** (`IUnitOfWork.AtomicallyAsync`). Either both are stored or neither is.
+- **Guarded:** every status change is `UPDATE … WHERE operation_id = @id AND status = @expected`.
+  - If another run (a duplicate, a retry, or another host after a restart) finished the operation first, the update changes no row. The whole transaction rolls back, including the business change, and the stored result is reported instead.
+  - The same guard records a decision only once, and stops a late failure from overwriting a commit.
+- **Turns:** the first stored turn for a key wins. A host that was stuck mid-turn while a restarted host answered the retry gets the stored turn back, rather than writing a second one.
+- **Retried decisions after a crash:**
+  - The decision was recorded but its turn was never stored, and the operation is already `committed`, `failed` or `rejected` → a factual turn is built **from the record**. No model call, no write.
+  - The operation is still `running` → nothing was applied (atomicity), so the stored native request is resumed. The guarded commit makes this safe even if another run is racing.
+
+### 5. What this does *not* guarantee
+
+- **Atomic locally is not exactly-once against an external provider.** Our "write" is a local simulation, so it can share a transaction with its operation record. A real refund calls a payment provider over the network, outside our transaction. If the process dies after the provider charged but before our commit, our record says `running`, and resuming would call the provider again.
+- **What exactly-once needs there:**
+  - the provider must support an **idempotency key**, and we'd send the operation id;
+  - or a two-step design: record the intent → call → record the outcome, plus reconciliation (ask the provider what happened before retrying).
+  - That's out of scope for this ticket. The operation id is already the right key to send.
+- **Other limits:**
+  - Only one process should serve one file in production. SQLite serializes writers, and the guards keep data correct across processes, but the in-process "one turn at a time" lock is per process. Two processes on one file could each run a turn of the same conversation. The tests use two hosts on one file only to simulate a restart.
+  - Expiry is still lazy: it's applied when an approval is touched.
+  - There are no retention or cleanup rules yet.
+
+## Consequences
+
+- A restart between request and approval loses nothing. Wrong owner, mismatch, rejection and expiry behave exactly as before the restart.
+- Duplicates (concurrent or after a restart) and a crash right after the commit produce **one** mutation and a retrievable final status.
+- Each turn costs a few small SQLite writes (the turn, the context, the session), which is negligible next to a model call.
