@@ -279,4 +279,26 @@ public sealed class LiveSmokeTests
             ]),
         ];
     }
+
+    [Fact(Explicit = true)]
+    public async Task Claude_turns_stop_at_their_budget_with_a_contract_failure()
+    {
+        var key = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(key), "Set ANTHROPIC_API_KEY to run the live smoke check.");
+        await using var factory = SupportApiFactory.Create(new Dictionary<string, string?>
+        {
+            ["ModelProvider:Mode"] = "Live",
+            ["ModelProvider:Anthropic:Model"] = "claude-haiku-5-5",
+            ["ModelProvider:Anthropic:ApiKey"] = key,
+            ["Resilience:MaxModelCallsPerTurn"] = "1", // triage only: the specialist's call is over budget
+        });
+        var api = new ApiClient(factory.CreateClient());
+
+        // L15 with real Claude: one real call (triage), then the budget stops the turn before a second is made.
+        var turn = await api.AskAsync(await api.CreateConversationAsync(), "Where is my order ORD-1002?");
+
+        Assert.Equal("failed", turn.GetProperty("outcome").GetString());
+        Assert.Equal("budget_exhausted", turn.GetProperty("error").GetProperty("code").GetString());
+        Assert.Equal("orders", turn.GetProperty("route").GetProperty("target").GetString()); // triage did run
+    }
 }

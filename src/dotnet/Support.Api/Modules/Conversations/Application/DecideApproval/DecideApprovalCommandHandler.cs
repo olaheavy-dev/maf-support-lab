@@ -1,5 +1,7 @@
 using Support.Api.Common.Application;
+using Microsoft.Extensions.Options;
 using Support.Api.Common.Application.Messaging;
+using Support.Api.Common.Application.Resilience;
 using Support.Api.Common.Application.Safety;
 using Support.Api.Common.Domain;
 using Support.Api.Modules.Conversations.Domain;
@@ -24,6 +26,7 @@ internal sealed partial class DecideApprovalCommandHandler(
     ISupportRouter router,
     TimeProvider clock,
     InjectionSignals injection,
+    IOptions<ResilienceOptions> resilience,
     ILogger<DecideApprovalCommandHandler> logger) : ICommandHandler<DecideApprovalCommand, Turn>
 {
     public async Task<Result<Turn>> Handle(DecideApprovalCommand command, CancellationToken cancellationToken)
@@ -115,7 +118,16 @@ internal sealed partial class DecideApprovalCommandHandler(
             {
                 using (PrincipalScope.Begin(caller))
                 {
-                    await ResumeAsync(conversation, key, reservation, decided, recordedEarlier, command).ConfigureAwait(false);
+                    try
+                    {
+                        await ResumeAsync(conversation, key, reservation, decided, recordedEarlier, command).ConfigureAwait(false);
+                    }
+                    catch (Exception error) when (!reservation.Completion.Task.IsCompleted)
+                    {
+                        // A failure before the run's own handlers (for example while setting up its limits) must
+                        // still release the turn: otherwise the request waits forever (Codex review on PR #81).
+                        conversation.Abandon(key, reservation, error);
+                    }
                 }
             },
             CancellationToken.None);
@@ -127,6 +139,9 @@ internal sealed partial class DecideApprovalCommandHandler(
     {
         reservation.TraceId = TraceIds.Current();
         injection.Inspect("decision_reason", command.Reason); // the rejection reason reaches the model: diagnostic only
+        using var budgetScope = TurnBudget.Begin(resilience.Value.MaxModelCallsPerTurn); // bounded like any turn (L15)
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(resilience.Value.TurnTimeoutSeconds), clock);
+        using var run = CancellationTokenSource.CreateLinkedTokenSource(reservation.CancellationToken, deadline.Token);
         try
         {
             var outcome = TurnOutcome.Completed;
@@ -136,10 +151,10 @@ internal sealed partial class DecideApprovalCommandHandler(
                 // Resume the paused run, unless the decision was recorded earlier and the operation already finished. An
                 // approved operation still "running" after a restart changed nothing yet (its write and its commit are one
                 // transaction), so resuming it is safe; the guarded commit stops it from ever applying twice.
-                reservation.CancellationToken.ThrowIfCancellationRequested();
+                run.Token.ThrowIfCancellationRequested();
                 reply = recordedEarlier && operation.Status != OperationStatus.Running
                     ? Factual(operation)
-                    : await router.ResumeAsync(new ApprovalResume(operation.OperationId, command.Reason), command.Observer, reservation.CancellationToken).ConfigureAwait(false);
+                    : await router.ResumeAsync(new ApprovalResume(operation.OperationId, command.Reason), command.Observer, run.Token).ConfigureAwait(false);
             }
             catch (Exception error)
             {
@@ -152,14 +167,17 @@ internal sealed partial class DecideApprovalCommandHandler(
                     // Nothing was applied (the write and its commit are one transaction). A cancel seen before the commit
                     // stops it (L12); anything else is a failure. Either way the operation's record says so.
                     var cancelled = reservation.CancelRequested;
+                    var timedOut = !cancelled && deadline.IsCancellationRequested;
                     if (!cancelled)
                     {
                         Log.ResumeFailed(logger, error, operation.OperationId);
                     }
 
                     operation.Fail(
-                        cancelled ? "cancelled" : "internal_error",
-                        cancelled ? "The turn was cancelled before anything was changed." : "The approved action could not be completed.",
+                        cancelled ? "cancelled" : timedOut ? "timeout" : "internal_error",
+                        cancelled ? "The turn was cancelled before anything was changed."
+                            : timedOut ? "The approved action took too long and was stopped before anything was changed."
+                            : "The approved action could not be completed.",
                         clock.GetUtcNow());
                     operations.TryUpdate(operation, OperationStatus.Running);
                     outcome = cancelled ? TurnOutcome.Cancelled : TurnOutcome.Completed;

@@ -1,6 +1,7 @@
 using Anthropic;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
+using Support.Api.Common.Application.Resilience;
 using Support.Api.Modules.Agents.Application;
 
 namespace Support.Api.Modules.Agents.Infrastructure.ModelProvider;
@@ -13,11 +14,16 @@ internal static class ModelProviderRegistration
     /// </summary>
     public const string ProviderClientKey = "model-provider";
 
-    /// <summary>Default output cap for live calls until L15 introduces per-turn budgets.</summary>
-    private const int DefaultMaxTokens = 4096;
+    /// <summary>
+    /// DI key of an optional HTTP handler under the Anthropic SDK. Tests register one to fake Anthropic's HTTP API and
+    /// exercise the real SDK's retries deterministically; in normal runs the platform handler is used.
+    /// </summary>
+    public const string ProviderHttpHandlerKey = "model-provider-http";
 
     public static IServiceCollection AddModelProvider(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<ResilienceOptions>().Bind(configuration.GetSection(ResilienceOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<ResilienceOptions>, ResilienceOptionsValidator>();
         services.AddOptions<ModelProviderOptions>()
             .Bind(configuration.GetSection(ModelProviderOptions.SectionName))
             .PostConfigure(options =>
@@ -42,8 +48,19 @@ internal static class ModelProviderRegistration
                 return new FakeChatClient();
             }
 
-            var client = new AnthropicClient { ApiKey = options.Anthropic.ApiKey };
-            return client.AsIChatClient(options.Anthropic.Model!, DefaultMaxTokens);
+            // The SDK is the one retry owner for model calls (L15): a bounded number of retries for connection errors,
+            // timeouts, 408/409/429/5xx, honouring the provider's retry-after. Its HttpClient is created here, not by
+            // IHttpClientFactory, so the service defaults' standard resilience handler never adds a second retry layer.
+            var resilience = provider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+            var transport = provider.GetKeyedService<HttpMessageHandler>(ProviderHttpHandlerKey) ?? new SocketsHttpHandler();
+            var client = new AnthropicClient
+            {
+                ApiKey = options.Anthropic.ApiKey,
+                HttpClient = new HttpClient(new ProviderAttemptHandler(transport)) { Timeout = Timeout.InfiniteTimeSpan },
+                MaxRetries = resilience.ModelMaxRetries,
+                Timeout = TimeSpan.FromSeconds(resilience.ModelAttemptTimeoutSeconds),
+            };
+            return client.AsIChatClient(options.Anthropic.Model!, resilience.MaxOutputTokens);
         });
 
         // Model layer telemetry: one "chat" span and per-call token usage for every model call, on Support.Model.
@@ -54,6 +71,7 @@ internal static class ModelProviderRegistration
             var captureSensitiveData = provider.GetRequiredService<IOptions<AgentTelemetryOptions>>().Value.CaptureSensitiveData;
             return provider.GetRequiredKeyedService<IChatClient>(ProviderClientKey)
                 .AsBuilder()
+                .Use(inner => new BudgetedChatClient(inner)) // outermost: a call over the turn's budget is never made
                 .UseOpenTelemetry(sourceName: AgentTelemetry.ModelSourceName, configure: client => client.EnableSensitiveData = captureSensitiveData)
                 .Build(provider);
         });
