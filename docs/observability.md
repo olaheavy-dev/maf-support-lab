@@ -34,7 +34,7 @@ POST /api/v1/conversations/{conversationId}/turns   Microsoft.AspNetCore   HTTP 
       └─ invoke_workflow support-routing              Support.Workflows      gen_ai.workflow.name
          ├─ executor.process triage                   Support.Workflows      the routing decision: support.triage.* (outcome, target, reason, action, order_id_from_context)
          │  └─ invoke_agent triage → chat <model>     Support.Agents/Model   one JSON call (gen_ai.output.type=json)
-         ├─ executor.process <selected executor>      Support.Workflows      orders-/billing-/technical-specialist, ask-for-order-id, write-not-available, or unrouted
+         ├─ executor.process <selected executor>      Support.Workflows      orders-/billing-/technical-specialist, ask-for-order-id, or unrouted
             └─ invoke_agent <specialist>              Support.Agents         only for the three *-specialist executors
                ├─ chat <model>                        Support.Model          one per model call; that call's token usage
                ├─ execute_tool <tool>                 Support.Agents         get_order_status, get_invoice, get_payment_history, search_knowledge_base
@@ -107,9 +107,10 @@ The agent layer re-records the whole run's tokens in `gen_ai.client.token.usage`
 
 | Metric | Type | Labels (all bounded) |
 | --- | --- | --- |
-| `support.turns` | counter | `support.agent` (route target, `unrouted`, or `unknown` on failure), `support.turn.outcome` (`completed`, `failed`, `replayed`), `support.reply_kind` (`answer`, `not_found`, `clarification`, `escalation_offer`, `none`) |
+| `support.turns` | counter | `support.agent` (route target, `unrouted`, or `unknown` on failure), `support.turn.outcome` (`completed`, `awaiting_approval`, `failed`, `replayed`), `support.reply_kind` (`answer`, `not_found`, `clarification`, `escalation_offer`, `not_eligible`, `approval_request`, `approval_result`, `none`) |
 | `support.turn.duration` (s) | histogram | `support.agent`, `support.turn.outcome` |
-| `support.tool.calls` | counter | `support.tool.name` (the four read tools), `support.tool.outcome` (`found`, `not_found`, `invalid_order_id`, `invalid_reference`, `no_match`) |
+| `support.tool.calls` | counter | `support.tool.name` (the four read tools; write tools are counted by `support.operations`), `support.tool.outcome` (`found`, `not_found`, `invalid_order_id`, `invalid_reference`, `no_match`) |
+| `support.operations` | counter | `support.operation.kind` (`cancel_order`, `refund_order`, `create_ticket`), `support.operation.outcome` (`awaiting_approval`, `committed`, `failed`, `not_eligible`, `not_found`, `invalid_arguments`) |
 | `support.triage.decisions` | counter | `support.triage.outcome` (`routed`, `unrouted`), `support.triage.target` (`orders`, `billing`, `technical`, `none`), `support.triage.unrouted_reason` (`invalid_model_output`, `ambiguous_request`, `none`) |
 | `gen_ai.client.token.usage` | histogram | provider, model, `gen_ai.token.type` (`Support.Model` only) |
 | `gen_ai.client.operation.duration` (s) | histogram | provider, model, operation |

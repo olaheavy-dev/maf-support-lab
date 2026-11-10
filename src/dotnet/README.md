@@ -134,7 +134,9 @@ In fake mode, a message containing `[fake:model-error]` produces a failed turn t
 Implemented so far (see [contracts/README.md](../../contracts/README.md)):
 - `POST /api/v1/conversations` and `GET /api/v1/conversations/{id}`;
 - `POST /api/v1/conversations/{id}/turns`: JSON responses only;
-- `GET /api/v1/conversations/{id}/turns/{turn_id}`.
+- `GET /api/v1/conversations/{id}/turns/{turn_id}`;
+- `POST /api/v1/conversations/{id}/approvals/{approval_id}`: the customer's decision, which resumes the paused write as a new turn (L10);
+- `GET /api/v1/operations/{operation_id}`: the authoritative status of a write (L10).
 
 The rules:
 - Requests with unknown fields (such as `customer_id`) get `400 invalid_request`.
@@ -145,7 +147,7 @@ The rules:
   - a *different* turn is rejected with `409 turn_in_progress`. It is not queued, so the client decides whether to retry.
   - Other conversations aren't affected.
 
-Not yet implemented: writes and approvals (L10), durable state across restarts (L11), and streaming (L12). Write requests (cancel, refund, ticket) get a deterministic "not available yet" reply until L10 (see Routing).
+Not yet implemented: durable state across restarts (L11), streaming (L12), and turn cancellation.
 
 ```bash
 curl -s -X POST localhost:5180/api/v1/conversations -H 'content-type: application/json' -d '{}'
@@ -158,16 +160,15 @@ curl -s -X POST localhost:5180/api/v1/conversations/<conversation_id>/turns -H '
 Every turn runs the `support-routing` workflow (MAF Workflows 1.28.0, built per turn). The first case that matches wins:
 
 ```text
-triage ─┬─ cancel / refund / ticket          ─▶ write-not-available   (escalation_offer, nothing changed; real writes with approval in L10)
-        ├─ orders, order-specific, no id     ─▶ ask-for-order-id      (clarification, no model call)
-        ├─ orders                            ─▶ orders-specialist     (get_order_status)
-        ├─ billing                           ─▶ billing-specialist    (get_invoice, get_payment_history)
-        ├─ technical                         ─▶ technical-specialist  (search_knowledge_base)
+triage ─┬─ orders, order-specific, no id     ─▶ ask-for-order-id      (clarification, no model call)
+        ├─ orders                            ─▶ orders-specialist     (get_order_status; cancel_order needs approval)
+        ├─ billing                           ─▶ billing-specialist    (get_invoice, get_payment_history; refund_order needs approval)
+        ├─ technical                         ─▶ technical-specialist  (search_knowledge_base; create_ticket needs approval)
         └─ default                           ─▶ unrouted              (clarification; route.status = unrouted)
                                                      └─▶ every ending sends its reply to one `reply` executor (the workflow's output)
 ```
 
-**Each specialist has only its own read tools.** A test reads the tools from the agents the app actually built, and fails if any tool sounds like a write.
+**Each specialist has only its own tools.** Every tool that can change data is a native `ApprovalRequiredAIFunction`, and no read tool is. A test checks this on the agents the app actually built.
 
 The reply kind comes from what the tools recorded, not from the model's wording:
 - any record found → `answer`;
@@ -181,6 +182,36 @@ The reply kind comes from what the tools recorded, not from the model's wording:
 - **A valid answer can still be ambiguous.** If the action is `other`, or doesn't belong to the chosen target (e.g. `invoice` → `orders`), the result is `unrouted / ambiguous_request`.
 - **`confidence` is recorded on the triage span only.** It never affects routing: it is model-generated and uncalibrated.
 - **The specialist receives the original message**, alongside the validated fields. The customer stays in trusted server context, and the triage `order_id` is only a claim: ownership is still checked by the orders handler.
+
+## Approvals (L10)
+
+Every simulated write (cancel an order, refund an order, open a ticket) waits for the customer's approval of the **exact** action. The model can ask; only the customer can approve; and the service decides whether the write is allowed.
+
+```text
+"Please cancel ORD-1003"
+  → orders agent calls cancel_order(ORD-1003)
+  → MAF's function invocation pauses with a native approval request (the tool has NOT run)
+  → ApprovalGate (Triage/Infrastructure/Routing):
+       ├─ invalid / not yours / not eligible → decline natively with the reason → reply not_found / not_eligible
+       └─ eligible → Operation op_… "awaiting_approval": bound to customer, conversation, kind, exact arguments,
+                     approval appr_…, expires in 15 minutes → turn outcome awaiting_approval
+POST …/approvals/appr_… { "operation_id": "op_…", "decision": "approve" | "reject" }
+  → DecideApprovalCommandHandler:
+      other customer or conversation → 404; wrong operation_id → 409 approval_mismatch;
+      different decision later → 409 approval_already_decided; too late → 410 approval_expired;
+      same decision again → the same turn (never runs twice)
+  → the resumed turn (resumed_from_turn_id) answers the native request in the same session:
+       approve → the tool runs inside ApprovalScope(this operation) → OperationService checks kind, exact
+                 arguments, and customer → the owning module re-checks eligibility → committed or failed
+       reject  → the tool never runs → rejected; any new request in that run is declined (bounded)
+```
+
+**Where each rule lives:**
+- **Eligibility:** `OrderRules` (cancel only `processing`; refund only `delivered`, within 30 days of the fixtures' reference time, not already refunded), using `fixtures/data/policies.json`.
+- **Writes:** each module performs its own: `CancelOrderWriteHandler` (Orders), `RefundOrderWriteHandler` (Billing: full refund, `RFD-…`, a refund payment), `CreateTicketWriteHandler` (Technical: `TKT-…`). They change **in-memory** state only (lost on restart until L11) and never touch the fixture files.
+- **The approval record:** `Operations` module (`Operation`, `OperationService`, `GET /api/v1/operations/{id}`).
+- **No model-supplied authority:** no tool takes a customer id or a "confirmed" flag.
+- **History:** native approval requests and responses are dropped from conversation history, because approvals are operation state, not chat.
 
 ## Conversation memory (L09)
 

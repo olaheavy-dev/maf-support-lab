@@ -12,7 +12,7 @@ namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 /// only its own read tools; the principal reaches those tools through trusted DI, never through this payload.
 /// </summary>
 [SendsMessage(typeof(SupportReply))]
-internal sealed partial class SpecialistExecutor(SupportAgents agents, ConversationSessions sessions, RouteTarget target)
+internal sealed partial class SpecialistExecutor(SupportAgents agents, ConversationSessions sessions, ApprovalGate gate, RouteTarget target)
     : Executor<TriageOutcome>($"{Names.Of(target)}-specialist")
 {
     public override async ValueTask HandleAsync(TriageOutcome request, IWorkflowContext context, CancellationToken cancellationToken = default)
@@ -38,7 +38,21 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
         }
         using var activity = TurnActivity.Begin();
         var response = await agent.RunAsync(input, session, cancellationToken: cancellationToken).ConfigureAwait(false);
-        var reply = new SupportReply(request.Route, ReplyKindFrom(activity.Activity), ReplyText(response.Text), activity.Activity.VerifiedOrderId);
+
+        // A write tool pauses natively for approval; the gate binds it to an operation or declines it (L10).
+        var gated = await gate.AfterRunAsync(agent, session, response, request, target, cancellationToken).ConfigureAwait(false);
+        var reply = gated switch
+        {
+            { Proposed: { } operation } => new SupportReply(request.Route, ReplyKind.ApprovalRequest, $"I can do this for you: {operation.Summary} Please approve or reject.", activity.Activity.VerifiedOrderId)
+            {
+                PendingOperationId = operation.OperationId,
+                OperationIds = [operation.OperationId],
+            },
+            { DeclinedCode: "not_eligible" } => new SupportReply(request.Route, ReplyKind.NotEligible, ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
+            { DeclinedCode: "not_found" } => new SupportReply(request.Route, ReplyKind.NotFound, ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
+            { DeclinedCode: not null } => new SupportReply(request.Route, ReplyKind.Clarification, ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
+            _ => new SupportReply(request.Route, ReplyKindFrom(activity.Activity), ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
+        };
         await context.SendMessageAsync(reply, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -56,7 +70,7 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
             : ReplyKind.Clarification;
     }
 
-    private static string ReplyText(string text) =>
+    internal static string ReplyText(string text) =>
         string.IsNullOrWhiteSpace(text) ? "Sorry, I couldn't produce an answer. Please try again." : text.Trim();
 }
 
@@ -71,28 +85,6 @@ internal sealed partial class AskForOrderIdExecutor() : Executor<TriageOutcome>(
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(context);
         return context.SendMessageAsync(new SupportReply(request.Route, ReplyKind.Clarification, Text), cancellationToken: cancellationToken);
-    }
-}
-
-/// <summary>
-/// Cancel, refund, and ticket requests until L10 adds them with approval. Answered here, deterministically, so no
-/// agent is ever given the chance to claim it changed something. Nothing is changed and nothing is created.
-/// </summary>
-[SendsMessage(typeof(SupportReply))]
-internal sealed partial class WriteNotAvailableExecutor() : Executor<TriageOutcome>("write-not-available")
-{
-    public override ValueTask HandleAsync(TriageOutcome request, IWorkflowContext context, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentNullException.ThrowIfNull(context);
-        var what = request.Triage?.RequestedAction switch
-        {
-            RequestedAction.CancelOrder => "cancel an order",
-            RequestedAction.RefundOrder => "request a refund",
-            _ => "open a support ticket",
-        };
-        var text = $"I can see you'd like to {what}, but I can't make changes in this version yet. Nothing has been changed. A human support agent can help with this.";
-        return context.SendMessageAsync(new SupportReply(request.Route, ReplyKind.EscalationOffer, text), cancellationToken: cancellationToken);
     }
 }
 

@@ -22,6 +22,9 @@ public sealed partial class FakeChatClient : IChatClient
     public const string InvoiceToolName = "get_invoice";
     public const string PaymentHistoryToolName = "get_payment_history";
     public const string KnowledgeSearchToolName = "search_knowledge_base";
+    public const string CancelOrderToolName = "cancel_order";
+    public const string RefundOrderToolName = "refund_order";
+    public const string CreateTicketToolName = "create_ticket";
 
     /// <summary>
     /// A message containing this marker makes the fake model fail, so a failed turn can be produced and inspected in
@@ -122,6 +125,22 @@ public sealed partial class FakeChatClient : IChatClient
         var invoiceId = InvoiceIdPattern().Match(userText);
         var upper = userText.ToUpperInvariant();
 
+        // Write requests first, like a model that does what was asked: the framework then pauses for approval.
+        if (tools.Contains(CancelOrderToolName) && upper.Contains("CANCEL", StringComparison.Ordinal) && orderId.Success)
+        {
+            return ToolCall(CancelOrderToolName, new Dictionary<string, object?> { ["orderId"] = orderId.Value.ToUpperInvariant() });
+        }
+
+        if (tools.Contains(RefundOrderToolName) && upper.Contains("REFUND", StringComparison.Ordinal) && orderId.Success)
+        {
+            return ToolCall(RefundOrderToolName, new Dictionary<string, object?> { ["orderId"] = orderId.Value.ToUpperInvariant(), ["reason"] = userText });
+        }
+
+        if (tools.Contains(CreateTicketToolName) && upper.Contains("TICKET", StringComparison.Ordinal))
+        {
+            return ToolCall(CreateTicketToolName, new Dictionary<string, object?> { ["subject"] = "Support request", ["description"] = userText, ["priority"] = "normal" });
+        }
+
         if (tools.Contains(KnowledgeSearchToolName))
         {
             return ToolCall(KnowledgeSearchToolName, new Dictionary<string, object?> { ["query"] = userText });
@@ -217,6 +236,14 @@ public sealed partial class FakeChatClient : IChatClient
 
     private static string Describe(string? tool, object? result)
     {
+        // A native rejection reaches the model as text: "... rejected by the approver and must not be retried. <reason>".
+        if (result is string text || (result is JsonElement { ValueKind: JsonValueKind.String } textElement && (text = textElement.GetString()!) is not null))
+        {
+            return text.Contains("rejected", StringComparison.OrdinalIgnoreCase)
+                ? $"Understood, I won't go ahead with that. {text[(text.IndexOf("retried.", StringComparison.Ordinal) is var at and >= 0 ? at + 8 : 0)..].Trim()}".Trim()
+                : text;
+        }
+
         var json = result is JsonElement element ? element : JsonSerializer.SerializeToElement(result);
         string? Field(string name) => json.ValueKind == JsonValueKind.Object && json.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
@@ -230,6 +257,13 @@ public sealed partial class FakeChatClient : IChatClient
             },
             PaymentHistoryToolName => "Your payments: " + string.Join("; ", json.GetProperty("payments").EnumerateArray().Select(payment =>
                 $"{payment.GetProperty("payment_id").GetString()} {payment.GetProperty("kind").GetString()} of {payment.GetProperty("amount").GetString()} for {payment.GetProperty("order_id").GetString()}")) + ".",
+            CancelOrderToolName or RefundOrderToolName or CreateTicketToolName => Field("status") switch
+            {
+                "committed" when tool == CancelOrderToolName => $"Done: order {json.GetProperty("result").GetProperty("order_id").GetString()} is cancelled.",
+                "committed" when tool == RefundOrderToolName => $"Done: refund {json.GetProperty("result").GetProperty("refund_id").GetString()} for order {json.GetProperty("result").GetProperty("order_id").GetString()} has been recorded.",
+                "committed" => $"Done: support ticket {json.GetProperty("result").GetProperty("ticket_id").GetString()} is open.",
+                _ => $"I couldn't do that: {Field("detail")}",
+            },
             KnowledgeSearchToolName => json.GetProperty("articles").EnumerateArray().FirstOrDefault() is { ValueKind: JsonValueKind.Object } article
                 ? $"From {article.GetProperty("article_id").GetString()} ({article.GetProperty("title").GetString()}): " + string.Join(" ", article.GetProperty("steps").EnumerateArray().Select(step => step.GetString()))
                 : "I couldn't find a documented fix for that. I can pass this to a human support agent.",

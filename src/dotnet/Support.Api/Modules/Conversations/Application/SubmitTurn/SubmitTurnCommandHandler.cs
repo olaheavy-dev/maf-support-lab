@@ -70,9 +70,10 @@ internal sealed partial class SubmitTurnCommandHandler(
             var route = RouteLabel(turn.Route);
             span?.SetTag("support.turn.id", turn.TurnId);
             span?.SetTag("support.agent", route);
-            span?.SetTag("support.turn.outcome", "completed");
+            var outcomeName = turn.Outcome == TurnOutcome.AwaitingApproval ? "awaiting_approval" : "completed";
+            span?.SetTag("support.turn.outcome", outcomeName);
             span?.SetTag("support.reply_kind", replyKind);
-            metrics.Record(route, "completed", replyKind, clock.GetElapsedTime(started));
+            metrics.Record(route, outcomeName, replyKind, clock.GetElapsedTime(started));
             Log.TurnCompleted(logger, turn.ConversationId, turn.TurnId, route, replyKind);
             return Result.Success(turn);
         }
@@ -96,7 +97,7 @@ internal sealed partial class SubmitTurnCommandHandler(
         var createdAt = clock.GetUtcNow();
         // Triage, then the specialist the routing rules choose (L07), with this conversation's native sessions and
         // the verified facts from its earlier turns (L09).
-        var reply = await router.RouteAsync(new RoutingRequest(conversation.ConversationId, command.Message, conversation.Context), cancellationToken)
+        var reply = await router.RouteAsync(new RoutingRequest(conversation.ConversationId, command.Message, conversation.Context) { TurnId = reservation.TurnId }, cancellationToken)
             .ConfigureAwait(false);
 
         var turn = new Turn(
@@ -108,7 +109,12 @@ internal sealed partial class SubmitTurnCommandHandler(
             reply.Text,
             TraceIds.Current(),
             createdAt,
-            clock.GetUtcNow());
+            clock.GetUtcNow())
+        {
+            Outcome = reply.PendingOperationId is null ? TurnOutcome.Completed : TurnOutcome.AwaitingApproval,
+            PendingOperationId = reply.PendingOperationId,
+            OperationIds = reply.OperationIds,
+        };
         return (turn, reply);
     }
 

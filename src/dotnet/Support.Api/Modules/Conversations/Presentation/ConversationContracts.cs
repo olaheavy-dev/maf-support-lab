@@ -1,6 +1,9 @@
 using System.Text.Json.Serialization;
 using Support.Api.Common.Presentation;
 using Support.Api.Modules.Conversations.Domain;
+using Support.Api.Modules.Operations.Application;
+using Support.Api.Modules.Operations.Domain;
+using Support.Api.Modules.Operations.Presentation;
 using Support.Api.Modules.Triage.Domain;
 
 namespace Support.Api.Modules.Conversations.Presentation;
@@ -12,14 +15,26 @@ public sealed record ConversationResponse(
     string Backend,
     DateTimeOffset CreatedAt,
     string? ActiveTurnId,
-    IReadOnlyList<object> PendingApprovals)
+    IReadOnlyList<PendingApproval> PendingApprovals)
 {
-    public static ConversationResponse From(Conversation conversation)
+    /// <summary>The conversation with its approvals still awaiting a decision (expired ones are marked expired and left out).</summary>
+    public static ConversationResponse From(Conversation conversation, IOperationStore operations, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(conversation);
-        return new(Common.Presentation.ContractVersion.Current, conversation.ConversationId, Common.Presentation.ContractVersion.Backend, conversation.CreatedAt, conversation.ActiveTurnId, PendingApprovals: []);
+        ArgumentNullException.ThrowIfNull(operations);
+        var pending = operations.ForConversation(conversation.ConversationId)
+            .Where(operation => !operation.ExpireIfDue(now) && operation.Status == OperationStatus.AwaitingApproval)
+            .Select(PendingApproval.From)
+            .ToList();
+        return new(Common.Presentation.ContractVersion.Current, conversation.ConversationId, Common.Presentation.ContractVersion.Backend, conversation.CreatedAt, conversation.ActiveTurnId, pending);
     }
 }
+
+/// <summary>POST …/approvals/{approval_id} body. It carries no arguments: they cannot be changed here.</summary>
+public sealed record ApprovalDecisionRequest(
+    [property: JsonRequired] string OperationId,
+    [property: JsonRequired] string Decision,
+    string? Reason = null);
 
 public sealed record TurnRequest(
     [property: JsonRequired] string ClientTurnId,
@@ -50,26 +65,41 @@ public sealed record TurnResult(
     string Outcome,
     RouteResult Route,
     ReplyResult Reply,
-    IReadOnlyList<object> Operations,
+    IReadOnlyList<OperationSummary> Operations,
     string TraceId,
     DateTimeOffset CreatedAt,
     DateTimeOffset FinishedAt)
 {
-    public static TurnResult From(Turn turn)
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ResumedFromTurnId { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PendingApproval? PendingApproval { get; init; }
+
+    /// <summary>The turn as finished, with each operation's <em>current</em> status (the authoritative record).</summary>
+    public static TurnResult From(Turn turn, IOperationStore operations)
     {
         ArgumentNullException.ThrowIfNull(turn);
+        ArgumentNullException.ThrowIfNull(operations);
+        var touched = turn.OperationIds.Select(operations.Find).OfType<Operation>().ToList();
         return new(
             Common.Presentation.ContractVersion.Current,
             turn.ConversationId,
             turn.TurnId,
             turn.ClientTurnId,
             State: "finished",
-            Outcome: "completed",
+            Outcome: turn.Outcome == TurnOutcome.AwaitingApproval ? "awaiting_approval" : "completed",
             RouteResult.From(turn.Route),
             new ReplyResult(Names.Of(turn.ReplyKind), turn.ReplyText),
-            Operations: [],
+            [.. touched.Select(OperationSummary.From)],
             turn.TraceId,
             turn.CreatedAt,
-            turn.FinishedAt);
+            turn.FinishedAt)
+        {
+            ResumedFromTurnId = turn.ResumedFromTurnId,
+            PendingApproval = turn.Outcome == TurnOutcome.AwaitingApproval && turn.PendingOperationId is { } pending && operations.Find(pending) is { } operation
+                ? PendingApproval.From(operation)
+                : null,
+        };
     }
 }

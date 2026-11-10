@@ -12,6 +12,9 @@ public sealed record TriageOutcome(string OriginalMessage, TriageDecision? Triag
     /// <summary>The conversation whose sessions the specialist should use (null: stateless).</summary>
     public string? ConversationId { get; init; }
 
+    /// <summary>The turn being run (null for a stateless DevUI chat).</summary>
+    public string? TurnId { get; init; }
+
     /// <summary>Verified facts from earlier turns in this conversation.</summary>
     public ConversationContext Context { get; init; } = ConversationContext.Empty;
 
@@ -20,9 +23,6 @@ public sealed record TriageOutcome(string OriginalMessage, TriageDecision? Triag
     /// verified earlier in this conversation. Never an unverified id from an earlier turn.
     /// </summary>
     public string? EffectiveOrderId => Triage?.OrderId ?? Context.VerifiedOrderId;
-
-    /// <summary>A routed request to change something (cancel, refund, ticket): not possible before L10's approvals.</summary>
-    public bool IsWriteRequest => Route.IsRouted && Triage is { } decision && RoutingRules.IsWrite(decision.RequestedAction);
 
     /// <summary>Routed to orders for an action about one order, but no order id was given.</summary>
     public bool IsMissingOrderId =>

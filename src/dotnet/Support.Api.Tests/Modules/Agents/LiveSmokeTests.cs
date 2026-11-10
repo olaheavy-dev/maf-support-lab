@@ -88,4 +88,33 @@ public sealed class LiveSmokeTests
         Assert.Equal("answer", followUp.ReplyKind());
         Assert.Contains("October 30", followUp.ReplyText(), StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact(Explicit = true)]
+    [Trait("Category", "Live")]
+    public async Task Claude_pauses_a_cancellation_for_approval_and_completes_it_once_approved()
+    {
+        var key = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(key), "Set ANTHROPIC_API_KEY to run the live smoke check.");
+
+        await using var factory = SupportApiFactory.Create(new Dictionary<string, string?>
+        {
+            ["ModelProvider:Mode"] = "Live",
+            ["ModelProvider:Anthropic:Model"] = "claude-haiku-5-5",
+            ["ModelProvider:Anthropic:ApiKey"] = key,
+        });
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+
+        // L10 with real Claude: the native gate pauses the write; our binding and the service decide; approval runs it once.
+        var asked = await api.AskAsync(conversation, "Please cancel order ORD-1003.");
+        Assert.Equal("awaiting_approval", asked.GetProperty("outcome").GetString());
+        var pending = asked.GetProperty("pending_approval");
+        Assert.Equal("cancel_order", pending.GetProperty("kind").GetString());
+        Assert.Equal("ORD-1003", pending.GetProperty("arguments").GetProperty("order_id").GetString());
+
+        var (status, decided) = await api.DecideAsync(conversation, pending.GetProperty("approval_id").GetString()!, pending.GetProperty("operation_id").GetString()!, "approve");
+        Assert.Equal(System.Net.HttpStatusCode.OK, status);
+        Assert.Equal("approval_result", decided.ReplyKind());
+        Assert.Equal("committed", (await api.GetOperationAsync(pending.GetProperty("operation_id").GetString()!)).GetProperty("status").GetString());
+    }
 }

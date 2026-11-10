@@ -58,6 +58,42 @@ internal static partial class ConversationRequests
         return (body, null);
     }
 
+    /// <summary>Validates an approval decision body: operation_id, decision (approve or reject), optional reason. Nothing else.</summary>
+    public static async Task<(ApprovalDecisionRequest? Request, IResult? Problem)> ReadDecisionAsync(HttpRequest request, CancellationToken cancellationToken)
+    {
+        ApprovalDecisionRequest? body;
+        try
+        {
+            body = await JsonSerializer.DeserializeAsync<ApprovalDecisionRequest>(request.Body, ContractJson.Options, cancellationToken).ConfigureAwait(false);
+        }
+        catch (JsonException error)
+        {
+            return (null, Invalid(error.Path is { Length: > 1 } path ? "/" + path.TrimStart('$', '.') : string.Empty, "The body does not match the approval decision contract."));
+        }
+
+        if (body is null)
+        {
+            return (null, Invalid(string.Empty, "A request body is required."));
+        }
+
+        if (body.OperationId is null || !OperationIdPattern().IsMatch(body.OperationId))
+        {
+            return (null, Invalid("/operation_id", "must look like op_…"));
+        }
+
+        if (body.Decision is not ("approve" or "reject"))
+        {
+            return (null, Invalid("/decision", "must be approve or reject"));
+        }
+
+        if (body.Reason is { } reason && (reason.Length is < 1 or > 500))
+        {
+            return (null, Invalid("/reason", "must be 1 to 500 characters"));
+        }
+
+        return (body, null);
+    }
+
     private static IResult Invalid(string pointer, string message) =>
         ApiResults.InvalidRequest("The request body does not match the contract.", new ProblemField(pointer, message));
 
@@ -72,6 +108,9 @@ internal static partial class ConversationRequests
             return null;
         }
     }
+
+    [GeneratedRegex("^op_[A-Za-z0-9]{8,64}$")]
+    private static partial Regex OperationIdPattern();
 
     [GeneratedRegex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")]
     private static partial Regex ClientTurnIdPattern();

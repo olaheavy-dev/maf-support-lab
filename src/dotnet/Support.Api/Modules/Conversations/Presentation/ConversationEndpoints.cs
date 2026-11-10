@@ -1,10 +1,13 @@
 using Support.Api.Common.Application.Messaging;
 using Support.Api.Common.Presentation;
 using Support.Api.Modules.Conversations.Application.CreateConversation;
+using Support.Api.Modules.Conversations.Application.DecideApproval;
 using Support.Api.Modules.Conversations.Application.GetConversation;
 using Support.Api.Modules.Conversations.Application.GetTurn;
 using Support.Api.Modules.Conversations.Application.SubmitTurn;
 using Support.Api.Modules.Conversations.Domain;
+using Support.Api.Modules.Operations.Application;
+using Support.Api.Modules.Operations.Domain;
 
 namespace Support.Api.Modules.Conversations.Presentation;
 
@@ -21,12 +24,15 @@ internal static class ConversationEndpoints
         conversations.MapGet("/{conversationId}", GetConversation);
         conversations.MapPost("/{conversationId}/turns", SubmitTurn);
         conversations.MapGet("/{conversationId}/turns/{turnId}", GetTurn);
+        conversations.MapPost("/{conversationId}/approvals/{approvalId}", DecideApproval);
         return app;
     }
 
     private static async Task<IResult> CreateConversation(
         HttpRequest request,
         ICommandHandler<CreateConversationCommand, Conversation> handler,
+        IOperationStore operations,
+        TimeProvider clock,
         CancellationToken cancellationToken)
     {
         if (await ConversationRequests.ValidateCreateBodyAsync(request).ConfigureAwait(false) is { } problem)
@@ -36,17 +42,19 @@ internal static class ConversationEndpoints
 
         var result = await handler.Handle(new CreateConversationCommand(), cancellationToken).ConfigureAwait(false);
         return result.Match(
-            conversation => ApiResults.Ok(ConversationResponse.From(conversation), StatusCodes.Status201Created),
+            conversation => ApiResults.Ok(ConversationResponse.From(conversation, operations, clock.GetUtcNow()), StatusCodes.Status201Created),
             ApiResults.Problem);
     }
 
     private static async Task<IResult> GetConversation(
         string conversationId,
         IQueryHandler<GetConversationQuery, Conversation> handler,
+        IOperationStore operations,
+        TimeProvider clock,
         CancellationToken cancellationToken)
     {
         var result = await handler.Handle(new GetConversationQuery(conversationId), cancellationToken).ConfigureAwait(false);
-        return result.Match(conversation => ApiResults.Ok(ConversationResponse.From(conversation)), ApiResults.Problem);
+        return result.Match(conversation => ApiResults.Ok(ConversationResponse.From(conversation, operations, clock.GetUtcNow())), ApiResults.Problem);
     }
 
     private static async Task<IResult> SubmitTurn(
@@ -54,6 +62,7 @@ internal static class ConversationEndpoints
         HttpRequest request,
         IQueryHandler<GetConversationQuery, Conversation> getConversation,
         ICommandHandler<SubmitTurnCommand, Turn> submitTurn,
+        IOperationStore operations,
         CancellationToken cancellationToken)
     {
         // A conversation you can't see is 404 before anything else, so the body's validity reveals nothing about it.
@@ -70,16 +79,44 @@ internal static class ConversationEndpoints
         }
 
         var result = await submitTurn.Handle(new SubmitTurnCommand(conversationId, turnRequest!.ClientTurnId, turnRequest.Message), cancellationToken).ConfigureAwait(false);
-        return result.Match(turn => ApiResults.Ok(TurnResult.From(turn)), ApiResults.Problem);
+        return result.Match(turn => ApiResults.Ok(TurnResult.From(turn, operations)), ApiResults.Problem);
     }
 
     private static async Task<IResult> GetTurn(
         string conversationId,
         string turnId,
         IQueryHandler<GetTurnQuery, Turn> handler,
+        IOperationStore operations,
         CancellationToken cancellationToken)
     {
         var result = await handler.Handle(new GetTurnQuery(conversationId, turnId), cancellationToken).ConfigureAwait(false);
-        return result.Match(turn => ApiResults.Ok(TurnResult.From(turn)), ApiResults.Problem);
+        return result.Match(turn => ApiResults.Ok(TurnResult.From(turn, operations)), ApiResults.Problem);
+    }
+
+    private static async Task<IResult> DecideApproval(
+        string conversationId,
+        string approvalId,
+        HttpRequest request,
+        IQueryHandler<GetConversationQuery, Conversation> getConversation,
+        ICommandHandler<DecideApprovalCommand, Turn> decide,
+        IOperationStore operations,
+        CancellationToken cancellationToken)
+    {
+        // A conversation you can't see is 404 before anything else, as for turns.
+        var visible = await getConversation.Handle(new GetConversationQuery(conversationId), cancellationToken).ConfigureAwait(false);
+        if (visible.IsFailure)
+        {
+            return ApiResults.Problem(visible.Error);
+        }
+
+        var (body, problem) = await ConversationRequests.ReadDecisionAsync(request, cancellationToken).ConfigureAwait(false);
+        if (problem is not null)
+        {
+            return problem;
+        }
+
+        var decision = body!.Decision == "approve" ? ApprovalDecision.Approve : ApprovalDecision.Reject;
+        var result = await decide.Handle(new DecideApprovalCommand(conversationId, approvalId, body.OperationId, decision, body.Reason), cancellationToken).ConfigureAwait(false);
+        return result.Match(turn => ApiResults.Ok(TurnResult.From(turn, operations)), ApiResults.Problem);
     }
 }

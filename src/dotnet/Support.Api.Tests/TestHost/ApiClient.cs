@@ -25,6 +25,36 @@ internal sealed class ApiClient(HttpClient http)
         return body;
     }
 
+    /// <summary>Posts an approval decision. A 200 body must be a contract turn-result.</summary>
+    public async Task<(HttpStatusCode Status, JsonElement Body)> DecideAsync(string conversationId, string approvalId, string operationId, string decision, object? extra = null)
+    {
+        object body = extra ?? new { operation_id = operationId, decision };
+        var result = await SendAsync(HttpMethod.Post, $"/api/v1/conversations/{conversationId}/approvals/{approvalId}", body);
+        if (result.Status == HttpStatusCode.OK)
+        {
+            ContractSchemas.AssertValid("turn-result", result.Body);
+        }
+
+        return result;
+    }
+
+    /// <summary>The authoritative operation record, checked against the contract.</summary>
+    public async Task<JsonElement> GetOperationAsync(string operationId)
+    {
+        var (status, body) = await SendAsync(HttpMethod.Get, $"/api/v1/operations/{operationId}");
+        Assert.Equal(HttpStatusCode.OK, status);
+        ContractSchemas.AssertValid("operation", body);
+        return body;
+    }
+
+    public async Task<JsonElement> GetConversationAsync(string conversationId)
+    {
+        var (status, body) = await SendAsync(HttpMethod.Get, $"/api/v1/conversations/{conversationId}");
+        Assert.Equal(HttpStatusCode.OK, status);
+        ContractSchemas.AssertValid("conversation", body);
+        return body;
+    }
+
     public Task<(HttpStatusCode Status, JsonElement Body)> SendTurnAsync(string conversationId, object body) =>
         SendAsync(HttpMethod.Post, $"/api/v1/conversations/{conversationId}/turns", body);
 

@@ -19,13 +19,6 @@ public static class RoutingRules
     public static bool NeedsOrderId(RequestedAction action) =>
         action is RequestedAction.OrderStatus or RequestedAction.CancelOrder or RequestedAction.RefundOrder;
 
-    /// <summary>
-    /// Actions that would change something. No tool can do them before approvals exist (L10), so they are answered
-    /// deterministically instead of reaching an agent that might pretend.
-    /// </summary>
-    public static bool IsWrite(RequestedAction action) =>
-        action is RequestedAction.CancelOrder or RequestedAction.RefundOrder or RequestedAction.CreateTicket;
-
     /// <summary>Routes a valid decision, or reports it as ambiguous when the action is "other" or disagrees with the target.</summary>
     public static TurnRoute Route(TriageDecision decision)
     {

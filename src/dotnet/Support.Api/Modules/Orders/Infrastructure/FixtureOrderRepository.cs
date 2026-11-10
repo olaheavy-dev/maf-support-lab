@@ -5,7 +5,7 @@ using Support.Api.Modules.Orders.Domain;
 
 namespace Support.Api.Modules.Orders.Infrastructure;
 
-/// <summary>Read-only orders from the synthetic fixtures shared with the Python backend (fixtures/data).</summary>
+/// <summary>Orders from the synthetic fixtures shared with the Python backend, held in memory so simulated writes can change them.</summary>
 internal sealed class FixtureOrderRepository : IOrderRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -14,12 +14,18 @@ internal sealed class FixtureOrderRepository : IOrderRepository
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip,
     };
 
-    private readonly IReadOnlyList<Order> orders;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Order> orders;
 
-    private FixtureOrderRepository(IReadOnlyList<Order> orders) => this.orders = orders;
+    private FixtureOrderRepository(IReadOnlyList<Order> orders) =>
+        this.orders = new(orders.ToDictionary(order => order.OrderId, StringComparer.Ordinal), StringComparer.Ordinal);
 
-    public Order? Find(string orderId) =>
-        orders.FirstOrDefault(order => string.Equals(order.OrderId, orderId, StringComparison.Ordinal));
+    public Order? Find(string orderId) => orders.GetValueOrDefault(orderId);
+
+    public void Update(Order order)
+    {
+        ArgumentNullException.ThrowIfNull(order);
+        orders[order.OrderId] = order;
+    }
 
     /// <summary>Loads the fixture files copied next to the binaries (see Support.Api.csproj).</summary>
     public static FixtureOrderRepository Load(string? directory = null)
