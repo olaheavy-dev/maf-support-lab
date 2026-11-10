@@ -30,7 +30,7 @@ class LearningValidationTests(unittest.TestCase):
 
     def test_current_plan_is_valid(self) -> None:
         epics, tickets, _ = validate(self.root)
-        self.assertEqual((epics, tickets), (9, 42))
+        self.assertEqual((epics, tickets), (9, 43))
 
     def test_prebuild_evaluation_deliverable_is_rejected(self) -> None:
         self.edit_json("docs/learning/backlog.json",
@@ -47,7 +47,7 @@ class LearningValidationTests(unittest.TestCase):
     def test_numbered_adr_authoring_order_is_enforced(self) -> None:
         def reverse_adrs(backlog):
             for ticket in backlog["tickets"]:
-                ticket["deliverables"] = [p.replace("0002-state-and-idempotency", "0004-state-and-idempotency") for p in ticket["deliverables"]]
+                ticket["deliverables"] = [p.replace("0003-state-and-idempotency", "0005-state-and-idempotency") for p in ticket["deliverables"]]
         self.edit_json("docs/learning/backlog.json", reverse_adrs)
         with self.assertRaisesRegex(SystemExit, "Numbered ADR introduced out of order: L21"):
             validate(self.root)
@@ -60,7 +60,7 @@ class LearningValidationTests(unittest.TestCase):
 
     def test_future_authorization_dependency_is_rejected(self) -> None:
         self.edit_json("docs/learning/backlog.json",
-            lambda b: b["tickets"][9]["requires_capabilities"].append("dotnet_access_regressions"))
+            lambda b: next(t for t in b["tickets"] if t["id"] == "L10")["requires_capabilities"].append("dotnet_access_regressions"))
         with self.assertRaisesRegex(SystemExit, "Unavailable prerequisite capabilities: L10"):
             validate(self.root)
 

@@ -1,0 +1,39 @@
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Support.Api.Modules.Agents.Application;
+using Support.Api.Modules.Orders.Presentation;
+
+namespace Support.Api.Modules.Orders.Infrastructure;
+
+/// <summary>
+/// Builds the orders agent once. The same instance serves the contract API and DevUI, so both
+/// entry points use the same tool and therefore the same ownership checks.
+/// </summary>
+public static class OrdersAgentFactory
+{
+    public const string Instructions = """
+        You are the orders specialist for VoltCart customer support.
+        Use the get_order_status tool for any question about a specific order; never guess order details.
+        If the customer has not given an order id, ask for it (format ORD-1234) instead of calling the tool.
+        If the tool reports not_found, say you could not find that order on their account and ask them to check the id.
+        Never ask for or mention customer ids, and never discuss other customers' orders.
+        Keep replies short and factual.
+        """;
+
+    public static AIAgent Create(IChatClient chatClient, OrderStatusTool orderStatusTool, ILoggerFactory? loggerFactory = null)
+    {
+        return new ChatClientAgent(
+            chatClient,
+            new ChatClientAgentOptions
+            {
+                Name = SupportAgents.OrdersAgentName,
+                Description = "Answers order-status questions for the current customer.",
+                ChatOptions = new ChatOptions
+                {
+                    Instructions = Instructions,
+                    Tools = [orderStatusTool.AsAIFunction()],
+                },
+            },
+            loggerFactory);
+    }
+}

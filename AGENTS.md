@@ -14,6 +14,7 @@ The assistant drives each ticket end to end; the owner reviews and decides.
   5. After the go-ahead: commit, push, open the PR, post the review brief and learning note, and request a Codex review by commenting `@codex review`.
   6. Wait for the Codex review to finish. Explain each finding in plain English, and fix valid ones (changes go back through the owner's go-ahead). Merge only when the checks pass and Codex has no unresolved findings, then report with the PR and comment links.
 - Explain in plain, simple English. Put the review brief (what changed, what to check) on the PR, knowledge the owner should learn on the ticket, and a short summary plus anything needing the owner in the chat.
+- When the owner must make a decision, present it in the interactive question prompt (not as a chat list): one question per decision, 2–4 options each with a short trade-off, and the recommended option first and marked "(Recommended)".
 - Keep the project board current: move the active ticket to In progress when work starts and to Review when its PR opens. After the PR merges, move it to Done and the next ticket in Order to Ready.
 - Never commit before the owner's go-ahead. After it, merge the PR (squash) once required checks pass, Codex has reviewed it, and review threads are resolved. Do not start implementing the next ticket without the owner's go-ahead, and never mark a ticket learned; the owner decides that.
 - Label assistant-written evidence and interview answers as assistant-drafted.

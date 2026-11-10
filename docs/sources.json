@@ -487,6 +487,27 @@
       "kind": "official-doc",
       "checked_on": "2026-11-09",
       "note": "Recheck when L35 starts; a release history or engines declaration alone does not prove the selected Gatsby/Node/plugin set builds."
+    },
+    "ms-clean-architecture": {
+      "title": "Common web application architectures (Clean Architecture)",
+      "url": "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures",
+      "kind": "official-doc",
+      "checked_on": "2026-11-10",
+      "note": "Layer responsibilities and inward-pointing dependencies; L43 applies them as folders in one project rather than separate projects."
+    },
+    "ms-cqrs": {
+      "title": "Simplified CQRS reads and command handlers",
+      "url": "https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/cqrs-microservice-reads",
+      "kind": "official-doc",
+      "checked_on": "2026-11-10",
+      "note": "Commands, queries, and one handler per use case; L43 uses plain handler interfaces without a mediator."
+    },
+    "archunitnet-docs": {
+      "title": "ArchUnitNET documentation",
+      "url": "https://archunitnet.readthedocs.io/en/latest/",
+      "kind": "official-doc",
+      "checked_on": "2026-11-10",
+      "note": "Architecture-rule library selected for L43 (TngTech.ArchUnitNET.xUnitV3 0.13.5, Apache-2.0, released 2026-10-26)."
     }
   }
 }

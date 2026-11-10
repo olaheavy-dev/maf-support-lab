@@ -41,6 +41,16 @@
           "Microsoft.Extensions.Hosting": "10.0.14"
         }
       },
+      "TngTech.ArchUnitNET.xUnitV3": {
+        "type": "Direct",
+        "requested": "[0.13.5, )",
+        "resolved": "0.13.5",
+        "contentHash": "Y9SplQYj1bSBbbAx/LPz5htkAeJZl/BDZ5BeEcqxDI+Si5cv2oBBroD7pkmRIzrIObNvry6awhAQ46o6MNcqzQ==",
+        "dependencies": {
+          "TngTech.ArchUnitNET": "0.13.5",
+          "xunit.v3.assert": "1.1.0"
+        }
+      },
       "xunit.v3": {
         "type": "Direct",
         "requested": "[4.0.3, )",
@@ -49,6 +59,11 @@
         "dependencies": {
           "xunit.v3.mtp-v2": "[4.0.3]"
         }
+      },
+      "CycleDetection": {
+        "type": "Transitive",
+        "resolved": "2.0.0",
+        "contentHash": "iQb2Nm9WqPseGCxPcdeU5qMbWkxtSr1bmnliC7slitx7GOG8cKO2pKZUQ2Yl+DQQZQ7c8qIXe3k+zYE0f96dIA=="
       },
       "Google.Protobuf": {
         "type": "Transitive",
@@ -59,6 +74,11 @@
         "type": "Transitive",
         "resolved": "3.0.10",
         "contentHash": "yZIhtw8sYuvsONzQbZxWpR60tMWYHXoo0DL6nyOqSFiU5POjBTSEyWFpTQtJEZuy+oqiYTXKXY/Mjx7KnqIQFw=="
+      },
+      "JetBrains.Annotations": {
+        "type": "Transitive",
+        "resolved": "2026.2.0",
+        "contentHash": "drvAEaI7Xf4wU6dx4UTB9MoZWXZlraaQ0qoeThPQ411FxNhId7QdUTukIC9I8aUHP0ycAaGwZNKqSvfOZQvUlg=="
       },
       "Json.More.Net": {
         "type": "Transitive",
@@ -598,6 +618,16 @@
         "resolved": "5.0.0",
         "contentHash": "dDoKi0PnDz31yAyETfRntsLArTlVAVzUzCIvvEDsDsucrl33Dl8pIJG06ePTJTI3tGpeyHS9Cq7Foc/s4EeKcg=="
       },
+      "Mono.Cecil": {
+        "type": "Transitive",
+        "resolved": "0.11.6",
+        "contentHash": "f33RkDtZO8VlGXCtmQIviOtxgnUdym9xx/b1p9h91CRGOsJFxCFOFK1FDbVt1OCf1aWwYejUFa2MOQyFWTFjbA=="
+      },
+      "Newtonsoft.Json": {
+        "type": "Transitive",
+        "resolved": "13.0.4",
+        "contentHash": "pdgNNMai3zv51W5aq268sujXUyx7SNdE2bj1wZcWjAQrKMFZV260lbqYop1d2GM67JI1huLRwxo9ZqnfF/lC6A=="
+      },
       "OpenAI": {
         "type": "Transitive",
         "resolved": "2.14.0",
@@ -690,6 +720,23 @@
         "type": "Transitive",
         "resolved": "8.0.0",
         "contentHash": "7mu9v0QDv66ar3DpGSZHg9NuNcxDaaAcnMULuZlaTpP9+hwXhrxNGsF5GmLkSHxFdb5bBc1TzeujsRgTrPWi+Q=="
+      },
+      "System.ValueTuple": {
+        "type": "Transitive",
+        "resolved": "4.6.2",
+        "contentHash": "yQgmjfFximrNm9LIV3mL6T5MzjeC+epeE5rl4hXxAlYmxby7RM1dPSkIKXk9HNkl6G54h2JHOmLD46+Pey+IRg=="
+      },
+      "TngTech.ArchUnitNET": {
+        "type": "Transitive",
+        "resolved": "0.13.5",
+        "contentHash": "ajzTX2DjrXhVJdxa0YxhpTEue8NGxGbpkoZbgQhWBKqUZH8UZGwbR3dJg0a00T6YDBYh0lHl3GBf6jAc5VXhlg==",
+        "dependencies": {
+          "CycleDetection": "2.0.0",
+          "JetBrains.Annotations": "2026.2.0",
+          "Mono.Cecil": "0.11.6",
+          "Newtonsoft.Json": "13.0.4",
+          "System.ValueTuple": "4.6.2"
+        }
       },
       "xunit.analyzers": {
         "type": "Transitive",
