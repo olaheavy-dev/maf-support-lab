@@ -9,9 +9,12 @@ permissions:
 concurrency:
   group: repository-checks-${{ github.ref }}
   cancel-in-progress: true
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
 jobs:
-  repository-checks:
-    name: repository-checks
+  planning-and-contracts:
+    name: planning-and-contracts
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -31,3 +34,51 @@ jobs:
         run: '"$RUNNER_TEMP/contracts-venv/bin/python" -m unittest discover -s contracts/tests -p "test_*.py"'
       - name: Check synthetic fixtures and scenarios
         run: '"$RUNNER_TEMP/contracts-venv/bin/python" -m unittest discover -s fixtures/tests -p "test_*.py"'
+
+  dotnet:
+    name: dotnet
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Offline lane: fake model mode, no provider credentials, locked restore.
+      ContinuousIntegrationBuild: "true"
+      ModelProvider__Mode: Fake
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install .NET SDK from global.json
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - name: Restore (locked)
+        run: dotnet restore maf-support-lab.slnx
+      - name: Build (warnings are errors)
+        run: dotnet build maf-support-lab.slnx --no-restore --configuration Release
+      - name: Test (fake mode, no credentials)
+        run: dotnet test --solution maf-support-lab.slnx --no-build --configuration Release
+
+  # The single required status check. It always reports, and it passes only when every
+  # language job succeeded: a failed, cancelled, or skipped job turns it red.
+  repository-checks:
+    name: repository-checks
+    if: always()
+    needs: [planning-and-contracts, dotnet]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every check to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | python3 -c '
+          import json, sys
+          results = {name: job["result"] for name, job in json.load(sys.stdin).items()}
+          for name, result in sorted(results.items()):
+              print(f"{name}: {result}")
+          failed = [name for name, result in results.items() if result != "success"]
+          sys.exit(f"Required checks did not succeed: {failed}" if failed else 0)
+          '

@@ -14,7 +14,7 @@ Target: main.
 
 This is a solo learning repository: required approval count is zero. The owner still reviews the diff and completes learning evidence. When another reviewer joins, raise the approval requirement to one and enable stale-approval dismissal. Requiring the author to obtain their own approval would block normal progress.
 
-The required bootstrap check validates roadmap/reference metadata only. L04 adds real C#/Aspire build and meaningful offline tests. Python and frontend checks join the required aggregate when those implementations exist. Never require a check that cannot run on every relevant PR.
+The required `repository-checks` status is an aggregate job: it waits for every language job (`planning-and-contracts` and `dotnet` since L04) and passes only if all succeeded. Python and frontend jobs join its `needs` list when those implementations exist. Never require a check that cannot run on every relevant PR. See [testing](testing.md) for the offline/live split and the separate dependency audit.
 
 No application secrets are configured during bootstrap. Live-model evaluation is opt-in and uses bounded usage.
 
