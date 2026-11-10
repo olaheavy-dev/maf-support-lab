@@ -6,14 +6,15 @@ using Support.Api.Modules.Triage.Domain;
 namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 
 /// <summary>
-/// The support workflow (MAF Workflows): triage, then a deterministic switch to exactly one executor.
+/// The support workflow (MAF Workflows): triage, then a deterministic switch to exactly one executor (first match wins).
 /// A fresh workflow is built per message, so concurrent turns never share executor state.
 /// <code>
-/// triage ─┬─ orders, no order id ─▶ ask-for-order-id
-///         ├─ orders              ─▶ orders-specialist
-///         ├─ billing             ─▶ billing-placeholder
-///         ├─ technical           ─▶ technical-placeholder
-///         └─ default             ─▶ unrouted (invalid or ambiguous triage)
+/// triage ─┬─ cancel / refund / ticket (routed) ─▶ write-not-available   (until L10)
+///         ├─ orders, no order id               ─▶ ask-for-order-id
+///         ├─ orders                            ─▶ orders-specialist
+///         ├─ billing                           ─▶ billing-specialist
+///         ├─ technical                         ─▶ technical-specialist
+///         └─ default                           ─▶ unrouted (invalid or ambiguous triage)
 /// </code>
 /// </summary>
 internal sealed class SupportWorkflowRouter(SupportAgents agents, TriageMetrics metrics, ILogger<SupportWorkflowRouter> logger) : ISupportRouter
@@ -43,24 +44,50 @@ internal sealed class SupportWorkflowRouter(SupportAgents agents, TriageMetrics 
         return reply ?? throw new InvalidOperationException("The support workflow finished without a reply.");
     }
 
-    private Workflow Build()
+    /// <summary>A fresh workflow for one API turn: string in, one <see cref="SupportReply"/> out.</summary>
+    public Workflow Build() => Build(forChat: false);
+
+    /// <summary>
+    /// Development only: the same workflow for DevUI. A chat-protocol entrance forwards the text to triage, and the
+    /// reply comes out as a chat message. Every executor in between is identical to the API's.
+    /// </summary>
+    public Workflow BuildForChat() => Build(forChat: true);
+
+    private Workflow Build(bool forChat)
     {
         var triage = new TriageExecutor(agents, metrics, logger);
+        var writeNotAvailable = new WriteNotAvailableExecutor();
         var askForOrderId = new AskForOrderIdExecutor();
-        var orders = new OrdersSpecialistExecutor(agents);
-        var billing = new PlaceholderSpecialistExecutor(RouteTarget.Billing);
-        var technical = new PlaceholderSpecialistExecutor(RouteTarget.Technical);
+        var orders = new SpecialistExecutor(agents, RouteTarget.Orders);
+        var billing = new SpecialistExecutor(agents, RouteTarget.Billing);
+        var technical = new SpecialistExecutor(agents, RouteTarget.Technical);
         var unrouted = new UnroutedExecutor();
+        ExecutorBinding reply = forChat ? new ChatReplyExecutor() : new ReplyOutputExecutor();
+        ExecutorBinding[] endings = [writeNotAvailable, askForOrderId, orders, billing, technical, unrouted];
 
-        return new WorkflowBuilder(triage)
+        var chatInput = new ChatInputExecutor();
+        var builder = new WorkflowBuilder(forChat ? chatInput : triage);
+        if (forChat)
+        {
+            builder.AddEdge(chatInput, triage);
+        }
+
+        builder
             .WithName(WorkflowName)
             .AddSwitch(triage, cases => cases
+                .AddCase<TriageOutcome>(outcome => outcome is { IsWriteRequest: true }, [writeNotAvailable])
                 .AddCase<TriageOutcome>(outcome => outcome is { IsMissingOrderId: true }, [askForOrderId])
                 .AddCase<TriageOutcome>(outcome => outcome?.Route.Target == RouteTarget.Orders, [orders])
                 .AddCase<TriageOutcome>(outcome => outcome?.Route.Target == RouteTarget.Billing, [billing])
                 .AddCase<TriageOutcome>(outcome => outcome?.Route.Target == RouteTarget.Technical, [technical])
-                .WithDefault([unrouted]))
-            .WithOutputFrom(askForOrderId, orders, billing, technical, unrouted)
+                .WithDefault([unrouted]));
+        foreach (var ending in endings)
+        {
+            builder.AddEdge(ending, reply);
+        }
+
+        return builder
+            .WithOutputFrom(reply)
             .WithOpenTelemetry(activitySource: AgentTelemetry.WorkflowActivitySource)
             .Build();
     }

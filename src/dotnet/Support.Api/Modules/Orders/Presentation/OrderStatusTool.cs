@@ -30,7 +30,7 @@ public sealed partial class OrderStatusTool(
     {
         var result = await getOrderStatus.Handle(new GetOrderStatusQuery(orderId), cancellationToken).ConfigureAwait(false);
         return result.Match(
-            order => Record(OrderLookupOutcome.Found, "found", new OrderStatusResult(
+            order => Record(ToolOutcome.Found, "found", new OrderStatusResult(
                 "found",
                 order.OrderId,
                 order.Status,
@@ -39,17 +39,17 @@ public sealed partial class OrderStatusTool(
                 order.DeliveredAt,
                 [.. order.Items.Select(item => item.Name)])),
             error => error == OrderErrors.InvalidOrderId
-                ? Record(OrderLookupOutcome.InvalidOrderId, "invalid_order_id", new OrderStatusResult("invalid_order_id", null, null, null, null, null, null))
-                : Record(OrderLookupOutcome.NotFound, "not_found", new OrderStatusResult("not_found", OrderId.Normalize(orderId), null, null, null, null, null)));
+                ? Record(ToolOutcome.InvalidInput, "invalid_order_id", new OrderStatusResult("invalid_order_id", null, null, null, null, null, null))
+                : Record(ToolOutcome.NotFound, "not_found", new OrderStatusResult("not_found", OrderId.Normalize(orderId), null, null, null, null, null)));
     }
 
     /// <summary>
     /// Records the outcome three ways: for the turn's reply kind (TurnActivity), as a bounded metric, and as a log line.
     /// The order id is not logged: it is model-controlled input, and the execute_tool span already shows the call.
     /// </summary>
-    private OrderStatusResult Record(OrderLookupOutcome outcome, string outcomeName, OrderStatusResult result)
+    private OrderStatusResult Record(ToolOutcome outcome, string outcomeName, OrderStatusResult result)
     {
-        TurnActivity.Current?.RecordOrderLookup(outcome);
+        TurnActivity.Current?.Record(outcome);
         metrics.Record(Name, outcomeName);
         Log.LookupFinished(logger, Name, outcomeName);
         return result;

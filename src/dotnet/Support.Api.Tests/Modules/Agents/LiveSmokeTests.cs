@@ -5,8 +5,8 @@ namespace Support.Api.Tests.Modules.Agents;
 
 /// <summary>
 /// Opt-in live checks against Claude. Never run in CI or a normal `dotnet test`: they are Explicit and need
-/// ANTHROPIC_API_KEY. Bounded: the order turn is three model calls (triage, then the orders agent and its tool
-/// round trip); the billing turn is one (triage only, the billing specialist is a placeholder until L08).
+/// ANTHROPIC_API_KEY. Bounded: one turn per domain, each about three model calls (triage, then the specialist and
+/// its tool round trip).
 /// Run: dotnet test --solution maf-support-lab.slnx -- --filter-trait "Category=Live" --explicit only
 /// </summary>
 public sealed class LiveSmokeTests
@@ -38,9 +38,11 @@ public sealed class LiveSmokeTests
         Assert.Contains("ship", turn.ReplyText(), StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact(Explicit = true)]
+    [Theory(Explicit = true)]
     [Trait("Category", "Live")]
-    public async Task Claude_triage_routes_an_invoice_question_to_billing()
+    [InlineData("Can you send me the invoice for ORD-1001?", "billing", "INV-5001")]
+    [InlineData("My wireless headphones keep crackling.", "technical", "KB-102")]
+    public async Task Claude_answers_billing_and_technical_from_their_tools(string message, string target, string identifier)
     {
         var key = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
         Assert.SkipWhen(string.IsNullOrWhiteSpace(key), "Set ANTHROPIC_API_KEY to run the live smoke check.");
@@ -53,10 +55,12 @@ public sealed class LiveSmokeTests
         });
         var api = new ApiClient(factory.CreateClient());
 
-        var turn = await api.AskAsync(await api.CreateConversationAsync(), "Could you email me the invoice for my last purchase?");
+        var turn = await api.AskAsync(await api.CreateConversationAsync(), message);
 
+        // S05 / S07 with real Claude: routed by validated triage, answered from a tool, citing the record it used.
         Assert.Equal("routed", turn.GetProperty("route").GetProperty("status").GetString());
-        Assert.Equal("billing", turn.GetProperty("route").GetProperty("target").GetString());
-        Assert.Equal("escalation_offer", turn.ReplyKind());
+        Assert.Equal(target, turn.GetProperty("route").GetProperty("target").GetString());
+        Assert.Equal("answer", turn.ReplyKind());
+        Assert.Contains(identifier, turn.ReplyText(), StringComparison.Ordinal);
     }
 }

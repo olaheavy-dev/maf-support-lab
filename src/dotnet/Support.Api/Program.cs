@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Support.Api.Common.Infrastructure.Observability;
 using Support.Api.Modules.Agents;
+using Support.Api.Modules.Billing;
 using Support.Api.Modules.Conversations;
 using Support.Api.Modules.Identity;
 using Support.Api.Modules.Orders;
+using Support.Api.Modules.Technical;
 using Support.Api.Modules.Triage;
 
 // Composition root only: each module registers its own services and maps its own endpoints.
@@ -19,9 +21,12 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddOrdersModule();
+builder.Services.AddBillingModule();
+builder.Services.AddTechnicalModule();
 builder.Services.AddTriageModule();
 builder.Services.AddConversationsModule();
 builder.AddAgentsModule();
+builder.AddTriageDevUi();
 
 var app = builder.Build();
 

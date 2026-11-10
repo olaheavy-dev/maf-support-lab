@@ -64,7 +64,7 @@ public sealed class TelemetryTests
     }
 
     [Theory]
-    [InlineData("Can you send me a copy of my invoice?", "billing-placeholder", "routed", "billing", "none")]
+    [InlineData("Can you send me a copy of my invoice?", "billing-specialist", "routed", "billing", "none")]
     [InlineData("Hello there, nice weather today.", "unrouted", "unrouted", "none", "ambiguous_request")]
     [InlineData("Where is ORD-1002? " + FakeChatClient.MalformedTriageTrigger, "unrouted", "unrouted", "none", "invalid_model_output")]
     public async Task The_trace_and_metrics_connect_each_routing_decision_to_its_executor(
@@ -81,7 +81,9 @@ public sealed class TelemetryTests
         Assert.Equal(outcome, Tag(triage, "support.triage.outcome"));
         Assert.Equal(target, Tag(triage, "support.triage.target"));
         Assert.Equal(reason, Tag(triage, "support.triage.unrouted_reason"));
-        var selected = Assert.Single(spans, span => span.DisplayName.StartsWith("executor.process ", StringComparison.Ordinal) && span != triage);
+        var selected = Assert.Single(spans, span => span.DisplayName.StartsWith("executor.process ", StringComparison.Ordinal)
+            && span != triage && span.DisplayName != "executor.process reply");
+        Assert.Single(spans, span => span.DisplayName == "executor.process reply");
         Assert.Equal($"executor.process {executor}", selected.DisplayName);
         Assert.DoesNotContain(spans, span => Tag(span, "gen_ai.agent.name") == "orders");
 

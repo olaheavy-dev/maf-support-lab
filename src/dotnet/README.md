@@ -34,6 +34,10 @@ Support.Api/
    │  ├─ Application/         GetOrderStatus query + handler (ownership check); IOrderRepository
    │  ├─ Infrastructure/      FixtureOrderRepository (fixtures/data/orders.json), OrdersAgentFactory (the orders agent)
    │  └─ Presentation/        OrderStatusTool: the model's "endpoint"
+   ├─ Billing/                (L08) read-only: GetInvoice (INV- or ORD- id) and GetPaymentHistory, owner-checked;
+   │                          BillingTools (get_invoice, get_payment_history), BillingAgentFactory
+   ├─ Technical/              (L08) read-only: keyword knowledge search; KnowledgeSearchTool (search_knowledge_base),
+   │                          TechnicalAgentFactory. No ticket tool until L10.
    ├─ Triage/                 (L07) every message is triaged, then routed by code
    │  ├─ Domain/              TriageDecision, RouteTarget, RoutingRules (action must match target), TurnRoute, SupportReply
    │  ├─ Application/         TriageDecisionParser (full contract validation), TriageOutcome, ISupportRouter, TriageMetrics
@@ -137,7 +141,7 @@ The rules:
 - Someone else's conversation or turn returns `404 not_found`.
 - Re-sending a `client_turn_id` returns the original turn; reusing it with a different message returns `409`.
 
-Not yet implemented: the one-turn-at-a-time rule and conversation memory (L09), writes and approvals (L10), and streaming (L12). Billing and technical are routed but answered by placeholders until L08 (see Routing).
+Not yet implemented: the one-turn-at-a-time rule and conversation memory (L09), writes and approvals (L10), and streaming (L12). Write requests (cancel, refund, ticket) get a deterministic "not available yet" reply until L10 (see Routing).
 
 ```bash
 curl -s -X POST localhost:5180/api/v1/conversations -H 'content-type: application/json' -d '{}'
@@ -147,15 +151,25 @@ curl -s -X POST localhost:5180/api/v1/conversations/<conversation_id>/turns -H '
 
 ## Routing (L07)
 
-Every turn runs the `support-routing` workflow (MAF Workflows 1.28.0, built per turn):
+Every turn runs the `support-routing` workflow (MAF Workflows 1.28.0, built per turn). The first case that matches wins:
 
 ```text
-triage ─┬─ orders + an order-specific action, no order id ─▶ ask-for-order-id   (clarification, no model call)
-        ├─ orders                                          ─▶ orders-specialist  (the orders agent and its tool)
-        ├─ billing                                         ─▶ billing-placeholder    (escalation_offer, until L08)
-        ├─ technical                                       ─▶ technical-placeholder  (escalation_offer, until L08)
-        └─ default                                         ─▶ unrouted (clarification; route.status = unrouted)
+triage ─┬─ cancel / refund / ticket          ─▶ write-not-available   (escalation_offer, nothing changed; real writes with approval in L10)
+        ├─ orders, order-specific, no id     ─▶ ask-for-order-id      (clarification, no model call)
+        ├─ orders                            ─▶ orders-specialist     (get_order_status)
+        ├─ billing                           ─▶ billing-specialist    (get_invoice, get_payment_history)
+        ├─ technical                         ─▶ technical-specialist  (search_knowledge_base)
+        └─ default                           ─▶ unrouted              (clarification; route.status = unrouted)
+                                                     └─▶ every ending sends its reply to one `reply` executor (the workflow's output)
 ```
+
+**Each specialist has only its own read tools.** A test reads the tools from the agents the app actually built, and fails if any tool sounds like a write.
+
+The reply kind comes from what the tools recorded, not from the model's wording:
+- any record found → `answer`;
+- a record not found (including another customer's) → `not_found`;
+- a knowledge search with no match → `escalation_offer` (a human is offered, nothing is created);
+- no lookup → `clarification`.
 
 **The model classifies; code decides:**
 - **Triage** is a JSON-only agent with no tools. Its output is validated against the **full** `contracts/schemas/triage-decision.schema.json`. A test keeps the C# validator in agreement with the schema on the contract examples and on edge cases.
@@ -167,6 +181,10 @@ triage ─┬─ orders + an order-specific action, no order id ─▶ ask-for-o
 ## Agents, tools, and the model boundary
 
 - **`orders` agent** (`Modules/Orders/Infrastructure/OrdersAgentFactory.cs`, registered by `OrdersModule` as a `SupportAgent`): built once and shared by the API and DevUI. It has a single tool.
+- **`billing` and `technical` agents** (`Modules/Billing/Infrastructure/BillingAgentFactory.cs`, `Modules/Technical/Infrastructure/TechnicalAgentFactory.cs`):
+  - read-only tools that take ids or search text, never a customer id;
+  - their instructions require citing the invoice, order, payment or article id;
+  - they can never claim a refund, change or ticket happened.
 - **`get_order_status` tool** (`Modules/Orders/Presentation/OrderStatusTool.cs`):
   - The model supplies only the order id.
   - The tool sends a `GetOrderStatusQuery`. Its handler returns the order only if it belongs to the current principal; anything else looks exactly like a missing order.
@@ -175,7 +193,13 @@ triage ─┬─ orders + an order-specific action, no order id ─▶ ask-for-o
 
 ## DevUI (Development only)
 
-Run the API (or the AppHost, where the `support-api-dotnet` resource shows a **DevUI** link) and open `http://localhost:5180/devui/` to chat with the `orders` agent and inspect its tool calls. DevUI and its OpenAI-compatible `/v1/responses` and `/v1/entities` endpoints are mapped only in Development, and they use the same agent instance as the API.
+Run the API (or the AppHost, where the `support-api-dotnet` resource shows a **DevUI** link) and open `http://localhost:5180/devui/`. DevUI lists:
+- **`support-routing` (workflow):** chat through the whole pipeline, exactly like an API turn (triage, the routing switch, one specialist). Each reply starts with the routing result, for example `[route: billing | reply: answer]`. DevUI can also show the workflow graph.
+- **`orders`, `billing`, `technical` (agents):** talk to one specialist directly, skipping triage. This is useful for checking a tool on its own.
+
+DevUI and its OpenAI-compatible `/v1/responses` and `/v1/entities` endpoints are mapped only in Development. They use the same agent instances and the same executors as the API, so the same ownership checks apply. The DevUI workflow differs only at its two ends:
+- a `chat-input` entrance that speaks MAF's chat protocol and forwards the text to triage;
+- a reply exit that emits an agent response update.
 
 DevUI's built-in guard admits only loopback callers with a localhost `Host` header. It applies to any path containing the segments `/v1/responses` or `/v1/conversations`, **which includes our `/api/v1/conversations` routes in Development**. Local use is unaffected. A proxy that forwards a non-localhost `Host` (relevant to L23) must preserve a loopback host in Development.
 
@@ -186,9 +210,7 @@ export ANTHROPIC_API_KEY=...   # never commit it
 dotnet test --solution maf-support-lab.slnx -- --filter-trait "Category=Live" --explicit only
 ```
 
-These are two turns against `claude-haiku-5-5`:
-- an order question: triage plus the orders agent's tool round trip, three model calls;
-- an invoice question: triage only, which must route to billing.
+These are three turns against `claude-haiku-5-5`, one per domain (orders, billing S05, technical S07). Each is about three model calls: triage, then the specialist and its tool round trip.
 
 They never run in CI or a plain `dotnet test`.
 

@@ -7,18 +7,20 @@ namespace Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 
 /// <summary>
 /// Deterministic stand-in for the model provider: no network, no credentials, no cost.
-/// The default script behaves like a well-behaved orders model. Tests can pass their own script,
-/// for example one that requests another customer's order, to prove the services still decide.
+/// Triage calls (JSON response format) get keyword triage. Specialist calls get a script that behaves like a
+/// well-behaved model: it calls whichever of the agent's own tools fits, then answers from the tool result.
+/// Tests can pass their own scripts, for example one that requests another customer's order.
 /// </summary>
-public sealed partial class FakeChatClient(
-    Func<IReadOnlyList<ChatMessage>, ChatResponse>? script = null,
-    Func<string, string>? triage = null) : IChatClient
+public sealed partial class FakeChatClient : IChatClient
 {
     /// <summary>
-    /// The tool the default script asks for. A literal, not a reference to the Orders module, so the shared
-    /// Agents module stays independent of feature modules; OrderStatusTests prove the names still match.
+    /// Tool names the default script uses. Literals, not references to feature modules, so the shared Agents module
+    /// stays independent of them; tests prove the names still match the real tools.
     /// </summary>
     public const string OrderStatusToolName = "get_order_status";
+    public const string InvoiceToolName = "get_invoice";
+    public const string PaymentHistoryToolName = "get_payment_history";
+    public const string KnowledgeSearchToolName = "search_knowledge_base";
 
     /// <summary>
     /// A message containing this marker makes the fake model fail, so a failed turn can be produced and inspected in
@@ -37,8 +39,21 @@ public sealed partial class FakeChatClient(
     /// <summary>Messages containing this marker get triage output naming a target the contract does not allow (fake mode only).</summary>
     public const string UnknownRouteTrigger = "[fake:triage-unknown-route]";
 
-    private readonly Func<IReadOnlyList<ChatMessage>, ChatResponse> script = script ?? DefaultScript;
-    private readonly Func<string, string> triage = triage ?? DefaultTriage;
+    private readonly Func<IReadOnlyList<ChatMessage>, ChatOptions?, ChatResponse> script;
+    private readonly Func<string, string> triage;
+
+    /// <summary>A fake whose specialist calls see the agent's options (and so its tools).</summary>
+    public FakeChatClient(Func<IReadOnlyList<ChatMessage>, ChatOptions?, ChatResponse>? script = null, Func<string, string>? triage = null)
+    {
+        this.script = script ?? DefaultScript;
+        this.triage = triage ?? DefaultTriage;
+    }
+
+    /// <summary>A fake with a messages-only specialist script (tests that script one behaviour).</summary>
+    public FakeChatClient(Func<IReadOnlyList<ChatMessage>, ChatResponse> script, Func<string, string>? triage = null)
+        : this((messages, _) => script(messages), triage)
+    {
+    }
 
     public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
@@ -49,11 +64,10 @@ public sealed partial class FakeChatClient(
         // Scripted tests therefore control the specialist model while triage stays deterministic.
         if (options?.ResponseFormat is ChatResponseFormatJson)
         {
-            var userText = history.LastOrDefault(message => message.Role == ChatRole.User)?.Text ?? string.Empty;
-            return Task.FromResult(Text(triage(userText)));
+            return Task.FromResult(Text(triage(LastUserText(history))));
         }
 
-        return Task.FromResult(script(history));
+        return Task.FromResult(script(history, options));
     }
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
@@ -77,23 +91,53 @@ public sealed partial class FakeChatClient(
     {
     }
 
-    /// <summary>Asks for the tool when an order id is present, answers from the tool result, otherwise asks for the id.</summary>
-    public static ChatResponse DefaultScript(IReadOnlyList<ChatMessage> messages)
+    /// <summary>The orders behaviour, for scripts that wrap it without knowing the agent's tools.</summary>
+    public static ChatResponse DefaultScript(IReadOnlyList<ChatMessage> messages) => DefaultScript(messages, null);
+
+    /// <summary>
+    /// Calls the fitting tool among those the agent actually has, then answers from its result. With no tool
+    /// information it behaves like the orders model.
+    /// </summary>
+    public static ChatResponse DefaultScript(IReadOnlyList<ChatMessage> messages, ChatOptions? options)
     {
+        ArgumentNullException.ThrowIfNull(messages);
         var toolResult = messages.Count > 0 ? messages[^1].Contents.OfType<FunctionResultContent>().LastOrDefault() : null;
         if (toolResult is not null)
         {
-            return Text(DescribeLookup(toolResult.Result));
+            return Text(Describe(ToolNameFor(messages, toolResult.CallId), toolResult.Result));
         }
 
-        var userText = messages.LastOrDefault(message => message.Role == ChatRole.User)?.Text ?? string.Empty;
+        var userText = LastUserText(messages);
         if (userText.Contains(FailureTrigger, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("The fake model failed because the message asked it to.");
         }
 
+        var tools = options?.Tools?.OfType<AIFunctionDeclaration>().Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal)
+            ?? [OrderStatusToolName];
         var orderId = OrderIdPattern().Match(userText);
-        if (orderId.Success)
+        var invoiceId = InvoiceIdPattern().Match(userText);
+        var upper = userText.ToUpperInvariant();
+
+        if (tools.Contains(KnowledgeSearchToolName))
+        {
+            return ToolCall(KnowledgeSearchToolName, new Dictionary<string, object?> { ["query"] = userText });
+        }
+
+        if (tools.Contains(PaymentHistoryToolName) && ContainsAny(upper, "PAYMENT", "HISTORY", "CHARGE", "PAID"))
+        {
+            return ToolCall(PaymentHistoryToolName, new Dictionary<string, object?>());
+        }
+
+        if (tools.Contains(InvoiceToolName))
+        {
+            var reference = invoiceId.Success ? invoiceId.Value : orderId.Success ? orderId.Value : null;
+            return reference is null
+                ? Text("Which invoice do you mean? Please share the order id (ORD-1234) or invoice id (INV-1234).")
+                : ToolCall(InvoiceToolName, new Dictionary<string, object?> { ["reference"] = reference.ToUpperInvariant() });
+        }
+
+        if (tools.Contains(OrderStatusToolName) && orderId.Success)
         {
             return ToolCall(OrderStatusToolName, new Dictionary<string, object?> { ["orderId"] = orderId.Value.ToUpperInvariant() });
         }
@@ -103,8 +147,8 @@ public sealed partial class FakeChatClient(
 
     /// <summary>
     /// Keyword triage that behaves like a well-behaved classifier: it returns the contract's triage-decision JSON.
-    /// An order id or order words mean orders; invoice, payment, or refund words mean billing; problem words mean
-    /// technical; anything else is "other", which the routing rules treat as ambiguous.
+    /// Billing words mean billing; order words or an order id mean orders; product-problem words mean technical;
+    /// anything else is "other", which the routing rules treat as ambiguous.
     /// </summary>
     public static string DefaultTriage(string userText)
     {
@@ -122,8 +166,10 @@ public sealed partial class FakeChatClient(
             : ContainsAny(text, "INVOICE", "BILL", "RECEIPT") ? ("billing", "invoice")
             : ContainsAny(text, "PAYMENT", "CHARGE", "PAID") ? ("billing", "payment_history")
             : ContainsAny(text, "CANCEL") ? ("orders", "cancel_order")
+            : ContainsAny(text, "TICKET") ? ("technical", "create_ticket")
             : orderId.Success || ContainsAny(text, "ORDER", "DELIVER", "PACKAGE", "SHIPP", "TRACK") ? ("orders", "order_status")
-            : ContainsAny(text, "ERROR", "CRASH", "NOT WORKING", "BROKEN", "LOGIN", "LOG IN", "RESET", "WON'T") ? ("technical", "troubleshooting")
+            : ContainsAny(text, "ERROR", "CRASH", "NOT WORKING", "BROKEN", "LOGIN", "LOG IN", "RESET", "WON'T", "CRACKL", "WIFI", "WI-FI",
+                "FIRMWARE", "AUDIO", "BLUETOOTH", "WOBBL", "SETUP", "CONNECT", "STATIC") ? ("technical", "troubleshooting")
             : ("orders", "other");
 
         return JsonSerializer.Serialize(new Dictionary<string, object?>
@@ -136,9 +182,6 @@ public sealed partial class FakeChatClient(
             ["confidence"] = action == "other" ? 0.4 : 0.9,
         });
     }
-
-    private static bool ContainsAny(string text, params string[] words) =>
-        words.Any(word => text.Contains(word, StringComparison.Ordinal));
 
     public static ChatResponse Text(string text) =>
         WithUsage(new ChatResponse(new ChatMessage(ChatRole.Assistant, text)));
@@ -158,19 +201,47 @@ public sealed partial class FakeChatClient(
         return response;
     }
 
-    private static string DescribeLookup(object? result)
+    private static string LastUserText(IReadOnlyList<ChatMessage> messages) =>
+        messages.LastOrDefault(message => message.Role == ChatRole.User)?.Text ?? string.Empty;
+
+    private static bool ContainsAny(string text, params string[] words) =>
+        words.Any(word => text.Contains(word, StringComparison.Ordinal));
+
+    /// <summary>The tool a result belongs to: the earlier function call with the same call id.</summary>
+    private static string? ToolNameFor(IReadOnlyList<ChatMessage> messages, string callId) =>
+        messages.SelectMany(message => message.Contents.OfType<FunctionCallContent>())
+            .LastOrDefault(call => string.Equals(call.CallId, callId, StringComparison.Ordinal))?.Name;
+
+    private static string Describe(string? tool, object? result)
     {
         var json = result is JsonElement element ? element : JsonSerializer.SerializeToElement(result);
-        var lookup = json.TryGetProperty("lookup", out var value) ? value.GetString() : null;
-        var orderId = json.TryGetProperty("order_id", out var id) ? id.GetString() : null;
-        return lookup switch
+        string? Field(string name) => json.ValueKind == JsonValueKind.Object && json.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+        return tool switch
         {
-            "found" => $"Order {orderId} is {json.GetProperty("order_status").GetString()}.",
-            "not_found" => $"I couldn't find order {orderId} on your account. Please check the order id.",
-            _ => "That doesn't look like an order id. Please share it in the form ORD-1234.",
+            InvoiceToolName => Field("lookup") switch
+            {
+                "found" => $"Invoice {Field("invoice_id")} for order {Field("order_id")}: total {Field("total")}, paid with {Field("payment_method")}.",
+                "not_found" => $"I couldn't find {Field("reference")} on your account. Please check the id.",
+                _ => "Please share the order id (ORD-1234) or invoice id (INV-1234).",
+            },
+            PaymentHistoryToolName => "Your payments: " + string.Join("; ", json.GetProperty("payments").EnumerateArray().Select(payment =>
+                $"{payment.GetProperty("payment_id").GetString()} {payment.GetProperty("kind").GetString()} of {payment.GetProperty("amount").GetString()} for {payment.GetProperty("order_id").GetString()}")) + ".",
+            KnowledgeSearchToolName => json.GetProperty("articles").EnumerateArray().FirstOrDefault() is { ValueKind: JsonValueKind.Object } article
+                ? $"From {article.GetProperty("article_id").GetString()} ({article.GetProperty("title").GetString()}): " + string.Join(" ", article.GetProperty("steps").EnumerateArray().Select(step => step.GetString()))
+                : "I couldn't find a documented fix for that. I can pass this to a human support agent.",
+            _ => Field("lookup") switch
+            {
+                "found" => $"Order {Field("order_id")} is {Field("order_status")}.",
+                "not_found" => $"I couldn't find order {Field("order_id")} on your account. Please check the order id.",
+                _ => "That doesn't look like an order id. Please share it in the form ORD-1234.",
+            },
         };
     }
 
     [GeneratedRegex("ORD-[0-9]{4}", RegexOptions.IgnoreCase)]
     private static partial Regex OrderIdPattern();
+
+    [GeneratedRegex("INV-[0-9]{4}", RegexOptions.IgnoreCase)]
+    private static partial Regex InvoiceIdPattern();
 }

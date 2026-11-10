@@ -7,7 +7,7 @@ public enum ReplyKind
     NotFound,
     Clarification,
 
-    /// <summary>The request was understood but its specialist is not available in this build (billing and technical until L08).</summary>
+    /// <summary>Unresolved (no documented fix) or not possible yet (writes before L10): offer a human instead of guessing.</summary>
     EscalationOffer,
 }
 

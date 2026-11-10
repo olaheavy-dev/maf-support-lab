@@ -34,11 +34,12 @@ POST /api/v1/conversations/{conversationId}/turns   Microsoft.AspNetCore   HTTP 
       └─ invoke_workflow support-routing              Support.Workflows      gen_ai.workflow.name
          ├─ executor.process triage                   Support.Workflows      the routing decision: support.triage.* (outcome, target, reason, action)
          │  └─ invoke_agent triage → chat <model>     Support.Agents/Model   one JSON call (gen_ai.output.type=json)
-         └─ executor.process <selected executor>      Support.Workflows      orders-specialist, ask-for-order-id, billing-/technical-placeholder, or unrouted
-            └─ invoke_agent orders                    Support.Agents         only for orders-specialist
+         ├─ executor.process <selected executor>      Support.Workflows      orders-/billing-/technical-specialist, ask-for-order-id, write-not-available, or unrouted
+            └─ invoke_agent <specialist>              Support.Agents         only for the three *-specialist executors
                ├─ chat <model>                        Support.Model          one per model call; that call's token usage
-               ├─ execute_tool get_order_status       Support.Agents         tool name and call id
+               ├─ execute_tool <tool>                 Support.Agents         get_order_status, get_invoice, get_payment_history, search_knowledge_base
                └─ chat <model>                        Support.Model
+         └─ executor.process reply                    Support.Workflows      the one output step every ending sends its reply to
 ```
 
 The triage executor's span carries the routing decision. Its sibling, the selected executor's span, shows what ran because of it. A test checks this link for routed, ambiguous and invalid triage.
@@ -47,13 +48,15 @@ On failure, every span from HTTP down to the failing call has error status. `sup
 
 ## DevUI chats
 
-DevUI (Development only) is listed as a **DevUI** link on the `support-api-dotnet` resource in the dashboard, at `http://localhost:5180/devui/`. It uses the same instrumented `orders` agent as the API, so a DevUI chat is traced as:
+DevUI (Development only) is listed as a **DevUI** link on the `support-api-dotnet` resource in the dashboard, at `http://localhost:5180/devui/`.
+- **A chat with the `support-routing` workflow** is traced like an API turn, without `support.turn`: `POST /v1/responses/` → `invoke_workflow support-routing` → `executor.process chat-input` → `triage` → the selected executor → `reply`.
+- **A chat with a single agent** (`orders`, `billing`, `technical`) skips triage:
 
 ```text
 POST /v1/responses/      Microsoft.AspNetCore
-└─ invoke_agent orders   Support.Agents
+└─ invoke_agent <agent>  Support.Agents
    ├─ chat <model>       Support.Model
-   ├─ execute_tool get_order_status
+   ├─ execute_tool <tool>
    └─ chat <model>
 ```
 
@@ -106,7 +109,7 @@ The agent layer re-records the whole run's tokens in `gen_ai.client.token.usage`
 | --- | --- | --- |
 | `support.turns` | counter | `support.agent` (route target, `unrouted`, or `unknown` on failure), `support.turn.outcome` (`completed`, `failed`, `replayed`), `support.reply_kind` (`answer`, `not_found`, `clarification`, `escalation_offer`, `none`) |
 | `support.turn.duration` (s) | histogram | `support.agent`, `support.turn.outcome` |
-| `support.tool.calls` | counter | `support.tool.name`, `support.tool.outcome` (`found`, `not_found`, `invalid_order_id`) |
+| `support.tool.calls` | counter | `support.tool.name` (the four read tools), `support.tool.outcome` (`found`, `not_found`, `invalid_order_id`, `invalid_reference`, `no_match`) |
 | `support.triage.decisions` | counter | `support.triage.outcome` (`routed`, `unrouted`), `support.triage.target` (`orders`, `billing`, `technical`, `none`), `support.triage.unrouted_reason` (`invalid_model_output`, `ambiguous_request`, `none`) |
 | `gen_ai.client.token.usage` | histogram | provider, model, `gen_ai.token.type` (`Support.Model` only) |
 | `gen_ai.client.operation.duration` (s) | histogram | provider, model, operation |
