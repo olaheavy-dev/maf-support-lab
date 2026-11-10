@@ -2,7 +2,7 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L38): the host, agents, per-conversation sessions, approval-gated writes, and durable state.
+Status (L39): the host, agents, per-conversation sessions, approval-gated writes, durable state, and a tested cross-customer access matrix.
 - **Read-only agents:** triage plus the orders, billing and technical specialists.
 - **The routing workflow:** `support-routing`.
 - **The version-1 contract API** for conversations and turns (JSON).
@@ -125,6 +125,7 @@ Read from the environment, validated before serving (`support_agent/settings.py`
 The app learns the customer only through `get_principal` → `PrincipalSource`.
 - Headers, query strings, bodies, and model output are never consulted.
 - Tests run as another customer through `app.dependency_overrides[get_principal_source]`, a server-side injection point no client can reach.
+- **Access matrix (L39):** `tests/test_access_matrix.py` proves, in both directions, that every route, tool, service, write, DevUI entry, and restored record denies the other customer exactly like a missing one, with zero mutation. See `docs/threat-model.md`.
 
 ## Clients and credentials: who cleans up
 
