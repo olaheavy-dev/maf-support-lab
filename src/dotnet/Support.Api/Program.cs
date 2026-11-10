@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Support.Api.Agents;
 using Support.Api.Configuration;
+using Support.Api.Contract;
 using Support.Api.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,10 +15,14 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddModelProvider(builder.Configuration);
 builder.Services.AddDevelopmentIdentity(builder.Configuration, builder.Environment);
+builder.Services.AddSupportAgents();
+builder.AddDevelopmentAgentTools();
 
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
+app.MapConversationEndpoints();
+app.MapDevelopmentAgentTools();
 
 if (app.Environment.IsDevelopment())
 {

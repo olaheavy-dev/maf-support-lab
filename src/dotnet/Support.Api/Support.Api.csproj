@@ -10,7 +10,20 @@
 
   <ItemGroup>
     <PackageReference Include="Anthropic" />
+    <PackageReference Include="Microsoft.Agents.AI" />
     <PackageReference Include="Microsoft.Extensions.AI" />
+  </ItemGroup>
+
+  <!-- Development-only entry point (DevUI). Mapped only when the environment is Development. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI.DevUI" />
+    <PackageReference Include="Microsoft.Agents.AI.Hosting" />
+    <PackageReference Include="Microsoft.Agents.AI.Hosting.OpenAI" />
+  </ItemGroup>
+
+  <!-- Shared synthetic fixtures (read-only) copied next to the binaries. -->
+  <ItemGroup>
+    <Content Include="..\..\..\fixtures\data\*.json" Link="fixtures\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
