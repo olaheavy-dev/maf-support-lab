@@ -10,6 +10,7 @@ A capability is available only after its owning ticket meets its acceptance crit
 | [L03](tickets/L03.md) | [L01](tickets/L01.md), [L02](tickets/L02.md) | `dotnet_host`, `apphost`, `dev_identity_boundary`, `offline_mode` |
 | [L04](tickets/L04.md) | [L03](tickets/L03.md), [L02](tickets/L02.md) | `offline_ci_dotnet` |
 | [L05](tickets/L05.md) | [L03](tickets/L03.md), [L04](tickets/L04.md), [L02](tickets/L02.md) | `dotnet_order_query`, `dotnet_devui` |
+| [L43](tickets/L43.md) | [L05](tickets/L05.md) | `dotnet_layered_modules` |
 | [L06](tickets/L06.md) | [L05](tickets/L05.md), [L03](tickets/L03.md) | `dotnet_otel` |
 | [L07](tickets/L07.md) | [L05](tickets/L05.md), [L06](tickets/L06.md), [L02](tickets/L02.md) | `dotnet_triage`, `dotnet_workflow_otel` |
 | [L08](tickets/L08.md) | [L07](tickets/L07.md), [L03](tickets/L03.md), [L02](tickets/L02.md) | `dotnet_readonly_specialists` |

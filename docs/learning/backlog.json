@@ -358,13 +358,66 @@
       ]
     },
     {
-      "id": "L06",
+      "id": "L43",
       "order": 6,
+      "epic": "E02",
+      "title": "Organise the .NET API into modules and layers",
+      "stack": "dotnet",
+      "depends_on": [
+        "L05"
+      ],
+      "course_refs": [
+        "dn-program"
+      ],
+      "official_refs": [
+        "ms-clean-architecture",
+        "ms-cqrs",
+        "archunitnet-docs"
+      ],
+      "source_note": "The course composes everything in one Program.cs; use it to see what each piece does, then place each piece in its module and layer.",
+      "implementation": [
+        "Reorganise Support.Api into Common and Modules/<X> folders with Domain, Application, Infrastructure, and Presentation layers (namespaces follow folders); Program.cs only calls each module's Add/Map methods.",
+        "Move use-case logic out of endpoints into one sealed command or query handler per use case returning Result/Error; endpoints and agent tools only translate input and output. Storage sits behind Application interfaces implemented in Infrastructure.",
+        "Enforce the layering with ArchUnitNET rules (layer dependencies, handler and message shape, every type in a layer) and self-tests that run each rule over deliberately broken fixtures."
+      ],
+      "acceptance": [
+        "Every existing contract, identity, order-ownership, idempotency, DevUI, and startup test passes unchanged in behaviour; only namespaces and test placement move.",
+        "Architecture tests fail when Domain uses an outer layer, Application uses Infrastructure or Presentation, Presentation uses Infrastructure, a handler is unsealed or misplaced, or a type sits outside a layer; docs/decisions/0002-code-layout.md records what was adopted and what was deliberately not."
+      ],
+      "learning_outcomes": [
+        "Explain what belongs in Domain, Application, Infrastructure, and Presentation, and why dependencies point inwards.",
+        "Know when folder-level layering plus architecture tests is enough and when separate projects would be worth their cost."
+      ],
+      "interview_questions": [
+        "Why keep endpoints thin, and where do authorization and idempotency belong?",
+        "What do architecture tests protect that the compiler cannot when layers share one project?"
+      ],
+      "stretch": "Add a rule that a module may use another module only through its Application layer, and show which current dependency it would flag.",
+      "requires_capabilities": [
+        "dotnet_order_query"
+      ],
+      "provides_capabilities": [
+        "dotnet_layered_modules"
+      ],
+      "deliverables": [
+        "src/dotnet/Support.Api/",
+        "src/dotnet/Support.Api.Tests/",
+        "src/dotnet/README.md",
+        "docs/decisions/0002-code-layout.md"
+      ],
+      "scope_exclusions": [
+        "Separate projects per layer or module, PublicApi or integration-event projects, a dispatcher or MediatR",
+        "Behaviour or contract changes, telemetry (L06), and Python layout (L17)"
+      ]
+    },
+    {
+      "id": "L06",
+      "order": 7,
       "epic": "E02",
       "title": "Export traces, metrics, and structured logs to Aspire",
       "stack": "dotnet",
       "depends_on": [
-        "L05"
+        "L43"
       ],
       "course_refs": [
         "dn-program",
@@ -415,7 +468,7 @@
     },
     {
       "id": "L07",
-      "order": 7,
+      "order": 8,
       "epic": "E02",
       "title": "Implement validated triage and deterministic routing",
       "stack": "dotnet",
@@ -470,7 +523,7 @@
     },
     {
       "id": "L08",
-      "order": 8,
+      "order": 9,
       "epic": "E02",
       "title": "Complete read-only .NET billing and technical specialists",
       "stack": "dotnet",
@@ -526,7 +579,7 @@
     },
     {
       "id": "L09",
-      "order": 9,
+      "order": 10,
       "epic": "E03",
       "title": "Add per-conversation sessions and preserve context",
       "stack": "dotnet",
@@ -579,7 +632,7 @@
     },
     {
       "id": "L10",
-      "order": 10,
+      "order": 11,
       "epic": "E03",
       "title": "Require bound approval for simulated support mutations",
       "stack": "dotnet",
@@ -640,7 +693,7 @@
     },
     {
       "id": "L11",
-      "order": 11,
+      "order": 12,
       "epic": "E03",
       "title": "Persist pending approvals and prevent duplicate operations",
       "stack": "dotnet",
@@ -659,7 +712,7 @@
       ],
       "source_note": "The course refund runner illustrates approval flow, not durable restart/resume or idempotency.",
       "implementation": [
-        "Choose a supported local durable store and document session serialization versus workflow checkpoint responsibilities in docs/decisions/0002-state-and-idempotency.md.",
+        "Choose a supported local durable store and document session serialization versus workflow checkpoint responsibilities in docs/decisions/0003-state-and-idempotency.md.",
         "Persist pending approvals/expiry, operation status, required native session/checkpoint state, and stable workflow/agent identities. Protect restore/status access using the owning principal and conversation.",
         "Use a durable operation key plus atomic simulated business-state/operation-record changes for refunds, cancellations, and ticket creation; isolate state by backend and evaluation run."
       ],
@@ -688,7 +741,7 @@
       "deliverables": [
         "src/dotnet/Support.Api/",
         "src/dotnet/Support.Api.Tests/",
-        "docs/decisions/0002-state-and-idempotency.md"
+        "docs/decisions/0003-state-and-idempotency.md"
       ],
       "scope_exclusions": [
         "Exactly-once guarantees for arbitrary external providers",
@@ -697,7 +750,7 @@
     },
     {
       "id": "L12",
-      "order": 12,
+      "order": 13,
       "epic": "E03",
       "title": "Implement streaming, cancellation, and terminal events",
       "stack": "dotnet",
@@ -761,7 +814,7 @@
     },
     {
       "id": "L13",
-      "order": 13,
+      "order": 14,
       "epic": "E04",
       "title": "Verify customer access and conversation ownership boundaries",
       "stack": "dotnet",
@@ -818,7 +871,7 @@
     },
     {
       "id": "L14",
-      "order": 14,
+      "order": 15,
       "epic": "E04",
       "title": "Validate tool boundaries and exercise prompt injection",
       "stack": "dotnet",
@@ -873,7 +926,7 @@
     },
     {
       "id": "L15",
-      "order": 15,
+      "order": 16,
       "epic": "E04",
       "title": "Add bounded timeouts, retries, and graceful failure",
       "stack": "dotnet",
@@ -930,7 +983,7 @@
     },
     {
       "id": "L17",
-      "order": 16,
+      "order": 17,
       "epic": "E05",
       "title": "Scaffold Python packaging, health, and Aspire integration",
       "stack": "python",
@@ -996,7 +1049,7 @@
     },
     {
       "id": "L18",
-      "order": 17,
+      "order": 18,
       "epic": "E05",
       "title": "Implement Python read-only agents, tools, and triage",
       "stack": "python",
@@ -1057,7 +1110,7 @@
     },
     {
       "id": "L19",
-      "order": 18,
+      "order": 19,
       "epic": "E05",
       "title": "Implement isolated Python conversation sessions",
       "stack": "python",
@@ -1113,7 +1166,7 @@
     },
     {
       "id": "L37",
-      "order": 19,
+      "order": 20,
       "epic": "E05",
       "title": "Add bound Python approvals for simulated mutations",
       "stack": "python",
@@ -1169,7 +1222,7 @@
     },
     {
       "id": "L38",
-      "order": 20,
+      "order": 21,
       "epic": "E05",
       "title": "Persist Python approvals and atomic operation records",
       "stack": "python",
@@ -1219,7 +1272,7 @@
       "deliverables": [
         "src/python/support_agent/",
         "src/python/tests/",
-        "docs/decisions/0002-state-and-idempotency.md"
+        "docs/decisions/0003-state-and-idempotency.md"
       ],
       "scope_exclusions": [
         "Exactly-once guarantees for arbitrary external providers",
@@ -1228,7 +1281,7 @@
     },
     {
       "id": "L39",
-      "order": 21,
+      "order": 22,
       "epic": "E05",
       "title": "Verify Python customer and operation ownership boundaries",
       "stack": "python",
@@ -1284,7 +1337,7 @@
     },
     {
       "id": "L20",
-      "order": 22,
+      "order": 23,
       "epic": "E05",
       "title": "Implement Python streaming and cooperative cancellation",
       "stack": "python",
@@ -1341,7 +1394,7 @@
     },
     {
       "id": "L40",
-      "order": 23,
+      "order": 24,
       "epic": "E05",
       "title": "Export Python traces, logs, and metrics to Aspire over OTLP",
       "stack": "python",
@@ -1403,7 +1456,7 @@
     },
     {
       "id": "L41",
-      "order": 24,
+      "order": 25,
       "epic": "E05",
       "title": "Exercise Python prompt-injection and tool-validation boundaries",
       "stack": "python",
@@ -1460,7 +1513,7 @@
     },
     {
       "id": "L42",
-      "order": 25,
+      "order": 26,
       "epic": "E05",
       "title": "Bound Python retries, timeouts, and execution budgets",
       "stack": "python",
@@ -1519,7 +1572,7 @@
     },
     {
       "id": "L21",
-      "order": 26,
+      "order": 27,
       "epic": "E05",
       "title": "Verify cross-language application contracts and document SDK decisions",
       "stack": "shared",
@@ -1541,7 +1594,7 @@
       "implementation": [
         "Use the feature-level integration tests already added to each project to verify both APIs implement the current agreed contract revision and schemas, ownership, approvals, durable state, streaming, and safe failures.",
         "Add focused cross-backend contract probes using existing synthetic feature fixtures; do not build the formal evaluation harness, judge pipeline, or comparative benchmark yet.",
-        "Write docs/decisions/0003-sdk-comparison.md covering native SDK choices, resource lifecycle, known implementation differences, and the compatibility evidence from builds/tests."
+        "Write docs/decisions/0004-sdk-comparison.md covering native SDK choices, resource lifecycle, known implementation differences, and the compatibility evidence from builds/tests."
       ],
       "acceptance": [
         "Both backends build and their deterministic feature/contract integration checks pass without model credentials; a known contract or ownership regression fails.",
@@ -1573,7 +1626,7 @@
         "src/dotnet/Support.Api.Tests/",
         "src/python/tests/",
         ".github/workflows/repository-checks.yml",
-        "docs/decisions/0003-sdk-comparison.md"
+        "docs/decisions/0004-sdk-comparison.md"
       ],
       "scope_exclusions": [
         "Formal evaluation projects, judges, and benchmark reports before project completion",
@@ -1582,7 +1635,7 @@
     },
     {
       "id": "L22",
-      "order": 27,
+      "order": 28,
       "epic": "E06",
       "title": "Verify browser compatibility with the established API contract",
       "stack": "frontend",
@@ -1638,7 +1691,7 @@
     },
     {
       "id": "L23",
-      "order": 28,
+      "order": 29,
       "epic": "E06",
       "title": "Build shared chat UI with backend selection",
       "stack": "frontend",
@@ -1697,7 +1750,7 @@
     },
     {
       "id": "L24",
-      "order": 29,
+      "order": 30,
       "epic": "E06",
       "title": "Add approval UI, recovery states, and trace references",
       "stack": "frontend",
@@ -1755,7 +1808,7 @@
     },
     {
       "id": "L29",
-      "order": 30,
+      "order": 31,
       "epic": "E08",
       "title": "Set up post-build evaluation projects, datasets, and result contracts",
       "stack": "shared",
@@ -1815,7 +1868,7 @@
     },
     {
       "id": "L16",
-      "order": 31,
+      "order": 32,
       "epic": "E08",
       "title": "Build the shared deterministic behavior evaluation runner",
       "stack": "shared",
@@ -1878,7 +1931,7 @@
     },
     {
       "id": "L30",
-      "order": 32,
+      "order": 33,
       "epic": "E08",
       "title": "Integrate Microsoft .NET evaluation APIs with local checks",
       "stack": "dotnet",
@@ -1933,7 +1986,7 @@
     },
     {
       "id": "L31",
-      "order": 33,
+      "order": 34,
       "epic": "E08",
       "title": "Integrate native Python local agent and workflow evaluations",
       "stack": "python",
@@ -1989,7 +2042,7 @@
     },
     {
       "id": "L32",
-      "order": 34,
+      "order": 35,
       "epic": "E08",
       "title": "Add budgeted model-based quality evaluation for both backends",
       "stack": "shared",
@@ -2047,7 +2100,7 @@
     },
     {
       "id": "L33",
-      "order": 35,
+      "order": 36,
       "epic": "E08",
       "title": "Generate Microsoft evaluation reports and separate CI lanes",
       "stack": "shared",
@@ -2107,7 +2160,7 @@
     },
     {
       "id": "L34",
-      "order": 36,
+      "order": 37,
       "epic": "E09",
       "title": "Author canonical Markdown documentation for the completed system",
       "stack": "docs",
@@ -2164,7 +2217,7 @@
     },
     {
       "id": "L35",
-      "order": 37,
+      "order": 38,
       "epic": "E09",
       "title": "Build Gatsby Markdown-to-static-HTML documentation",
       "stack": "docs",
@@ -2185,7 +2238,7 @@
       ],
       "source_note": "The course repositories provide documented application behavior only. Gatsby's own filesystem/Markdown/CLI docs provide the site implementation; the Microsoft guide is a hosting/output reference, not a deployment requirement.",
       "implementation": [
-        "Before scaffolding, check Gatsby maintenance/security and release activity, selected Gatsby/plugin package engine requirements, and the supported Node release lifecycle. Record dated source links and a go/no-go decision in docs/decisions/0004-gatsby-build-feasibility.md; prove a clean Markdown build on a supported Node version before committing to the dependency set.",
+        "Before scaffolding, check Gatsby maintenance/security and release activity, selected Gatsby/plugin package engine requirements, and the supported Node release lifecycle. Record dated source links and a go/no-go decision in docs/decisions/0005-gatsby-build-feasibility.md; prove a clean Markdown build on a supported Node version before committing to the dependency set.",
         "Create docs-site/ with verified compatible Gatsby/Node/plugin versions and a dependency lock; source L34's selected .md files from docs/ using gatsby-source-filesystem and gatsby-transformer-remark.",
         "Create static page routes, a documentation layout/navigation, code formatting, images, and accessible headings/links; define path-prefix behavior explicitly.",
         "Run gatsby build to emit HTML plus CSS/JavaScript/images into docs-site/public. Keep the content present in generated HTML and require no runtime agent/API/model service or Gatsby SSR/functions."
@@ -2217,7 +2270,7 @@
         "docs-site/package.json",
         "docs-site/",
         ".gitignore",
-        "docs/decisions/0004-gatsby-build-feasibility.md"
+        "docs/decisions/0005-gatsby-build-feasibility.md"
       ],
       "scope_exclusions": [
         "Docusaurus, MDX-only content, or a dynamic documentation backend",
@@ -2226,7 +2279,7 @@
     },
     {
       "id": "L36",
-      "order": 38,
+      "order": 39,
       "epic": "E09",
       "title": "Validate and package copyable Gatsby static documentation",
       "stack": "docs",
@@ -2283,7 +2336,7 @@
     },
     {
       "id": "L25",
-      "order": 39,
+      "order": 40,
       "epic": "E07",
       "title": "Run fault, concurrency, and bounded load exercises",
       "stack": "shared",
@@ -2339,7 +2392,7 @@
     },
     {
       "id": "L26",
-      "order": 40,
+      "order": 41,
       "epic": "E07",
       "title": "Review dependencies, security checks, and operational limits",
       "stack": "shared",
@@ -2397,7 +2450,7 @@
     },
     {
       "id": "L27",
-      "order": 41,
+      "order": 42,
       "epic": "E07",
       "title": "Publish the architecture, runbook, and portfolio demonstration",
       "stack": "shared",
@@ -2458,7 +2511,7 @@
     },
     {
       "id": "L28",
-      "order": 42,
+      "order": 43,
       "epic": "E07",
       "title": "Complete a mock interview and independent change exercise",
       "stack": "shared",

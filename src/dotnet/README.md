@@ -4,12 +4,60 @@ The C# implementation of the support system, run locally through the Aspire AppH
 
 | Project | Purpose |
 | --- | --- |
-| `Support.Api` | ASP.NET Core host: contract API, orders agent and tool, fixtures, model mode, identity, health, Development-only DevUI. |
+| `Support.Api` | ASP.NET Core host, organised into modules and layers (see [Code layout](#code-layout)): contract API, orders agent and tool, fixtures, model mode, identity, health, Development-only DevUI. |
 | `Support.ServiceDefaults` | Shared Aspire defaults: OpenTelemetry export, `/health` and `/alive`, service discovery, HTTP resilience. |
-| `Support.Api.Tests` | Integration tests through the ASP.NET Core test host (xUnit v3, Microsoft Testing Platform). |
+| `Support.Api.Tests` | Integration tests through the ASP.NET Core test host and ArchUnitNET architecture tests (xUnit v3, Microsoft Testing Platform). Folders mirror the API's modules. |
 | `../../apphost` | Aspire AppHost: starts the API, shows it in the dashboard, and watches `/health`. |
 
 Versions are pinned in `global.json` (SDK) and `Directory.Packages.props` (packages) at the repository root, per [the version baseline](../../docs/decisions/0001-version-baseline.md).
+
+## Code layout
+
+One project, with folders as layers. Namespaces follow folders. The full reasoning, and what was deliberately not copied from SabiTutor, is in [0002-code-layout](../../docs/decisions/0002-code-layout.md).
+
+```text
+Support.Api/
+├─ Program.cs                 composition root: each module's Add…Module() and Map…Module()
+├─ Common/
+│  ├─ Domain/                 Result, Error, ErrorType
+│  ├─ Application/            ICommand/IQuery + handler interfaces, TraceIds
+│  └─ Presentation/           ContractJson, ApiResults (every problem response), Result.Match
+└─ Modules/
+   ├─ Conversations/          the contract API
+   │  ├─ Domain/              Conversation (idempotent turn reservation), Turn, ReplyKind
+   │  ├─ Application/         CreateConversation, GetConversation, SubmitTurn, GetTurn handlers; IConversationStore
+   │  ├─ Infrastructure/      InMemoryConversationStore  ← storage lives here (durable in L11)
+   │  └─ Presentation/        ConversationEndpoints (thin), ConversationRequests (contract validation), contract shapes
+   ├─ Orders/
+   │  ├─ Domain/              Order, OrderId
+   │  ├─ Application/         GetOrderStatus query + handler (ownership check); IOrderRepository
+   │  ├─ Infrastructure/      FixtureOrderRepository (fixtures/data/orders.json), OrdersAgentFactory (the orders agent)
+   │  └─ Presentation/        OrderStatusTool: the model's "endpoint"
+   ├─ Identity/               SupportPrincipal, IPrincipalSource, DevelopmentPrincipalSource, /dev/whoami
+   └─ Agents/                 shared AI runtime, depends on no other module: SupportAgents and TurnActivity (Application);
+                              model provider and FakeChatClient (Infrastructure); DevUI (Presentation)
+```
+
+| Layer | Holds | Must not use |
+| --- | --- | --- |
+| Domain | Entities and rules with no I/O | Application, Infrastructure, Presentation |
+| Application | One command or query and one sealed handler per use case; interfaces for storage | Infrastructure, Presentation |
+| Infrastructure | Anything that does I/O: storage, fixtures, the model provider | (anything) |
+| Presentation | HTTP endpoints and agent tools: translate in, call a handler, translate out | Infrastructure |
+
+`Support.Api.Tests/Architecture` enforces this with ArchUnitNET:
+- the table above;
+- sealed `…Handler` classes, commands, and queries live in Application;
+- no type sits outside a layer;
+- the Agents module depends on no other module. Feature modules plug their agents in by registering a `SupportAgent`.
+
+`RuleSelfTests` proves that each rule fails on deliberately broken fixtures.
+
+**Adding a use case:**
+1. Add a `…Command`/`…Query` record and a sealed `internal` handler under `Modules/<X>/Application/<UseCase>/`.
+2. Register the handler in `<X>Module.cs`.
+3. Call it from a thin endpoint or tool in `Presentation/`.
+4. Put new storage behind an Application interface implemented in `Infrastructure/`.
 
 ## Prerequisites
 
@@ -81,12 +129,12 @@ curl -s -X POST localhost:5180/api/v1/conversations/<conversation_id>/turns -H '
 
 ## Agents, tools, and the model boundary
 
-- **`orders` agent** (`Agents/OrdersAgentFactory.cs`): built once and shared by the API and DevUI. It has a single tool.
-- **`get_order_status` tool** (`Orders/OrderStatusTool.cs`):
+- **`orders` agent** (`Modules/Orders/Infrastructure/OrdersAgentFactory.cs`, registered by `OrdersModule` as a `SupportAgent`): built once and shared by the API and DevUI. It has a single tool.
+- **`get_order_status` tool** (`Modules/Orders/Presentation/OrderStatusTool.cs`):
   - The model supplies only the order id.
-  - `OrderService` returns the order only if it belongs to the current principal; anything else looks exactly like a missing order.
+  - The tool sends a `GetOrderStatusQuery`. Its handler returns the order only if it belongs to the current principal; anything else looks exactly like a missing order.
   - The tool records what it found. The API sets `reply.kind` (`answer`, `not_found`, `clarification`) from those facts, not from the model's wording.
-- **Fake model** (`Model/FakeChatClient.cs`): used in Fake mode and tests. It requests the tool when the message contains an order id, answers from the tool result, and otherwise asks for the id. Tests pass custom scripts, for example a model that always requests another customer's order.
+- **Fake model** (`Modules/Agents/Infrastructure/ModelProvider/FakeChatClient.cs`): used in Fake mode and tests. It requests the tool when the message contains an order id, answers from the tool result, and otherwise asks for the id. Tests pass custom scripts, for example a model that always requests another customer's order.
 
 ## DevUI (Development only)
 
@@ -107,9 +155,9 @@ This is one turn against `claude-haiku-5-5` (two model calls including the tool 
 
 | Concern | Owner | Why |
 | --- | --- | --- |
-| Identity, ownership, eligibility, approval enforcement, idempotency, operation state | Application services (plain C#) | Must be deterministic, testable, and impossible for the model to bypass. |
-| HTTP contract, validation, error mapping, streaming | API endpoints (L05, L12) | Implements `contracts/` exactly. |
+| Identity, ownership, eligibility, approval enforcement, idempotency, operation state | Application handlers (plain C#, `Modules/*/Application`) | Must be deterministic, testable, and impossible for the model to bypass. |
+| HTTP contract, validation, error mapping, streaming | Presentation endpoints (`Modules/*/Presentation`, `Common/Presentation`) | Implements `contracts/` exactly. |
 | Understanding the request, choosing a route, wording the reply, deciding which read tool to call | Agents and workflow (MAF, from L05/L07) | Language understanding is the model's job; its output is validated before use. |
 | Startup, health, telemetry, local orchestration | Host, ServiceDefaults, AppHost | Infrastructure, not business logic. |
 
-Agents call services through tools. Tools receive the principal from trusted server context, never as a model argument.
+Agents reach application handlers through tools. Tools receive the principal from trusted server context, never as a model argument.
