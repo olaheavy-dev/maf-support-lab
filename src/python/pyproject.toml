@@ -11,7 +11,10 @@ dependencies = [
     "agent-framework-anthropic==1.0.0b261106",
     # Latest 1.x: agent-framework-anthropic requires anthropic>=1.11,<2.
     "anthropic==1.17.0",
+    # Prerelease, unavoidable (no stable release): DevUI, mounted in development only (docs/decisions/0001).
+    "agent-framework-devui==1.0.0b261106",
     "fastapi==0.162.3",
+    "jsonschema==4.26.0",
     "uvicorn==0.54.0",
     "pydantic==2.14.3",
     "pydantic-settings==2.16.2",
@@ -38,7 +41,9 @@ target-version = "py315"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "S", "ASYNC", "PT", "RUF", "SIM", "TID"]
-ignore = ["S101"] # assert is how pytest checks
+# S101: assert is how pytest checks. E501: the formatter owns line width; long human-readable strings (tool and
+# agent descriptions) stay whole.
+ignore = ["S101", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"] # fake keys in tests are not secrets
@@ -57,4 +62,5 @@ venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers"
+addopts = "-q --strict-markers -m 'not live'"
+markers = ["live: calls the real model; opt in with `uv run pytest -m live` and ANTHROPIC_API_KEY (costs a small amount)"]

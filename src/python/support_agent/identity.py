@@ -9,6 +9,9 @@ authentication.
 
 from __future__ import annotations
 
+from collections.abc import Generator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -45,3 +48,36 @@ def principal_source_for(settings: Settings) -> PrincipalSource:
     if settings.app_environment is Environment.DEVELOPMENT and settings.identity.development_customer_id:
         return DevelopmentPrincipalSource(settings.identity.development_customer_id)
     return NoIdentityProvider()
+
+
+_pinned: ContextVar[Principal | None] = ContextVar("pinned_principal", default=None)
+
+
+@contextmanager
+def pinned(principal: Principal) -> Generator[Principal]:
+    """Pins the principal for one turn's work. Tools read it with :func:`current_principal`, never from arguments."""
+    token = _pinned.set(principal)
+    try:
+        yield principal
+    finally:
+        _pinned.reset(token)
+
+
+_process_principal: Principal | None = None
+
+
+def set_process_principal(principal: Principal | None) -> None:
+    """For the development-only DevUI process, which serves one configured customer: the principal its runs use.
+
+    The API never sets this: there, every turn pins the caller's principal and anything unpinned fails closed.
+    """
+    global _process_principal  # deliberately process-wide, set once at DevUI startup
+    _process_principal = principal
+
+
+def current_principal() -> Principal:
+    """The principal the current work runs as: the pinned one, else (DevUI only) the process principal; else fail closed."""
+    principal = _pinned.get() or _process_principal
+    if principal is None:
+        raise RuntimeError("No principal is pinned for this work (fail closed).")
+    return principal
