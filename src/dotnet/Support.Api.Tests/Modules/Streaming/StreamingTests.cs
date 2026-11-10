@@ -159,6 +159,27 @@ public sealed class StreamingTests
         Assert.Equal(longAnswer, SseClient.Final(events).ReplyText());
     }
 
+    [Fact]
+    public async Task An_emoji_on_a_delta_boundary_is_never_split()
+    {
+        // Codex review on PR #78: the 2000-unit split must not cut a surrogate pair in half.
+        var answer = new string('x', 1999) + "\U0001F600" + new string('y', 2500);
+        var model = new CountingScript(messages => new ChatResponse(new ChatMessage(ChatRole.Assistant, answer)));
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001", chatClient: model.Client());
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+
+        var (_, _, events, _) = await SseClient.PostAsync(api.Http, $"/api/v1/conversations/{conversation}/turns", new { client_turn_id = Guid.NewGuid().ToString(), message = "Where is my order ORD-1002?" });
+
+        Assert.Equal(answer, SseClient.CountedText(events));
+        Assert.DoesNotContain('\uFFFD', SseClient.CountedText(events));
+        Assert.All(Support.Api.Modules.Conversations.Presentation.TurnStream.Pieces(answer), piece =>
+        {
+            Assert.InRange(piece.Length, 1, Support.Api.Modules.Conversations.Presentation.TurnStream.MaxDeltaLength);
+            Assert.False(char.IsHighSurrogate(piece[^1]));
+        });
+    }
+
     private static string Order(Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program> factory, string orderId) =>
         Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Support.Api.Modules.Orders.Application.IOrderRepository>(factory.Services).Find(orderId)!.Status;
 }

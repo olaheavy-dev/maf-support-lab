@@ -15,8 +15,7 @@ internal sealed class GetTurnQueryHandler(IConversationStore store, IPrincipalSo
     {
         ArgumentNullException.ThrowIfNull(query);
         var conversation = store.FindOwned(query.ConversationId, principals.Current);
-        var finished = conversation?.FindTurn(query.TurnId);
-        var running = finished is null ? conversation?.FindRunning(query.TurnId) : null;
+        var (finished, running) = conversation?.FindForStatus(query.TurnId) ?? (null, null);
         return Task.FromResult(finished is null && running is null
             ? Result.Failure<TurnStatus>(ConversationErrors.NotFound)
             : Result.Success(new TurnStatus(query.ConversationId, finished, running)));

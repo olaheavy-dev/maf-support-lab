@@ -123,6 +123,11 @@ internal sealed partial class SubmitTurnCommandHandler(
 
         try
         {
+            if (turn.Outcome is TurnOutcome.Failed or TurnOutcome.Cancelled)
+            {
+                OrphanedApprovals.ExpireFromTurn(conversation.ConversationId, reservation.TurnId, operations, clock.GetUtcNow());
+            }
+
             turn = store.SaveTurn(conversation.ConversationId, command.ClientTurnId, reservation.Message, turn, reply is null ? conversation.Context : conversation.Context.After(reply));
             conversation.Complete(reservation, turn, reply);
         }

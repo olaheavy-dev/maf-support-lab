@@ -130,11 +130,23 @@ internal static class TurnStream
         };
     }
 
-    private static IEnumerable<string> Pieces(string text)
+    /// <summary>
+    /// Splits text into pieces of at most <see cref="MaxDeltaLength"/> UTF-16 units, never between the two halves of a
+    /// surrogate pair (an emoji, for example), which would corrupt it (Codex review on PR #78).
+    /// </summary>
+    internal static IEnumerable<string> Pieces(string text)
     {
-        for (var start = 0; start < text.Length; start += MaxDeltaLength)
+        var start = 0;
+        while (start < text.Length)
         {
-            yield return text.Substring(start, Math.Min(MaxDeltaLength, text.Length - start));
+            var length = Math.Min(MaxDeltaLength, text.Length - start);
+            if (start + length < text.Length && char.IsHighSurrogate(text[start + length - 1]))
+            {
+                length--;
+            }
+
+            yield return text.Substring(start, length);
+            start += length;
         }
     }
 

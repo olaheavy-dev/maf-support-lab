@@ -151,6 +151,20 @@ public sealed class Conversation
         reservation.Dispose();
     }
 
+    /// <summary>
+    /// A turn's state for a status lookup, read under one lock (Codex review on PR #78): finishing a turn stores it and
+    /// clears the running one in the same lock, so a lookup sees one or the other, never neither.
+    /// </summary>
+    public (Turn? Finished, TurnReservation? Running) FindForStatus(string turnId)
+    {
+        lock (gate)
+        {
+            var finished = finishedTurns.GetValueOrDefault(turnId);
+            var running = finished is null && activeTurn is { } active && string.Equals(active.TurnId, turnId, StringComparison.Ordinal) ? active : null;
+            return (finished, running);
+        }
+    }
+
     /// <summary>The running turn with this id, if it is the one running now (L12: status lookup and cancel).</summary>
     public TurnReservation? FindRunning(string turnId)
     {
