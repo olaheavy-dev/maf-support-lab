@@ -16,6 +16,7 @@ internal static class TriageModule
         services.AddSingleton(provider => new SupportAgent(
             TriageAgentFactory.AgentName,
             TriageAgentFactory.Create(provider.GetRequiredService<IChatClient>(), provider.GetService<ILoggerFactory>())));
+        services.AddSingleton<ConversationSessions>();
         services.AddSingleton<SupportWorkflowRouter>();
         services.AddSingleton<ISupportRouter>(provider => provider.GetRequiredService<SupportWorkflowRouter>());
         return services;

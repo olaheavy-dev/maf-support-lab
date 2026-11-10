@@ -65,31 +65,4 @@ public sealed class TurnSubmissionSafetyTests
         Assert.Equal(HttpStatusCode.Conflict, status);
         Assert.Equal("client_turn_id_reused", problem.GetProperty("code").GetString());
     }
-
-    /// <summary>Fake model that holds the first call until the test releases it.</summary>
-    private sealed class GatedModel
-    {
-        private readonly TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private readonly TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private int calls;
-
-        public GatedModel() => Client = new FakeChatClient(messages =>
-        {
-            if (Interlocked.Increment(ref calls) == 1)
-            {
-                started.TrySetResult();
-                release.Task.Wait(TimeSpan.FromSeconds(10));
-            }
-
-            return FakeChatClient.DefaultScript(messages);
-        });
-
-        public IChatClient Client { get; }
-
-        public int Calls => calls;
-
-        public Task FirstCallStarted => started.Task;
-
-        public void Release() => release.TrySetResult();
-    }
 }

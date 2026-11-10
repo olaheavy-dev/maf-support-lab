@@ -17,7 +17,7 @@ public sealed record ConversationResponse(
     public static ConversationResponse From(Conversation conversation)
     {
         ArgumentNullException.ThrowIfNull(conversation);
-        return new(Common.Presentation.ContractVersion.Current, conversation.ConversationId, Common.Presentation.ContractVersion.Backend, conversation.CreatedAt, ActiveTurnId: null, PendingApprovals: []);
+        return new(Common.Presentation.ContractVersion.Current, conversation.ConversationId, Common.Presentation.ContractVersion.Backend, conversation.CreatedAt, conversation.ActiveTurnId, PendingApprovals: []);
     }
 }
 

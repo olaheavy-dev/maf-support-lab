@@ -11,5 +11,8 @@ public enum ReplyKind
     EscalationOffer,
 }
 
-/// <summary>The outcome of routing one message: where it went and what the customer is told.</summary>
-public sealed record SupportReply(TurnRoute Route, ReplyKind Kind, string Text);
+/// <summary>
+/// The outcome of routing one message: where it went, what the customer is told, and the order a tool verified for
+/// this customer during the turn (if any), which the conversation may remember for follow-ups.
+/// </summary>
+public sealed record SupportReply(TurnRoute Route, ReplyKind Kind, string Text, string? VerifiedOrderId = null);

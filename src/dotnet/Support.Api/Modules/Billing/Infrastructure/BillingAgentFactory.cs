@@ -29,6 +29,7 @@ public static class BillingAgentFactory
             {
                 Name = SupportAgents.BillingAgentName,
                 Description = "Answers invoice and payment-history questions for the current customer (read-only).",
+                ChatHistoryProvider = ConversationHistory.CreateProvider(),
                 ChatOptions = new ChatOptions { Instructions = Instructions, Tools = [.. tools.AsAIFunctions()] },
             },
             loggerFactory);

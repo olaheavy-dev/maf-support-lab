@@ -63,4 +63,29 @@ public sealed class LiveSmokeTests
         Assert.Equal("answer", turn.ReplyKind());
         Assert.Contains(identifier, turn.ReplyText(), StringComparison.Ordinal);
     }
+
+    [Fact(Explicit = true)]
+    [Trait("Category", "Live")]
+    public async Task Claude_answers_an_order_follow_up_without_the_id()
+    {
+        var key = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+        Assert.SkipWhen(string.IsNullOrWhiteSpace(key), "Set ANTHROPIC_API_KEY to run the live smoke check.");
+
+        await using var factory = SupportApiFactory.Create(new Dictionary<string, string?>
+        {
+            ["ModelProvider:Mode"] = "Live",
+            ["ModelProvider:Anthropic:Model"] = "claude-haiku-5-5",
+            ["ModelProvider:Anthropic:ApiKey"] = key,
+        });
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+
+        await api.AskAsync(conversation, "Where is my order ORD-1002?");
+        var followUp = await api.AskAsync(conversation, "When was it shipped?");
+
+        // L09 with real Claude: routed to orders from the follow-up alone, answered from the tool for the verified order.
+        Assert.Equal("orders", followUp.GetProperty("route").GetProperty("target").GetString());
+        Assert.Equal("answer", followUp.ReplyKind());
+        Assert.Contains("October 30", followUp.ReplyText(), StringComparison.OrdinalIgnoreCase);
+    }
 }

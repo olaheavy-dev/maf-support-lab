@@ -9,10 +9,22 @@ namespace Support.Api.Modules.Triage.Application;
 /// </summary>
 public sealed record TriageOutcome(string OriginalMessage, TriageDecision? Triage, TurnRoute Route)
 {
+    /// <summary>The conversation whose sessions the specialist should use (null: stateless).</summary>
+    public string? ConversationId { get; init; }
+
+    /// <summary>Verified facts from earlier turns in this conversation.</summary>
+    public ConversationContext Context { get; init; } = ConversationContext.Empty;
+
+    /// <summary>
+    /// The order this request is about: the one the customer named, or, for a follow-up that names none, the order
+    /// verified earlier in this conversation. Never an unverified id from an earlier turn.
+    /// </summary>
+    public string? EffectiveOrderId => Triage?.OrderId ?? Context.VerifiedOrderId;
+
     /// <summary>A routed request to change something (cancel, refund, ticket): not possible before L10's approvals.</summary>
     public bool IsWriteRequest => Route.IsRouted && Triage is { } decision && RoutingRules.IsWrite(decision.RequestedAction);
 
     /// <summary>Routed to orders for an action about one order, but no order id was given.</summary>
     public bool IsMissingOrderId =>
-        Route.Target == RouteTarget.Orders && Triage is { OrderId: null } decision && RoutingRules.NeedsOrderId(decision.RequestedAction);
+        Route.Target == RouteTarget.Orders && EffectiveOrderId is null && Triage is { } decision && RoutingRules.NeedsOrderId(decision.RequestedAction);
 }

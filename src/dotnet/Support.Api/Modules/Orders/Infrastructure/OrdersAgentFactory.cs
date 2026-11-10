@@ -28,6 +28,7 @@ public static class OrdersAgentFactory
             {
                 Name = SupportAgents.OrdersAgentName,
                 Description = "Answers order-status questions for the current customer.",
+                ChatHistoryProvider = ConversationHistory.CreateProvider(),
                 ChatOptions = new ChatOptions
                 {
                     Instructions = Instructions,

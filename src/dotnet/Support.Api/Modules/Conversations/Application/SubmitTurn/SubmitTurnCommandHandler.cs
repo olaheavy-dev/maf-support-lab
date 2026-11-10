@@ -33,8 +33,15 @@ internal sealed partial class SubmitTurnCommandHandler(
             return Result.Failure<Turn>(ConversationErrors.NotFound);
         }
 
-        // Claim the client_turn_id before running, so a duplicate never calls the model again.
-        var (reservation, isOwner) = conversation.Reserve(command.ClientTurnId, command.Message);
+        // Claim the client_turn_id before running, so a duplicate never calls the model again, and only one turn
+        // runs per conversation at a time (a different turn arriving meanwhile is rejected, not queued).
+        var (claimed, outcome) = conversation.Reserve(command.ClientTurnId, command.Message);
+        if (outcome == ReservationOutcome.Busy)
+        {
+            return Result.Failure<Turn>(ConversationErrors.TurnInProgress);
+        }
+
+        var reservation = claimed!;
         if (!string.Equals(reservation.Message, command.Message, StringComparison.Ordinal))
         {
             return Result.Failure<Turn>(ConversationErrors.ClientTurnIdReused);
@@ -45,7 +52,7 @@ internal sealed partial class SubmitTurnCommandHandler(
         span?.SetTag("support.client_turn.id", command.ClientTurnId);
         var started = clock.GetTimestamp();
 
-        if (!isOwner)
+        if (outcome == ReservationOutcome.Duplicate)
         {
             var existing = await reservation.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             span?.SetTag("support.turn.id", existing.TurnId);
@@ -56,8 +63,8 @@ internal sealed partial class SubmitTurnCommandHandler(
 
         try
         {
-            var turn = await RunAsync(conversation, command, cancellationToken).ConfigureAwait(false);
-            conversation.Complete(reservation, turn);
+            var (turn, reply) = await RunAsync(conversation, reservation, command, cancellationToken).ConfigureAwait(false);
+            conversation.Complete(reservation, turn, reply);
 
             var replyKind = Names.Of(turn.ReplyKind);
             var route = RouteLabel(turn.Route);
@@ -83,15 +90,18 @@ internal sealed partial class SubmitTurnCommandHandler(
         }
     }
 
-    private async Task<Turn> RunAsync(Conversation conversation, SubmitTurnCommand command, CancellationToken cancellationToken)
+    private async Task<(Turn Turn, SupportReply Reply)> RunAsync(
+        Conversation conversation, TurnReservation reservation, SubmitTurnCommand command, CancellationToken cancellationToken)
     {
         var createdAt = clock.GetUtcNow();
-        // Triage, then the specialist the routing rules choose (L07). The reply kind is decided in code by the router.
-        var reply = await router.RouteAsync(command.Message, cancellationToken).ConfigureAwait(false);
+        // Triage, then the specialist the routing rules choose (L07), with this conversation's native sessions and
+        // the verified facts from its earlier turns (L09).
+        var reply = await router.RouteAsync(new RoutingRequest(conversation.ConversationId, command.Message, conversation.Context), cancellationToken)
+            .ConfigureAwait(false);
 
-        return new Turn(
+        var turn = new Turn(
             conversation.ConversationId,
-            Ids.New("turn_"),
+            reservation.TurnId,
             command.ClientTurnId,
             reply.Route,
             reply.Kind,
@@ -99,6 +109,7 @@ internal sealed partial class SubmitTurnCommandHandler(
             TraceIds.Current(),
             createdAt,
             clock.GetUtcNow());
+        return (turn, reply);
     }
 
     /// <summary>The bounded "agent" label: the routed target, or "unrouted".</summary>

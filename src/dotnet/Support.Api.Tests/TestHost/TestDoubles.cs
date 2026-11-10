@@ -29,3 +29,30 @@ internal sealed class CountingScript(Func<IReadOnlyList<ChatMessage>, ChatRespon
         return inner is null ? FakeChatClient.DefaultScript(messages, options) : inner(messages);
     }, triage);
 }
+
+/// <summary>Fake model that holds its first specialist call until the test releases it (triage is not held).</summary>
+internal sealed class GatedModel
+{
+    private readonly TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int calls;
+
+    public GatedModel() => Client = new FakeChatClient(messages =>
+    {
+        if (Interlocked.Increment(ref calls) == 1)
+        {
+            started.TrySetResult();
+            release.Task.Wait(TimeSpan.FromSeconds(10));
+        }
+
+        return FakeChatClient.DefaultScript(messages);
+    });
+
+    public IChatClient Client { get; }
+
+    public int Calls => calls;
+
+    public Task FirstCallStarted => started.Task;
+
+    public void Release() => release.TrySetResult();
+}

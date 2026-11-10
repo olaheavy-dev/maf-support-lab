@@ -32,7 +32,7 @@ POST /api/v1/conversations/{conversationId}/turns   Microsoft.AspNetCore   HTTP 
    ├─ workflow.build                                  Support.Workflows      the routing workflow is built per turn (see below)
    └─ workflow.session                                Support.Workflows
       └─ invoke_workflow support-routing              Support.Workflows      gen_ai.workflow.name
-         ├─ executor.process triage                   Support.Workflows      the routing decision: support.triage.* (outcome, target, reason, action)
+         ├─ executor.process triage                   Support.Workflows      the routing decision: support.triage.* (outcome, target, reason, action, order_id_from_context)
          │  └─ invoke_agent triage → chat <model>     Support.Agents/Model   one JSON call (gen_ai.output.type=json)
          ├─ executor.process <selected executor>      Support.Workflows      orders-/billing-/technical-specialist, ask-for-order-id, write-not-available, or unrouted
             └─ invoke_agent <specialist>              Support.Agents         only for the three *-specialist executors

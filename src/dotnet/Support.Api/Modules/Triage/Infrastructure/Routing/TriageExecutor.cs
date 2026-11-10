@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Agents.AI.Workflows;
+using Microsoft.Extensions.AI;
 using Support.Api.Modules.Agents.Application;
 using Support.Api.Modules.Triage.Application;
 using Support.Api.Modules.Triage.Domain;
@@ -12,16 +13,28 @@ namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 /// routing rules. The model only classifies; whether and where a request goes is decided here, in code.
 /// </summary>
 internal sealed partial class TriageExecutor(SupportAgents agents, TriageMetrics metrics, ILogger logger)
-    : Executor<string, TriageOutcome>("triage")
+    : Executor<RoutingRequest, TriageOutcome>("triage")
 {
-    public override async ValueTask<TriageOutcome> HandleAsync(string message, IWorkflowContext context, CancellationToken cancellationToken = default)
+    public override async ValueTask<TriageOutcome> HandleAsync(RoutingRequest request, IWorkflowContext context, CancellationToken cancellationToken = default)
     {
-        var response = await agents.Get(TriageAgentFactory.AgentName).RunAsync(message, cancellationToken: cancellationToken).ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(request);
+        // Triage is stateless (no session): it classifies this one message. A follow-up such as "and the invoice for it?"
+        // gets the previous route as a short, code-written hint; the message itself is still what gets classified.
+        List<ChatMessage> input = [];
+        if (request.Context.LastTarget is { } lastTarget)
+        {
+            input.Add(ConversationHistory.ContextNote($"The previous request in this conversation was routed to {Names.Of(lastTarget)}."));
+        }
+
+        input.Add(new ChatMessage(ChatRole.User, request.Message));
+        var response = await agents.Get(TriageAgentFactory.AgentName).RunAsync(input, cancellationToken: cancellationToken).ConfigureAwait(false);
         var parsed = TriageDecisionParser.Parse(response.Text);
 
-        var outcome = parsed.IsSuccess
-            ? new TriageOutcome(message, parsed.Value, RoutingRules.Route(parsed.Value))
-            : new TriageOutcome(message, null, TurnRoute.Unrouted(UnroutedReason.InvalidModelOutput));
+        var outcome = (parsed.IsSuccess
+            ? new TriageOutcome(request.Message, parsed.Value, RoutingRules.Route(parsed.Value))
+            : new TriageOutcome(request.Message, null, TurnRoute.Unrouted(UnroutedReason.InvalidModelOutput)))
+            with
+        { ConversationId = request.ConversationId, Context = request.Context };
 
         Describe(outcome, parsed.IsSuccess ? null : parsed.Error.Description);
         return outcome;
@@ -42,6 +55,7 @@ internal sealed partial class TriageExecutor(SupportAgents agents, TriageMetrics
         {
             span?.SetTag("support.triage.requested_action", Names.Of(decision.RequestedAction));
             span?.SetTag("support.triage.order_id_present", decision.OrderId is not null);
+            span?.SetTag("support.triage.order_id_from_context", decision.OrderId is null && outcome.EffectiveOrderId is not null);
             // Recorded to study routing quality later. Never used to decide anything: it is not a calibrated probability.
             span?.SetTag("support.triage.model_confidence", decision.Confidence);
         }

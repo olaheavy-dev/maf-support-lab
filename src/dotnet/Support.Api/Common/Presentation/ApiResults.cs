@@ -39,6 +39,7 @@ internal static class ApiResults
         "invalid_request" => "Invalid request",
         "not_found" => "Not found",
         "client_turn_id_reused" => "client_turn_id reused",
+        "turn_in_progress" => "Turn in progress",
         _ => "Request failed",
     };
 }

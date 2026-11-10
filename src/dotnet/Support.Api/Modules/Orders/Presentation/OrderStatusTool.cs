@@ -30,7 +30,7 @@ public sealed partial class OrderStatusTool(
     {
         var result = await getOrderStatus.Handle(new GetOrderStatusQuery(orderId), cancellationToken).ConfigureAwait(false);
         return result.Match(
-            order => Record(ToolOutcome.Found, "found", new OrderStatusResult(
+            order => Record(ToolOutcome.Found, "found", order.OrderId, new OrderStatusResult(
                 "found",
                 order.OrderId,
                 order.Status,
@@ -39,17 +39,17 @@ public sealed partial class OrderStatusTool(
                 order.DeliveredAt,
                 [.. order.Items.Select(item => item.Name)])),
             error => error == OrderErrors.InvalidOrderId
-                ? Record(ToolOutcome.InvalidInput, "invalid_order_id", new OrderStatusResult("invalid_order_id", null, null, null, null, null, null))
-                : Record(ToolOutcome.NotFound, "not_found", new OrderStatusResult("not_found", OrderId.Normalize(orderId), null, null, null, null, null)));
+                ? Record(ToolOutcome.InvalidInput, "invalid_order_id", null, new OrderStatusResult("invalid_order_id", null, null, null, null, null, null))
+                : Record(ToolOutcome.NotFound, "not_found", null, new OrderStatusResult("not_found", OrderId.Normalize(orderId), null, null, null, null, null)));
     }
 
     /// <summary>
     /// Records the outcome three ways: for the turn's reply kind (TurnActivity), as a bounded metric, and as a log line.
     /// The order id is not logged: it is model-controlled input, and the execute_tool span already shows the call.
     /// </summary>
-    private OrderStatusResult Record(ToolOutcome outcome, string outcomeName, OrderStatusResult result)
+    private OrderStatusResult Record(ToolOutcome outcome, string outcomeName, string? verifiedOrderId, OrderStatusResult result)
     {
-        TurnActivity.Current?.Record(outcome);
+        TurnActivity.Current?.Record(outcome, verifiedOrderId);
         metrics.Record(Name, outcomeName);
         Log.LookupFinished(logger, Name, outcomeName);
         return result;
