@@ -63,19 +63,45 @@ internal static partial class ConversationEndpoints
             return problem;
         }
 
-        // Idempotent submission: the same client_turn_id returns the original turn instead of running again.
-        if (conversation.FindByClientTurnId(turnRequest!.ClientTurnId) is { } previous)
+        // Idempotent submission: claim the client_turn_id before running, so a duplicate (even one arriving
+        // while the first is still running) reuses that single run instead of calling the model again.
+        var (reservation, isOwner) = conversation.Reserve(turnRequest!.ClientTurnId, turnRequest.Message);
+        if (!string.Equals(reservation.Message, turnRequest.Message, StringComparison.Ordinal))
         {
-            return string.Equals(previous.Message, turnRequest.Message, StringComparison.Ordinal)
-                ? Results.Json(previous.Result, ContractJson.Options)
-                : ContractJson.Problem(StatusCodes.Status409Conflict, "client_turn_id_reused", "client_turn_id reused", "This client_turn_id was already used with a different message.");
+            return ContractJson.Problem(StatusCodes.Status409Conflict, "client_turn_id_reused", "client_turn_id reused", "This client_turn_id was already used with a different message.");
         }
 
+        if (!isOwner)
+        {
+            var existing = await reservation.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return Results.Json(existing, ContractJson.Options);
+        }
+
+        try
+        {
+            var result = await RunTurnAsync(conversation, turnRequest, agents, clock, cancellationToken).ConfigureAwait(false);
+            conversation.Complete(reservation, result);
+            return Results.Json(result, ContractJson.Options);
+        }
+        catch (Exception error)
+        {
+            conversation.Abandon(turnRequest.ClientTurnId, reservation, error);
+            throw;
+        }
+    }
+
+    private static async Task<TurnResult> RunTurnAsync(
+        StoredConversation conversation,
+        TurnRequest turnRequest,
+        SupportAgents agents,
+        TimeProvider clock,
+        CancellationToken cancellationToken)
+    {
         var createdAt = clock.GetUtcNow();
         using var turn = TurnActivity.Begin();
         var response = await agents.Orders.RunAsync(turnRequest.Message, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        var result = new TurnResult(
+        return new TurnResult(
             ContractVersion.Current,
             conversation.ConversationId,
             ConversationStore.NewId("turn_"),
@@ -89,15 +115,12 @@ internal static partial class ConversationEndpoints
             ContractJson.TraceId(),
             createdAt,
             clock.GetUtcNow());
-
-        var stored = conversation.Add(new StoredTurn(turnRequest.ClientTurnId, turnRequest.Message, result));
-        return Results.Json(stored.Result, ContractJson.Options);
     }
 
     private static IResult GetTurn(string conversationId, string turnId, ConversationStore store, IPrincipalSource principals)
     {
         var turn = store.FindOwned(conversationId, principals.Current)?.FindByTurnId(turnId);
-        return turn is null ? ContractJson.NotFound() : Results.Json(turn.Result, ContractJson.Options);
+        return turn is null ? ContractJson.NotFound() : Results.Json(turn, ContractJson.Options);
     }
 
     /// <summary>The reply kind comes from what the tools actually did, not from the model's wording.</summary>
@@ -133,12 +156,13 @@ internal static partial class ConversationEndpoints
             return (null, Invalid(string.Empty, "A request body is required."));
         }
 
-        if (!ClientTurnIdPattern().IsMatch(body.ClientTurnId))
+        // [JsonRequired] only demands that the property is present; an explicit null still deserializes.
+        if (body.ClientTurnId is null || !ClientTurnIdPattern().IsMatch(body.ClientTurnId))
         {
             return (null, Invalid("/client_turn_id", "must be a UUID"));
         }
 
-        if (body.Message.Length > MaxMessageLength || string.IsNullOrWhiteSpace(body.Message))
+        if (body.Message is null || body.Message.Length > MaxMessageLength || string.IsNullOrWhiteSpace(body.Message))
         {
             return (null, Invalid("/message", $"must contain a non-space character and at most {MaxMessageLength} characters"));
         }

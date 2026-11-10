@@ -32,8 +32,8 @@ public sealed class ConversationStore(TimeProvider clock)
 
 public sealed class StoredConversation(string conversationId, string ownerCustomerId, DateTimeOffset createdAt)
 {
-    private readonly ConcurrentDictionary<string, StoredTurn> turnsByClientId = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, StoredTurn> turnsById = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, TurnReservation> reservations = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, TurnResult> finishedTurns = new(StringComparer.Ordinal);
 
     public string ConversationId { get; } = conversationId;
 
@@ -41,17 +41,37 @@ public sealed class StoredConversation(string conversationId, string ownerCustom
 
     public DateTimeOffset CreatedAt { get; } = createdAt;
 
-    public StoredTurn? FindByClientTurnId(string clientTurnId) => turnsByClientId.GetValueOrDefault(clientTurnId);
-
-    public StoredTurn? FindByTurnId(string turnId) => turnsById.GetValueOrDefault(turnId);
-
-    /// <summary>Stores a finished turn; if the same client_turn_id raced in first, returns that turn instead.</summary>
-    public StoredTurn Add(StoredTurn turn)
+    /// <summary>
+    /// Atomically claims a client_turn_id with its message <em>before</em> any work starts. Exactly one caller
+    /// becomes the owner and runs the turn; every other caller with that id gets the same reservation and
+    /// either waits for its result (same message) or is rejected (different message).
+    /// </summary>
+    public (TurnReservation Reservation, bool IsOwner) Reserve(string clientTurnId, string message)
     {
-        var stored = turnsByClientId.GetOrAdd(turn.ClientTurnId, turn);
-        turnsById.TryAdd(stored.Result.TurnId, stored);
-        return stored;
+        var mine = new TurnReservation(message);
+        var reservation = reservations.GetOrAdd(clientTurnId, mine);
+        return (reservation, ReferenceEquals(reservation, mine));
     }
+
+    public void Complete(TurnReservation reservation, TurnResult result)
+    {
+        finishedTurns[result.TurnId] = result;
+        reservation.Completion.TrySetResult(result);
+    }
+
+    /// <summary>Releases a reservation whose run failed, so the client can retry with the same id.</summary>
+    public void Abandon(string clientTurnId, TurnReservation reservation, Exception error)
+    {
+        reservations.TryRemove(KeyValuePair.Create(clientTurnId, reservation));
+        reservation.Completion.TrySetException(error);
+    }
+
+    public TurnResult? FindByTurnId(string turnId) => finishedTurns.GetValueOrDefault(turnId);
 }
 
-public sealed record StoredTurn(string ClientTurnId, string Message, TurnResult Result);
+public sealed class TurnReservation(string message)
+{
+    public string Message { get; } = message;
+
+    public TaskCompletionSource<TurnResult> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+}
