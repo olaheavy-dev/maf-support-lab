@@ -26,6 +26,7 @@ internal sealed class SupportWorkflowRouter(
     PendingNativeApprovals pending,
     IOperationStore operations,
     TriageMetrics metrics,
+    TimeProvider clock,
     ILogger<SupportWorkflowRouter> logger) : ISupportRouter
 {
     public const string WorkflowName = "support-routing";
@@ -67,7 +68,14 @@ internal sealed class SupportWorkflowRouter(
         var native = operation.Status is OperationStatus.Running or OperationStatus.Rejected ? pending.Find(operation.OperationId) : null;
         if (native is null)
         {
-            // Nothing is paused for this operation any more (or it was not decided). Nothing runs.
+            // Nothing is paused for this operation any more (or it was not decided). Nothing runs. An approved operation
+            // must not be left "running" forever: record that it failed, so its status stays factual.
+            if (operation.Status == OperationStatus.Running && operation.TryBeginExecution())
+            {
+                operation.Fail("internal_error", "The paused request could not be found, so nothing was changed.", clock.GetUtcNow());
+                operations.TryUpdate(operation, OperationStatus.Running);
+            }
+
             return new SupportReply(route, ReplyKind.ApprovalResult, "That request can no longer be resumed. Nothing has been changed.") { OperationIds = [operation.OperationId] };
         }
 

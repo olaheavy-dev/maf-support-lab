@@ -73,6 +73,10 @@ public sealed class SupportDatabase : IUnitOfWork
         return Query("SELECT value - 1 FROM counters WHERE name = @n", reader => reader.GetInt64(0), ("@n", name))[0];
     }
 
+    /// <summary>Synchronous form of <see cref="AtomicallyAsync{T}"/>, for a few writes that must land together.</summary>
+    public T Atomically<T>(Func<T> work) =>
+        AtomicallyAsync(() => Task.FromResult(work()), CancellationToken.None).GetAwaiter().GetResult();
+
     public async Task<T> AtomicallyAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(work);

@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
+using Support.Api.Common.Infrastructure.Persistence;
 using Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 using Support.Api.Modules.Billing.Application;
 using Support.Api.Modules.Operations.Application;
@@ -270,6 +271,87 @@ public sealed class DurableStateTests
         Assert.Equal(HttpStatusCode.OK, replayStatus);
         Assert.Equal(firstTurnId, replayed.GetProperty("turn_id").GetString());
         Assert.Equal(callsBeforeReplay, model.Calls);
+    }
+
+    [Fact]
+    public async Task An_approval_is_never_listed_without_its_paused_request()
+    {
+        // Codex review on PR #77: the operation and its native request are one transaction. If storing the request
+        // fails (as if the process stopped in between), no operation is left behind as an approval nobody can resume.
+        using var database = new TestDatabase();
+        string conversation;
+        await using (var host = Host(database))
+        {
+            host.Services.GetRequiredService<SupportDatabase>().Execute(
+                "CREATE TRIGGER stop_here BEFORE INSERT ON native_approval_requests BEGIN SELECT RAISE(ABORT, 'simulated stop'); END;");
+            var api = new ApiClient(host.CreateClient());
+            conversation = await api.CreateConversationAsync();
+            var status = await PostTurnStatusAsync(host, conversation, Guid.NewGuid().ToString(), "Please cancel order ORD-1003.");
+            Assert.Equal(HttpStatusCode.InternalServerError, status);
+            host.Services.GetRequiredService<SupportDatabase>().Execute("DROP TRIGGER stop_here");
+        }
+
+        await using var restarted = Host(database);
+        var restartedApi = new ApiClient(restarted.CreateClient());
+        Assert.Empty((await restartedApi.GetConversationAsync(conversation)).GetProperty("pending_approvals").EnumerateArray());
+        Assert.Empty(restarted.Services.GetRequiredService<IOperationStore>().ForConversation(conversation));
+    }
+
+    [Fact]
+    public async Task An_approved_operation_whose_paused_request_is_missing_fails_instead_of_staying_running()
+    {
+        // Defence in depth: if the paused request is gone anyway, approving records a factual failure and changes nothing.
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+        var pending = (await api.AskAsync(conversation, "Please cancel order ORD-1003.")).GetProperty("pending_approval");
+        var operationId = pending.GetProperty("operation_id").GetString()!;
+        factory.Services.GetRequiredService<SupportDatabase>().Execute("DELETE FROM native_approval_requests WHERE operation_id = @id", ("@id", operationId));
+
+        var (status, decided) = await api.DecideAsync(conversation, pending.GetProperty("approval_id").GetString()!, operationId, "approve");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("Nothing has been changed", decided.ReplyText(), StringComparison.Ordinal);
+        Assert.Equal("failed", (await api.GetOperationAsync(operationId)).GetProperty("status").GetString());
+        Assert.Equal("processing", Order(factory, "ORD-1003"));
+    }
+
+    [Fact]
+    public async Task A_finished_turn_is_never_stored_without_the_context_it_produced()
+    {
+        // Codex review on PR #77: the turn and the conversation's context are one transaction. If the context update
+        // fails, the turn is not stored either, so a retry of the same client_turn_id runs again and sets the context.
+        using var database = new TestDatabase();
+        var clientTurnId = Guid.NewGuid().ToString();
+        string conversation;
+        await using (var host = Host(database))
+        {
+            var api = new ApiClient(host.CreateClient());
+            conversation = await api.CreateConversationAsync();
+            host.Services.GetRequiredService<SupportDatabase>().Execute(
+                "CREATE TRIGGER stop_here BEFORE UPDATE OF context_json ON conversations BEGIN SELECT RAISE(ABORT, 'simulated stop'); END;");
+            var status = await PostTurnStatusAsync(host, conversation, clientTurnId, "Where is my order ORD-1002?");
+            Assert.Equal(HttpStatusCode.InternalServerError, status);
+            host.Services.GetRequiredService<SupportDatabase>().Execute("DROP TRIGGER stop_here");
+        }
+
+        await using var restarted = Host(database);
+        var restartedApi = new ApiClient(restarted.CreateClient());
+        Assert.Equal(0, restarted.Services.GetRequiredService<SupportDatabase>().Query("SELECT COUNT(*) FROM turns", reader => reader.GetInt32(0))[0]);
+        await restartedApi.AskAsync(conversation, "Where is my order ORD-1002?", clientTurnId);
+        var followUp = await restartedApi.AskAsync(conversation, "When was it shipped?");
+        Assert.Equal("answer", followUp.ReplyKind());
+        Assert.Contains("ORD-1002", followUp.ReplyText(), StringComparison.Ordinal);
+    }
+
+    /// <summary>Posts a turn and returns only the status: a failed turn's body is a developer error page, not JSON.</summary>
+    private static async Task<HttpStatusCode> PostTurnStatusAsync(WebApplicationFactory<Program> host, string conversation, string clientTurnId, string message)
+    {
+        using var response = await host.CreateClient().PostAsync(
+            new Uri($"/api/v1/conversations/{conversation}/turns", UriKind.Relative),
+            System.Net.Http.Json.JsonContent.Create(new { client_turn_id = clientTurnId, message }),
+            TestContext.Current.CancellationToken);
+        return response.StatusCode;
     }
 
     private static WebApplicationFactory<Program> Host(TestDatabase database, TimeProvider? clock = null, IChatClient? chatClient = null) =>

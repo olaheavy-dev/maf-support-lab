@@ -70,6 +70,9 @@ The decision resumes them as a new turn (`ResumeAsync`). Checkpoints would add a
 - **Guarded:** every status change is `UPDATE … WHERE operation_id = @id AND status = @expected`.
   - If another run (a duplicate, a retry, or another host after a restart) finished the operation first, the update changes no row. The whole transaction rolls back, including the business change, and the stored result is reported instead.
   - The same guard records a decision only once, and stops a late failure from overwriting a commit.
+- **Records that belong together are one transaction:**
+  - the operation and its paused native request, so an approval is never listed without the request it resumes;
+  - a finished turn and the context it produced (Codex review on PR #77).
 - **Turns:** the first stored turn for a key wins. A host that was stuck mid-turn while a restarted host answered the retry gets the stored turn back, rather than writing a second one.
 - **Retried decisions after a crash:**
   - The decision was recorded but its turn was never stored, and the operation is already `committed`, `failed` or `rejected` → a factual turn is built **from the record**. No model call, no write.

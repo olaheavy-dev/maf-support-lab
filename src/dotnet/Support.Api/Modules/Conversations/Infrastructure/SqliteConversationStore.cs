@@ -42,7 +42,11 @@ internal sealed class SqliteConversationStore(SupportDatabase database) : IConve
         return conversation.IsOwnedBy(principal) ? conversation : null;
     }
 
-    public Turn SaveTurn(string conversationId, string clientKey, string message, Turn turn, ConversationContext contextAfter)
+    /// <summary>The turn and the context it produced are one transaction: a replayable turn never comes back without its context.</summary>
+    public Turn SaveTurn(string conversationId, string clientKey, string message, Turn turn, ConversationContext contextAfter) =>
+        database.Atomically(() => InsertTurn(conversationId, clientKey, message, turn, contextAfter));
+
+    private Turn InsertTurn(string conversationId, string clientKey, string message, Turn turn, ConversationContext contextAfter)
     {
         ArgumentNullException.ThrowIfNull(turn);
         var inserted = database.Execute(
