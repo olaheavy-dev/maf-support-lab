@@ -45,6 +45,13 @@ internal sealed partial class DecideApprovalCommandHandler(
             return Result.Failure<Turn>(ConversationErrors.ApprovalAlreadyDecided);
         }
 
+        if (OrphanedApprovals.IsOrphan(conversation, operation))
+        {
+            // The turn that asked for it was never stored, so the customer could not have been asked: never runnable.
+            OrphanedApprovals.Expire(operation, operations, clock.GetUtcNow());
+            return Result.Failure<Turn>(ConversationErrors.ApprovalExpired);
+        }
+
         if (operation.Decision is null && operation.ExpireIfDue(clock.GetUtcNow()))
         {
             operations.TryUpdate(operation, OperationStatus.AwaitingApproval);
@@ -110,7 +117,20 @@ internal sealed partial class DecideApprovalCommandHandler(
             ResumedFromTurnId = operation.SourceTurnId,
             OperationIds = [operation.OperationId],
         };
-        var turn = conversations.SaveTurn(conversation.ConversationId, key, reservation.Message, finished, conversation.Context.After(reply));
+        Turn turn;
+        try
+        {
+            turn = conversations.SaveTurn(conversation.ConversationId, key, reservation.Message, finished, conversation.Context.After(reply));
+        }
+        catch (Exception error)
+        {
+            // Release the decision's reservation (Codex review on PR #77): otherwise a repeat would wait forever and every
+            // other turn would get turn_in_progress. The decision and any write are stored, so a retry rebuilds the
+            // factual turn from the operation record and never runs the write again.
+            conversation.Abandon(key, reservation, error);
+            throw;
+        }
+
         conversation.Complete(reservation, turn, reply);
         operation = operations.Find(operation.OperationId) ?? operation;
         operation.RecordDecisionTurn(turn.TurnId);

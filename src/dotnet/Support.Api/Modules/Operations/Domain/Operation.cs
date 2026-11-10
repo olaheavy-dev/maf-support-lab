@@ -85,6 +85,25 @@ public sealed class Operation
         }
     }
 
+    /// <summary>
+    /// Closes an undecided approval now, whatever its window: used when the turn that asked for it was never stored
+    /// (the process stopped first), so the customer never saw it and a retried turn asks again. Returns true if it closed it.
+    /// </summary>
+    public bool ExpireNow(DateTimeOffset now)
+    {
+        lock (gate)
+        {
+            if (Status != OperationStatus.AwaitingApproval)
+            {
+                return false;
+            }
+
+            Status = OperationStatus.Expired;
+            UpdatedAt = now;
+            return true;
+        }
+    }
+
     /// <summary>Records the customer's decision exactly once. Returns false if a decision was already recorded.</summary>
     public bool TryDecide(ApprovalDecision decision, DateTimeOffset now)
     {

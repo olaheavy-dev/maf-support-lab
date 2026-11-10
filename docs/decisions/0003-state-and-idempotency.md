@@ -73,6 +73,8 @@ The decision resumes them as a new turn (`ResumeAsync`). Checkpoints would add a
 - **Records that belong together are one transaction:**
   - the operation and its paused native request, so an approval is never listed without the request it resumes;
   - a finished turn and the context it produced (Codex review on PR #77).
+- **An approval is actionable only once the turn that asked for it is stored.** A proposal left by a turn that never finished (the process stopped in between) isn't listed, can't be decided (`410`), and is closed as `expired` by the next turn. So a retried submission can't leave two approvals for one request.
+- **A decision whose turn fails to save releases its reservation.** The retry answers from the operation record.
 - **Turns:** the first stored turn for a key wins. A host that was stuck mid-turn while a restarted host answered the retry gets the stored turn back, rather than writing a second one.
 - **Retried decisions after a crash:**
   - The decision was recorded but its turn was never stored, and the operation is already `committed`, `failed` or `rejected` → a factual turn is built **from the record**. No model call, no write.

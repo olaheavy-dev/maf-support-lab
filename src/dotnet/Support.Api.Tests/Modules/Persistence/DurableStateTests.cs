@@ -344,6 +344,72 @@ public sealed class DurableStateTests
         Assert.Contains("ORD-1002", followUp.ReplyText(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task An_approval_whose_turn_was_never_stored_cannot_run_and_a_retry_asks_once_more()
+    {
+        // Codex review on PR #77: the proposal was stored, then the process stopped before its turn was. The customer
+        // never saw that approval; retrying the same submission asks again, and only the new approval is actionable.
+        using var database = new TestDatabase();
+        var clientTurnId = Guid.NewGuid().ToString();
+        const string Message = "Please open a support ticket: my fridge shows error Z-77.";
+        string conversation;
+        await using (var host = Host(database))
+        {
+            var api = new ApiClient(host.CreateClient());
+            conversation = await api.CreateConversationAsync();
+            host.Services.GetRequiredService<SupportDatabase>().Execute(
+                "CREATE TRIGGER stop_here BEFORE INSERT ON turns BEGIN SELECT RAISE(ABORT, 'simulated stop'); END;");
+            Assert.Equal(HttpStatusCode.InternalServerError, await PostTurnStatusAsync(host, conversation, clientTurnId, Message));
+            host.Services.GetRequiredService<SupportDatabase>().Execute("DROP TRIGGER stop_here");
+        }
+
+        await using var restarted = Host(database);
+        var restartedApi = new ApiClient(restarted.CreateClient());
+        var orphan = Assert.Single(restarted.Services.GetRequiredService<IOperationStore>().ForConversation(conversation));
+        Assert.Empty((await restartedApi.GetConversationAsync(conversation)).GetProperty("pending_approvals").EnumerateArray());
+
+        var pending = (await restartedApi.AskAsync(conversation, Message, clientTurnId)).GetProperty("pending_approval");
+
+        Assert.NotEqual(orphan.OperationId, pending.GetProperty("operation_id").GetString());
+        Assert.Single((await restartedApi.GetConversationAsync(conversation)).GetProperty("pending_approvals").EnumerateArray());
+        Assert.Equal("expired", (await restartedApi.GetOperationAsync(orphan.OperationId)).GetProperty("status").GetString());
+        var (orphanStatus, problem) = await restartedApi.DecideAsync(conversation, orphan.ApprovalId, orphan.OperationId, "approve");
+        Assert.Equal(HttpStatusCode.Gone, orphanStatus);
+        Assert.Equal("approval_expired", problem.GetProperty("code").GetString());
+        await restartedApi.DecideAsync(conversation, pending.GetProperty("approval_id").GetString()!, pending.GetProperty("operation_id").GetString()!, "approve");
+        Assert.Equal("tickets=1", State(restarted, "create_ticket"));
+    }
+
+    [Fact]
+    public async Task A_decision_whose_turn_could_not_be_saved_can_be_retried_and_does_not_block_the_conversation()
+    {
+        // Codex review on PR #77: saving the decision turn fails after the write committed. The reservation is released,
+        // so the retry answers from the operation record (no second write) and other turns are not stuck.
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+        var pending = (await api.AskAsync(conversation, "Please open a support ticket: my fridge shows error Z-77.")).GetProperty("pending_approval");
+        var (approvalId, operationId) = (pending.GetProperty("approval_id").GetString()!, pending.GetProperty("operation_id").GetString()!);
+        var database = factory.Services.GetRequiredService<SupportDatabase>();
+        database.Execute("CREATE TRIGGER stop_here BEFORE INSERT ON turns BEGIN SELECT RAISE(ABORT, 'simulated failure'); END;");
+        using (var response = await factory.CreateClient().PostAsync(
+            new Uri($"/api/v1/conversations/{conversation}/approvals/{approvalId}", UriKind.Relative),
+            System.Net.Http.Json.JsonContent.Create(new { operation_id = operationId, decision = "approve" }),
+            TestContext.Current.CancellationToken))
+        {
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        }
+
+        database.Execute("DROP TRIGGER stop_here");
+        var (status, retried) = await api.DecideAsync(conversation, approvalId, operationId, "approve").WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.StartsWith("Done.", retried.ReplyText(), StringComparison.Ordinal);
+        Assert.Equal("committed", (await api.GetOperationAsync(operationId)).GetProperty("status").GetString());
+        Assert.Equal("tickets=1", State(factory, "create_ticket"));
+        Assert.Equal("completed", (await api.AskAsync(conversation, "Where is my order ORD-1002?")).GetProperty("outcome").GetString());
+    }
+
     /// <summary>Posts a turn and returns only the status: a failed turn's body is a developer error page, not JSON.</summary>
     private static async Task<HttpStatusCode> PostTurnStatusAsync(WebApplicationFactory<Program> host, string conversation, string clientTurnId, string message)
     {

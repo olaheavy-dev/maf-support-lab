@@ -24,6 +24,7 @@ public sealed record ConversationResponse(
         ArgumentNullException.ThrowIfNull(operations);
         var pending = operations.ForConversation(conversation.ConversationId)
             .Where(operation => !operation.ExpireIfDue(now) && operation.Status == OperationStatus.AwaitingApproval)
+            .Where(operation => conversation.FindTurn(operation.SourceTurnId) is not null) // only approvals whose asking turn was stored
             .Select(PendingApproval.From)
             .ToList();
         return new(Common.Presentation.ContractVersion.Current, conversation.ConversationId, Common.Presentation.ContractVersion.Backend, conversation.CreatedAt, conversation.ActiveTurnId, pending);
