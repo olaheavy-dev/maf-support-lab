@@ -25,14 +25,14 @@ internal static class ModelProviderRegistration
 
         services.AddSingleton<IValidateOptions<ModelProviderOptions>, ModelProviderOptionsValidator>();
 
-        // The live Claude client is created lazily from validated options and makes no call when created.
-        // Fake mode has no model client yet: L05 adds the controllable fake client at this boundary.
+        // Provider boundary: Fake mode gets the deterministic fake model; Live mode gets Claude.
+        // The live client is created lazily from validated options and makes no call when created.
         services.AddSingleton<IChatClient>(provider =>
         {
             var options = provider.GetRequiredService<IOptions<ModelProviderOptions>>().Value;
             if (options.Mode != ModelMode.Live)
             {
-                throw new InvalidOperationException("No model client is registered in Fake mode yet; L05 adds the fake client.");
+                return new Model.FakeChatClient();
             }
 
             var client = new AnthropicClient { ApiKey = options.Anthropic.ApiKey };

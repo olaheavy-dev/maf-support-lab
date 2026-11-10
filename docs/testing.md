@@ -46,4 +46,15 @@ Vulnerability data changes over time. In required builds, NuGet advisory warning
 
 ## Live (opt-in)
 
-There are no live checks yet. The first is a bounded smoke check in L05, run explicitly (never in CI) with `ModelProvider:Mode=Live` and a key from user-secrets or `ANTHROPIC_API_KEY`. Live results record the model, package versions, number of calls, and usage, and are reported separately from offline results.
+Live checks are xUnit tests marked `Explicit = true` with `[Trait("Category", "Live")]`. A normal `dotnet test` reports them as "not run", and CI never runs them. They need `ANTHROPIC_API_KEY` and are skipped without it.
+
+```bash
+export ANTHROPIC_API_KEY=...
+dotnet test --solution maf-support-lab.slnx -- --filter-trait "Category=Live" --explicit only
+```
+
+| Check | Since | Budget |
+| --- | --- | --- |
+| `LiveSmokeTests.Claude_answers_a_known_order_through_the_tool` | L05 | One turn on `claude-haiku-5-5`: two model calls (tool request, then answer), output capped at 4096 tokens. |
+
+When a live check is run, record the date, model, package versions, number of calls, usage if available, and the result in the ticket's evidence note, separately from the offline results.
