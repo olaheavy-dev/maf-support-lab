@@ -1,3 +1,4 @@
+using Support.Api.Common.Infrastructure.Persistence;
 using Microsoft.Extensions.AI;
 using Support.Api.Common.Application.Messaging;
 using Support.Api.Modules.Agents.Application;
@@ -18,7 +19,7 @@ internal static class BillingModule
 {
     public static IServiceCollection AddBillingModule(this IServiceCollection services)
     {
-        services.AddSingleton<IBillingRepository>(_ => FixtureBillingRepository.Load());
+        services.AddSingleton<IBillingRepository>(provider => FixtureBillingRepository.Load(provider.GetRequiredService<SupportDatabase>()));
         services.AddSingleton<IQueryHandler<GetInvoiceQuery, Invoice>, GetInvoiceQueryHandler>();
         services.AddSingleton<IQueryHandler<GetPaymentHistoryQuery, IReadOnlyList<Payment>>, GetPaymentHistoryQueryHandler>();
         services.AddSingleton<BillingTools>();

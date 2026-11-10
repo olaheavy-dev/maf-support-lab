@@ -30,6 +30,7 @@ public static class BillingAgentFactory
             chatClient,
             new ChatClientAgentOptions
             {
+                Id = SupportAgents.BillingAgentName, // stable across restarts, so a stored session belongs to the same agent (L11)
                 Name = SupportAgents.BillingAgentName,
                 Description = "Answers invoice and payment-history questions; refunds need the customer's approval.",
                 ChatHistoryProvider = ConversationHistory.CreateProvider(),

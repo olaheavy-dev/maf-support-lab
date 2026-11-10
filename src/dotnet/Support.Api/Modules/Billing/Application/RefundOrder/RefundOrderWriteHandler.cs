@@ -10,7 +10,7 @@ namespace Support.Api.Modules.Billing.Application.RefundOrder;
 
 /// <summary>
 /// Simulated full refund of the customer's own delivered order, within the refund window, once. Records a refund
-/// payment and marks the order refunded, in memory only.
+/// payment and marks the order refunded, in the local database; never touches the fixture files.
 /// </summary>
 internal sealed class RefundOrderWriteHandler(
     IOrderRepository orders, IBillingRepository billing, IPrincipalSource principals, SupportPolicy policy, TimeProvider clock) : IWriteHandler

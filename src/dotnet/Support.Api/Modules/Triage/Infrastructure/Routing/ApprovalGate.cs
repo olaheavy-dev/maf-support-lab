@@ -1,5 +1,6 @@
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Support.Api.Common.Application;
 using Support.Api.Modules.Operations.Application;
 using Support.Api.Modules.Operations.Domain;
 using Support.Api.Modules.Triage.Application;
@@ -14,7 +15,7 @@ namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 /// awaiting approval; or declines it natively with the factual reason, so nothing is proposed and the model explains.
 /// One write per turn; extra requests are declined.
 /// </summary>
-internal sealed class ApprovalGate(OperationService operations, PendingNativeApprovals pending)
+internal sealed class ApprovalGate(OperationService operations, PendingNativeApprovals pending, IUnitOfWork unitOfWork)
 {
     private const int MaxRounds = 3;
 
@@ -34,13 +35,26 @@ internal sealed class ApprovalGate(OperationService operations, PendingNativeApp
             var reason = "Only one change can be requested at a time.";
             if (requests.Count == 1 && requests[0].ToolCall is FunctionCallContent call)
             {
+                var native = requests[0];
+                // The operation and its paused native request are stored together (L11, Codex review on PR #77): an
+                // approval is never listed as pending unless the request it would resume was stored too.
                 var proposal = request.ConversationId is { } conversationId && request.TurnId is { } turnId && session is not null
-                    ? await operations.ProposeAsync(conversationId, target, turnId, call.Name, (IReadOnlyDictionary<string, object?>?)call.Arguments ?? new Dictionary<string, object?>(), cancellationToken).ConfigureAwait(false)
+                    ? await unitOfWork.AtomicallyAsync(
+                        async () =>
+                        {
+                            var proposed = await operations.ProposeAsync(conversationId, target, turnId, call.Name, (IReadOnlyDictionary<string, object?>?)call.Arguments ?? new Dictionary<string, object?>(), cancellationToken).ConfigureAwait(false);
+                            if (proposed.IsSuccess)
+                            {
+                                pending.Store(proposed.Value.OperationId, native);
+                            }
+
+                            return proposed;
+                        },
+                        cancellationToken).ConfigureAwait(false)
                     : Common.Domain.Result.Failure<Operation>(WriteErrors.InvalidArguments("Changes can only be requested in a support conversation."));
 
                 if (proposal.IsSuccess)
                 {
-                    pending.Store(proposal.Value.OperationId, requests[0]);
                     return new GateResult(response, proposal.Value, null);
                 }
 

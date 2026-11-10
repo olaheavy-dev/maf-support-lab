@@ -11,7 +11,7 @@ internal static class OperationsModule
 {
     public static IServiceCollection AddOperationsModule(this IServiceCollection services)
     {
-        services.AddSingleton<IOperationStore, InMemoryOperationStore>();
+        services.AddSingleton<IOperationStore, SqliteOperationStore>();
         services.AddSingleton<OperationMetrics>();
         services.AddSingleton<OperationService>();
         services.AddSingleton<OperationTools>();

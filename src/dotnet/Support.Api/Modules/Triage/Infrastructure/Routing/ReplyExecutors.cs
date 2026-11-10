@@ -41,6 +41,11 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
 
         // A write tool pauses natively for approval; the gate binds it to an operation or declines it (L10).
         var gated = await gate.AfterRunAsync(agent, session, response, request, target, cancellationToken).ConfigureAwait(false);
+        if (session is not null)
+        {
+            await sessions.SaveAsync(request.ConversationId!, name, agent, session, cancellationToken).ConfigureAwait(false);
+        }
+
         var reply = gated switch
         {
             { Proposed: { } operation } => new SupportReply(request.Route, ReplyKind.ApprovalRequest, $"I can do this for you: {operation.Summary} Please approve or reject.", activity.Activity.VerifiedOrderId)

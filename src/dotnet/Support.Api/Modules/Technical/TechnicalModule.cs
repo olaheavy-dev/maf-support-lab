@@ -20,7 +20,7 @@ internal static class TechnicalModule
         services.AddSingleton<IKnowledgeBase>(_ => FixtureKnowledgeBase.Load());
         services.AddSingleton<IQueryHandler<SearchKnowledgeQuery, IReadOnlyList<KnowledgeArticle>>, SearchKnowledgeQueryHandler>();
         services.AddSingleton<KnowledgeSearchTool>();
-        services.AddSingleton<ITicketStore, InMemoryTicketStore>();
+        services.AddSingleton<ITicketStore, SqliteTicketStore>();
         services.AddSingleton<IWriteHandler, CreateTicketWriteHandler>();
         services.AddSingleton(provider => new SupportAgent(
             SupportAgents.TechnicalAgentName,

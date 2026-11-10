@@ -5,7 +5,9 @@ namespace Support.Api.Modules.Conversations.Domain;
 
 /// <summary>
 /// A conversation owned by one customer: its finished turns (kept for client_turn_id replay), the one turn allowed to
-/// run at a time, and the verified routing context that follow-ups use. In memory; durability arrives in L11.
+/// run at a time, and the verified routing context that follow-ups use. Finished turns and the context are stored durably
+/// (L11) and restored with <see cref="Restore"/>; a turn still running is not, so after a restart it is simply gone and
+/// the client can retry it with the same client_turn_id.
 /// </summary>
 public sealed class Conversation
 {
@@ -56,6 +58,26 @@ public sealed class Conversation
     {
         ArgumentNullException.ThrowIfNull(owner);
         return new Conversation(Ids.New("conv_"), owner.CustomerId, now);
+    }
+
+    /// <summary>Rebuilds a stored conversation: its finished turns (each still answering a repeat of its key) and its context.</summary>
+    public static Conversation Restore(
+        string conversationId, string ownerCustomerId, DateTimeOffset createdAt, ConversationContext context, IEnumerable<StoredTurn> turns)
+    {
+        ArgumentNullException.ThrowIfNull(turns);
+        var conversation = new Conversation(conversationId, ownerCustomerId, createdAt) { context = context ?? ConversationContext.Empty };
+        foreach (var stored in turns)
+        {
+            conversation.finishedTurns[stored.Turn.TurnId] = stored.Turn;
+            if (stored.ClientKey is { } key)
+            {
+                var reservation = new TurnReservation(stored.Turn.TurnId, stored.Message ?? string.Empty);
+                reservation.Completion.TrySetResult(stored.Turn);
+                conversation.reservations[key] = reservation;
+            }
+        }
+
+        return conversation;
     }
 
     public bool IsOwnedBy(SupportPrincipal principal) =>
@@ -134,3 +156,6 @@ public sealed class Conversation
         }
     }
 }
+
+/// <summary>A finished turn as stored, with the key and message it was claimed with (null for none).</summary>
+public sealed record StoredTurn(string? ClientKey, string? Message, Turn Turn);

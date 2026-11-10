@@ -1,3 +1,4 @@
+using Support.Api.Common.Infrastructure.Persistence;
 using Microsoft.Extensions.AI;
 using Support.Api.Common.Application.Messaging;
 using Support.Api.Modules.Operations.Application;
@@ -18,7 +19,7 @@ internal static class OrdersModule
     public static IServiceCollection AddOrdersModule(this IServiceCollection services)
     {
         // Singletons: the agent (and so its tool) is built once, so everything the tool uses must live as long.
-        services.AddSingleton<IOrderRepository>(_ => FixtureOrderRepository.Load());
+        services.AddSingleton<IOrderRepository>(provider => FixtureOrderRepository.Load(provider.GetRequiredService<SupportDatabase>()));
         services.AddSingleton<IQueryHandler<GetOrderStatusQuery, Order>, GetOrderStatusQueryHandler>();
         services.AddSingleton<OrderStatusTool>();
         services.AddSingleton<IWriteHandler, CancelOrderWriteHandler>();

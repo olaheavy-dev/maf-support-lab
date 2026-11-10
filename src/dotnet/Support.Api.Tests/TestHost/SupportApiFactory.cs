@@ -12,7 +12,8 @@ using Support.Api.Modules.Identity.Domain;
 namespace Support.Api.Tests.TestHost;
 
 /// <summary>
-/// Hermetic test host: fake model mode, no provider key from the developer's environment, and
+/// Hermetic test host: fake model mode, no provider key from the developer's environment, its own temporary database
+/// (deleted when the host is disposed) unless the test passes <c>Storage:Path</c> to share one across a "restart", and
 /// optionally a different principal injected through DI (the trusted test-host injection point).
 /// </summary>
 internal static class SupportApiFactory
@@ -25,9 +26,15 @@ internal static class SupportApiFactory
         IChatClient? chatClient = null,
         Action<IServiceCollection>? configureServices = null)
     {
-        return new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        var ownDirectory = settings?.ContainsKey("Storage:Path") == true ? null : TestDatabase.NewDirectory();
+        return new IsolatedHost(ownDirectory, builder =>
         {
             builder.UseEnvironment(environment);
+            if (ownDirectory is not null)
+            {
+                builder.UseSetting("Storage:Path", Path.Combine(ownDirectory, "support.db"));
+            }
+
 
             // Blank out anything the developer machine might provide, then apply the test's settings.
             builder.UseSetting("ModelProvider:Mode", "Fake");
@@ -59,6 +66,24 @@ internal static class SupportApiFactory
                 }
             });
         });
+    }
+
+    /// <summary>A test host that deletes its own temporary database directory when disposed.</summary>
+    private sealed class IsolatedHost(string? ownDirectory, Action<IWebHostBuilder> configure) : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder) => configure(builder);
+
+        public override async ValueTask DisposeAsync()
+        {
+            await base.DisposeAsync().ConfigureAwait(false);
+            TestDatabase.Delete(ownDirectory);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            TestDatabase.Delete(ownDirectory);
+        }
     }
 
     private sealed class LoopbackCallerStartupFilter : IStartupFilter

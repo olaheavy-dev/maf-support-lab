@@ -5,6 +5,7 @@ using Support.Api.Common.Application.Observability;
 using Support.Api.Common.Domain;
 using Support.Api.Modules.Conversations.Domain;
 using Support.Api.Modules.Identity.Application;
+using Support.Api.Modules.Operations.Application;
 using Support.Api.Modules.Triage.Application;
 using Support.Api.Modules.Triage.Domain;
 
@@ -18,6 +19,7 @@ namespace Support.Api.Modules.Conversations.Application.SubmitTurn;
 /// </summary>
 internal sealed partial class SubmitTurnCommandHandler(
     IConversationStore store,
+    IOperationStore operations,
     IPrincipalSource principals,
     ISupportRouter router,
     TimeProvider clock,
@@ -63,7 +65,10 @@ internal sealed partial class SubmitTurnCommandHandler(
 
         try
         {
-            var (turn, reply) = await RunAsync(conversation, reservation, command, cancellationToken).ConfigureAwait(false);
+            // This conversation's turn is ours now: close approvals left by a turn that was never stored (L11).
+            OrphanedApprovals.Expire(conversation, operations, clock.GetUtcNow());
+            var (ran, reply) = await RunAsync(conversation, reservation, command, cancellationToken).ConfigureAwait(false);
+            var turn = store.SaveTurn(conversation.ConversationId, command.ClientTurnId, reservation.Message, ran, conversation.Context.After(reply));
             conversation.Complete(reservation, turn, reply);
 
             var replyKind = Names.Of(turn.ReplyKind);

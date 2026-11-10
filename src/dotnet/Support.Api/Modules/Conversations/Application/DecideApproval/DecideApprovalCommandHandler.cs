@@ -45,13 +45,22 @@ internal sealed partial class DecideApprovalCommandHandler(
             return Result.Failure<Turn>(ConversationErrors.ApprovalAlreadyDecided);
         }
 
+        if (OrphanedApprovals.IsOrphan(conversation, operation))
+        {
+            // The turn that asked for it was never stored, so the customer could not have been asked: never runnable.
+            OrphanedApprovals.Expire(operation, operations, clock.GetUtcNow());
+            return Result.Failure<Turn>(ConversationErrors.ApprovalExpired);
+        }
+
         if (operation.Decision is null && operation.ExpireIfDue(clock.GetUtcNow()))
         {
+            operations.TryUpdate(operation, OperationStatus.AwaitingApproval);
             return Result.Failure<Turn>(ConversationErrors.ApprovalExpired);
         }
 
         // One decision per approval: its key makes a repeated decision a duplicate (replay), never a second run.
-        var (claimed, outcome) = conversation.Reserve($"approval:{operation.ApprovalId}", OperationNames.Of(command.Decision));
+        var key = $"approval:{operation.ApprovalId}";
+        var (claimed, outcome) = conversation.Reserve(key, OperationNames.Of(command.Decision));
         if (outcome == ReservationOutcome.Busy)
         {
             return Result.Failure<Turn>(ConversationErrors.TurnInProgress);
@@ -65,43 +74,73 @@ internal sealed partial class DecideApprovalCommandHandler(
                 : Result.Failure<Turn>(ConversationErrors.ApprovalAlreadyDecided);
         }
 
-        var createdAt = clock.GetUtcNow();
-        if (!operation.TryDecide(command.Decision, createdAt))
-        {
-            conversation.Abandon($"approval:{operation.ApprovalId}", reservation, new InvalidOperationException("Already decided."));
-            return Result.Failure<Turn>(operation.Status == OperationStatus.Expired ? ConversationErrors.ApprovalExpired : ConversationErrors.ApprovalAlreadyDecided);
-        }
-
+        // From here on the reservation is ours. If anything fails before the turn completes (recording the decision,
+        // saving the turn), release it (Codex review on PR #77): otherwise a repeat would wait forever and every other turn
+        // would get turn_in_progress. Whatever was stored stays stored, so a retry finishes from the operation record and
+        // never runs the write again.
+        Turn turn;
         SupportReply reply;
         try
         {
-            reply = await router.ResumeAsync(new ApprovalResume(operation.OperationId, command.Reason), cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception error)
-        {
-            // The decision is recorded and the write may already have committed, so this turn must still finish, with
-            // the operation's factual state, and stay replayable. Never abandon it: a repeat would then be refused
-            // forever, and never run the write again (Codex review on PR #76).
-            Log.ResumeFailed(logger, error, operation.OperationId);
-            if (operation.Status == OperationStatus.Running)
+            var createdAt = clock.GetUtcNow();
+            // A decision already recorded, but whose turn was never stored (the process stopped in between), is finished now
+            // from the record (L11): the write is never run a second time.
+            var recordedEarlier = operation.Decision == command.Decision;
+            if (!recordedEarlier && !(operation.TryDecide(command.Decision, createdAt) && operations.TryUpdate(operation, OperationStatus.AwaitingApproval)))
             {
-                operation.Fail("internal_error", "The approved action could not be completed.", clock.GetUtcNow());
+                conversation.Abandon(key, reservation, new InvalidOperationException("Already decided."));
+                return Result.Failure<Turn>(operation.Status == OperationStatus.Expired ? ConversationErrors.ApprovalExpired : ConversationErrors.ApprovalAlreadyDecided);
             }
 
-            reply = new SupportReply(TurnRoute.Routed(operation.Specialist), ReplyKind.ApprovalResult, FactualText(operation));
+            try
+            {
+                // Resume the paused run, unless the decision was recorded earlier and the operation already finished. An
+                // approved operation still "running" after a restart changed nothing yet (its write and its commit are one
+                // transaction), so resuming it is safe; the guarded commit stops it from ever applying twice.
+                reply = recordedEarlier && operation.Status != OperationStatus.Running
+                    ? Factual(operation)
+                    : await router.ResumeAsync(new ApprovalResume(operation.OperationId, command.Reason), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception error)
+            {
+                // The decision is recorded and the write may already have committed, so this turn must still finish, with
+                // the operation's factual state, and stay replayable. Never abandon it: a repeat would then be refused
+                // forever, and never run the write again (Codex review on PR #76).
+                Log.ResumeFailed(logger, error, operation.OperationId);
+                operation = operations.Find(operation.OperationId) ?? operation;
+                if (operation.Status == OperationStatus.Running)
+                {
+                    operation.Fail("internal_error", "The approved action could not be completed.", clock.GetUtcNow());
+                    operations.TryUpdate(operation, OperationStatus.Running);
+                }
+
+                reply = Factual(operation);
+            }
+
+            var finished = new Turn(
+                conversation.ConversationId, reservation.TurnId, ClientTurnId: null, reply.Route, reply.Kind, reply.Text,
+                TraceIds.Current(), createdAt, clock.GetUtcNow())
+            {
+                ResumedFromTurnId = operation.SourceTurnId,
+                OperationIds = [operation.OperationId],
+            };
+            turn = conversations.SaveTurn(conversation.ConversationId, key, reservation.Message, finished, conversation.Context.After(reply));
+            conversation.Complete(reservation, turn, reply);
+        }
+        catch (Exception error) when (!reservation.Completion.Task.IsCompleted)
+        {
+            conversation.Abandon(key, reservation, error);
+            throw;
         }
 
-        var turn = new Turn(
-            conversation.ConversationId, reservation.TurnId, ClientTurnId: null, reply.Route, reply.Kind, reply.Text,
-            TraceIds.Current(), createdAt, clock.GetUtcNow())
-        {
-            ResumedFromTurnId = operation.SourceTurnId,
-            OperationIds = [operation.OperationId],
-        };
-        conversation.Complete(reservation, turn, reply);
+        operation = operations.Find(operation.OperationId) ?? operation;
         operation.RecordDecisionTurn(turn.TurnId);
+        operations.TryUpdate(operation, operation.Status);
         return Result.Success(turn);
     }
+
+    private static SupportReply Factual(Operation operation) =>
+        new(TurnRoute.Routed(operation.Specialist), ReplyKind.ApprovalResult, FactualText(operation)) { OperationIds = [operation.OperationId] };
 
     /// <summary>What the customer is told when the resumed run failed: only what the operation record says happened.</summary>
     private static string FactualText(Operation operation) => operation.Status switch

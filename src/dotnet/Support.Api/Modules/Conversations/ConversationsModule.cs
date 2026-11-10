@@ -16,7 +16,7 @@ internal static class ConversationsModule
 {
     public static IServiceCollection AddConversationsModule(this IServiceCollection services)
     {
-        services.AddSingleton<IConversationStore, InMemoryConversationStore>();
+        services.AddSingleton<IConversationStore, SqliteConversationStore>();
         services.AddSingleton<TurnMetrics>();
         services.AddSingleton<ICommandHandler<CreateConversationCommand, Conversation>, CreateConversationCommandHandler>();
         services.AddSingleton<IQueryHandler<GetConversationQuery, Conversation>, GetConversationQueryHandler>();

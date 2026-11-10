@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Support.Api.Common.Infrastructure;
 using Support.Api.Common.Infrastructure.Observability;
+using Support.Api.Common.Infrastructure.Persistence;
 using Support.Api.Modules.Agents;
 using Support.Api.Modules.Billing;
 using Support.Api.Modules.Conversations;
@@ -21,6 +22,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(_ => FixturePolicy.Load());
+builder.Services.AddSupportStorage(builder.Configuration, builder.Environment);
 
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddOperationsModule();
