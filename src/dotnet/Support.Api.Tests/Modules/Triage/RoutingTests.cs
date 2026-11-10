@@ -21,18 +21,19 @@ public sealed class RoutingTests
     }
 
     [Theory]
-    [InlineData("Can you send me a copy of my invoice?", "billing")]
-    [InlineData("I want a refund for ORD-1001", "billing")]
-    [InlineData("The app keeps crashing when I log in", "technical")]
-    public async Task Billing_and_technical_are_routed_to_placeholders_that_say_so(string message, string target)
+    [InlineData("I want a refund for ORD-1001", "billing", "request a refund")]
+    [InlineData("Please cancel order ORD-1003.", "orders", "cancel an order")]
+    [InlineData("Please open a support ticket for my fridge.", "technical", "open a support ticket")]
+    public async Task Write_requests_are_answered_deterministically_until_approvals_exist(string message, string target, string what)
     {
+        // Until L10: no agent is given the chance to claim it changed something, and no model call is spent.
         var model = new CountingScript();
         var turn = await AskAsync(message, model);
 
         AssertRoute(turn, "routed", target);
-        // Placeholders until L08: an honest escalation offer, and no specialist model call pretending to help.
         Assert.Equal("escalation_offer", turn.ReplyKind());
-        Assert.Contains("isn't available in this version yet", turn.ReplyText(), StringComparison.Ordinal);
+        Assert.Contains(what, turn.ReplyText(), StringComparison.Ordinal);
+        Assert.Contains("Nothing has been changed", turn.ReplyText(), StringComparison.Ordinal);
         Assert.Equal(0, model.Calls);
     }
 

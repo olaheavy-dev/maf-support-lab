@@ -1,31 +1,40 @@
 namespace Support.Api.Modules.Agents.Application;
 
-public enum OrderLookupOutcome
+/// <summary>What a read tool found. Recorded by the tool, read by code to decide the reply kind.</summary>
+public enum ToolOutcome
 {
+    /// <summary>The requested record exists and belongs to the current customer (or a search had results).</summary>
     Found,
+
+    /// <summary>No such record for this customer. Another customer's record is reported exactly the same way.</summary>
     NotFound,
-    InvalidOrderId,
+
+    /// <summary>The input was not a valid identifier, so nothing was looked up.</summary>
+    InvalidInput,
+
+    /// <summary>A search ran and matched nothing: an unresolved issue the customer may want escalated.</summary>
+    NoMatch,
 }
 
 /// <summary>
-/// Facts recorded by tools while one turn runs. The API derives the reply kind from these facts,
-/// not from the model's wording. Scoped to the turn's async flow.
+/// Facts recorded by tools while one turn runs. The reply kind is derived from these facts, not from the model's
+/// wording. Scoped to the turn's async flow.
 /// </summary>
 public sealed class TurnActivity
 {
     private static readonly AsyncLocal<TurnActivity?> CurrentTurn = new();
-    private readonly List<OrderLookupOutcome> orderLookups = [];
+    private readonly List<ToolOutcome> outcomes = [];
     private readonly Lock gate = new();
 
     public static TurnActivity? Current => CurrentTurn.Value;
 
-    public IReadOnlyList<OrderLookupOutcome> OrderLookups
+    public IReadOnlyList<ToolOutcome> Outcomes
     {
         get
         {
             lock (gate)
             {
-                return [.. orderLookups];
+                return [.. outcomes];
             }
         }
     }
@@ -37,11 +46,11 @@ public sealed class TurnActivity
         return new Scope(activity);
     }
 
-    public void RecordOrderLookup(OrderLookupOutcome outcome)
+    public void Record(ToolOutcome outcome)
     {
         lock (gate)
         {
-            orderLookups.Add(outcome);
+            outcomes.Add(outcome);
         }
     }
 

@@ -17,6 +17,13 @@ public sealed class SupportAgents
     /// <summary>The orders agent's name: what DevUI lists and what a turn's route target reports.</summary>
     public const string OrdersAgentName = "orders";
 
+    public const string BillingAgentName = "billing";
+
+    public const string TechnicalAgentName = "technical";
+
+    /// <summary>The specialists a turn can be routed to. DevUI lists these too.</summary>
+    public static readonly IReadOnlyList<string> SpecialistNames = [OrdersAgentName, BillingAgentName, TechnicalAgentName];
+
     private readonly Dictionary<string, AIAgent> byName;
 
     public SupportAgents(IEnumerable<SupportAgent> agents, IOptions<AgentTelemetryOptions> telemetry)

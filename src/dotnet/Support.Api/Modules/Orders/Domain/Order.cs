@@ -1,3 +1,5 @@
+using Support.Api.Common.Domain;
+
 namespace Support.Api.Modules.Orders.Domain;
 
 /// <summary>A customer's order. Shapes match the shared synthetic fixtures (fixtures/data/orders.json).</summary>
@@ -13,5 +15,3 @@ public sealed record Order(
     Money Total);
 
 public sealed record OrderItem(string Sku, string Name, int Quantity, Money UnitPrice);
-
-public sealed record Money(long AmountMinor, string Currency);
