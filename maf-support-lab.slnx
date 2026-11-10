@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/apphost/">
+    <Project Path="apphost/Support.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/dotnet/">
+    <Project Path="src/dotnet/Support.Api.Tests/Support.Api.Tests.csproj" />
+    <Project Path="src/dotnet/Support.Api/Support.Api.csproj" />
+    <Project Path="src/dotnet/Support.ServiceDefaults/Support.ServiceDefaults.csproj" />
+  </Folder>
+</Solution>
