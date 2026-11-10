@@ -146,6 +146,40 @@ Markers, all in fake mode only:
 
 The last two both produce `unrouted / invalid_model_output`. None of the markers affect Live mode.
 
+## Failures, retries and budgets (L15)
+
+A turn that runs and fails is a result, not an HTTP error: `200` with `outcome: failed`, an `error.code`, safe text, and the turn's `trace_id`. The `support.turn` span carries `support.turn.error_code`, `support.turn.model_calls` and `support.turn.model_attempts`, and its status is Error.
+
+**One retry owner per layer:**
+
+| Layer | Retries? | Owner and bound |
+| --- | --- | --- |
+| HTTP to Anthropic | **Yes, the only place** | The Anthropic SDK: `Resilience:ModelMaxRetries` = 2 (3 attempts), short exponential backoff, the `retry-after` hint honoured. It retries connection errors, timeouts, 408/409/429/5xx/529, and never 400/401/403/404/422. Each attempt is limited by `ModelAttemptTimeoutSeconds` (30 s). |
+| `HttpClient` | No | The SDK's client is created directly, **not** via `IHttpClientFactory`, so the service defaults' standard resilience handler (which would retry again) never wraps it. A test pins attempts at exactly 3. |
+| Model calls in a turn | No retries; a budget | `MaxModelCallsPerTurn` = 10 (triage, specialist steps, declines, resume). Over budget → `budget_exhausted`. |
+| Tool loop (MAF function invocation) | No retries | `MaxToolIterations` = 4 steps per agent run; `ToolTimeoutSeconds` = 10 per call → `tool_unavailable`; a tool that throws ends the turn (`MaximumConsecutiveErrorsPerRequest` = 0), so the model can't retry it in a loop. |
+| The turn | **No** | `TurnTimeoutSeconds` = 90, on the turn's own deadline (the server's `TimeProvider`) → `timeout`. The client may retry with a **new** `client_turn_id`; repeating the same one replays the stored result. |
+| Writes | **Never** retried blindly | Only the L11 operation state machine resumes a write, and its guarded, atomic commit means it can't apply twice. |
+
+**Worst case per turn:** at most 10 model calls × 3 attempts = **30 HTTP attempts**, and never longer than the 90-second deadline, whichever comes first. Without the single-owner rule, the SDK (3) × a standard resilience handler (up to 4) would be 12 attempts per call, 120 per turn.
+
+**Cancellation:** `POST …/cancel` cancels the same token the SDK uses for retries, so a turn in backoff makes no new attempt (tested).
+
+**Error codes:**
+
+| Fault | `error.code` |
+| --- | --- |
+| Provider down (5xx or overloaded, after retries), connection failure | `model_unavailable` |
+| Provider rate limit (429 after retries) | `rate_limited`, with `retry_after_seconds` from the provider's hint |
+| Attempt timeout (after retries) or turn deadline | `timeout` |
+| Tool overran or failed | `tool_unavailable` |
+| Model-call budget used up (for example, a tool loop) | `budget_exhausted` |
+| Permanent provider error (4xx) or anything unexpected | `internal_error` |
+
+Invalid triage output is not a failure: the turn completes `unrouted` with a clarification (L07).
+
+All limits live in configuration (`Resilience` section, `ResilienceOptions`).
+
 ## Not yet covered
 
-- A failed turn currently returns a plain HTTP 500. Mapping it to the contract's failed turn result belongs with resilience work (L15).
+- Per-customer rate limiting and a circuit breaker for a provider outage (repeated failures still each spend up to 3 attempts).

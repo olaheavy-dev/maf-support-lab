@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using Support.Api.Common.Application;
 using Support.Api.Common.Application.Messaging;
+using Microsoft.Extensions.Options;
 using Support.Api.Common.Application.Observability;
+using Support.Api.Common.Application.Resilience;
 using Support.Api.Common.Application.Safety;
 using Support.Api.Common.Application.Streaming;
 using Support.Api.Common.Domain;
@@ -30,6 +32,7 @@ internal sealed partial class SubmitTurnCommandHandler(
     TimeProvider clock,
     TurnMetrics metrics,
     InjectionSignals injection,
+    IOptions<ResilienceOptions> resilience,
     ILogger<SubmitTurnCommandHandler> logger) : ICommandHandler<SubmitTurnCommand, Turn>
 {
     /// <summary>What a cancelled turn says. Contract example: nothing further was done.</summary>
@@ -99,17 +102,23 @@ internal sealed partial class SubmitTurnCommandHandler(
         var started = clock.GetTimestamp();
         var lastRoute = new RouteCapture(command.Observer);
 
+        // Every turn is bounded (L15): a model-call budget, and a wall-clock deadline that joins the cancel request.
+        using var budgetScope = TurnBudget.Begin(resilience.Value.MaxModelCallsPerTurn);
+        var budget = TurnBudget.Current!;
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(resilience.Value.TurnTimeoutSeconds), clock);
+        using var run = CancellationTokenSource.CreateLinkedTokenSource(reservation.CancellationToken, deadline.Token);
+
         Turn turn;
         SupportReply? reply = null;
         try
         {
             // This conversation's turn is ours now: close approvals left by a turn that was never stored (L11).
             OrphanedApprovals.Expire(conversation, operations, clock.GetUtcNow());
-            reservation.CancellationToken.ThrowIfCancellationRequested();
+            run.Token.ThrowIfCancellationRequested();
             reply = await router.RouteAsync(
                 new RoutingRequest(conversation.ConversationId, command.Message, conversation.Context) { TurnId = reservation.TurnId },
                 lastRoute,
-                reservation.CancellationToken).ConfigureAwait(false);
+                run.Token).ConfigureAwait(false);
             turn = Finished(conversation, reservation, command, reply.Route, reply.Kind, reply.Text) with { };
             turn = turn with
             {
@@ -132,7 +141,7 @@ internal sealed partial class SubmitTurnCommandHandler(
             span?.SetTag("error.type", error.GetType().FullName);
             span?.AddException(error);
             Log.TurnFailed(logger, error, command.ConversationId, command.ClientTurnId);
-            var failure = TurnErrors.From(error);
+            var failure = TurnErrors.From(error, deadline.IsCancellationRequested, budget);
             turn = Finished(conversation, reservation, command, lastRoute.Route, ReplyKind.Answer, failure.Detail) with { Outcome = TurnOutcome.Failed, Error = failure };
         }
 
@@ -155,6 +164,13 @@ internal sealed partial class SubmitTurnCommandHandler(
             metrics.Record("unknown", "failed", replyKind: null, clock.GetElapsedTime(started));
             Log.TurnFailed(logger, error, command.ConversationId, command.ClientTurnId);
             return;
+        }
+
+        span?.SetTag("support.turn.model_calls", Math.Min(budget.ModelCalls, budget.MaxModelCalls));
+        span?.SetTag("support.turn.model_attempts", budget.ModelAttempts);
+        if (turn.Error is { } turnError)
+        {
+            span?.SetTag("support.turn.error_code", turnError.Code);
         }
 
         var outcomeName = OutcomeName(turn.Outcome);
