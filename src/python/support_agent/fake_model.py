@@ -186,7 +186,9 @@ def default_script(messages: Sequence[Message], options: Mapping[str, Any]) -> C
     if FAILURE_TRIGGER in user_text:
         raise FakeModelError("The fake model failed because the message asked it to.")
     tools = _tool_names(options) or {names.ORDER_STATUS}
-    order_id = ORDER_ID.search(user_text)
+    # Like a real model, use the trusted context note when the customer refers to "it" without an id.
+    notes = " ".join(message.text for message in messages if message.author_name == "support-context")
+    order_id = ORDER_ID.search(user_text) or ORDER_ID.search(notes)
     invoice_id = INVOICE_ID.search(user_text)
     upper = user_text.upper()
 

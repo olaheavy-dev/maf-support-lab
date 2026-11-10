@@ -2,13 +2,13 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L18): the host plus read-only agents.
+Status (L19): the host, read-only agents, and per-conversation sessions.
 - **Read-only agents:** triage plus the orders, billing and technical specialists.
 - **The routing workflow:** `support-routing`.
 - **The version-1 contract API** for conversations and turns (JSON).
 - **Python DevUI** (development only).
 
-There are no tools that change anything. Writes arrive with the approval gate (L37); sessions arrive in L19.
+There are no tools that change anything; writes arrive with the approval gate (L37). Durable state comes in L38.
 
 ## How it fits together
 
@@ -24,6 +24,15 @@ There are no tools that change anything. Writes arrive with the approval gate (L
 | `api.py`, `conversations.py` | The contract API: schema-validated requests, the same 404 for foreign or missing, `client_turn_id` replay, `failed` results |
 | `fake_model.py`, `model_provider.py` | A deterministic fake model on MAF's real chat-client layers; Claude in live mode |
 | `devui.py` | Development-only DevUI process over the same agents and services |
+| `sessions.py` | Per-conversation native `AgentSession`s, `BoundedHistory` (12 plain messages; no tool traffic or notes), and the verified `ConversationContext` |
+
+## Conversation memory (L19)
+
+- **The agents are shared definitions; each conversation owns its state.** That means one native MAF `AgentSession` per specialist (created on first use and reused on later turns) and a `ConversationContext`. Nothing is global.
+- **Bounded history:** a session stores only plain user and assistant messages, at most 12. Tool calls and results are dropped, so trimming never orphans them; context notes are never stored. MAF keeps them under the provider's source id in the session state.
+- **Verified context only:** a follow-up without an id uses the order a **tool found for this customer**, never one that was merely mentioned. The specialist gets it as a one-turn, code-written note, placed right after the customer's message. Triage gets the previous route as a hint.
+- **Isolation:** sessions are reached only through an owned conversation. Another customer gets `404` and can't continue it.
+- **One turn at a time:** a different turn while one runs gets `409 turn_in_progress` (not queued), so a session's history is never written by two runs at once. A duplicate waits for the one run.
 
 ## Prerequisites
 

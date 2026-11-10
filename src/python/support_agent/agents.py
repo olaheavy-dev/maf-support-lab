@@ -12,6 +12,7 @@ from typing import Any
 from agent_framework import Agent, SupportsChatGetResponse
 
 from support_agent.services import Services
+from support_agent.sessions import BoundedHistory
 from support_agent.tools import billing_tools, order_tools, technical_tools
 
 TRIAGE = "triage"
@@ -84,6 +85,7 @@ def create_agents(client: SupportsChatGetResponse[Any], services: Services) -> S
                 name=ORDERS,
                 description="Answers order-status questions for the current customer.",
                 tools=order_tools(services),
+                context_providers=[BoundedHistory()],
             ),
             BILLING: Agent(
                 client,
@@ -92,6 +94,7 @@ def create_agents(client: SupportsChatGetResponse[Any], services: Services) -> S
                 name=BILLING,
                 description="Answers invoice and payment-history questions (read-only).",
                 tools=billing_tools(services),
+                context_providers=[BoundedHistory()],
             ),
             TECHNICAL: Agent(
                 client,
@@ -100,6 +103,7 @@ def create_agents(client: SupportsChatGetResponse[Any], services: Services) -> S
                 name=TECHNICAL,
                 description="Answers troubleshooting questions from the knowledge base (read-only).",
                 tools=technical_tools(services),
+                context_providers=[BoundedHistory()],
             ),
         },
     )

@@ -66,3 +66,29 @@ def test_claude_behaves_as_the_shared_scenario_describes(scenario: dict[str, Any
             assert mention.lower() in turn["reply"]["text"].lower()
         for forbidden in expect.get("must_not_mention", []):
             assert forbidden.lower() not in turn["reply"]["text"].lower()
+
+
+def test_claude_answers_a_follow_up_from_the_conversations_own_session() -> None:
+    key = LIVE_KEY
+    if not key:
+        pytest.skip("Set ANTHROPIC_API_KEY to run live checks.")
+    settings = Settings(
+        app_environment=Environment.DEVELOPMENT,
+        identity=IdentitySettings(development_customer_id="CUST-1001"),
+        model_provider=ModelProviderSettings(
+            mode=ModelMode.LIVE, anthropic=AnthropicSettings(model="claude-haiku-5-5", api_key=SecretStr(key))
+        ),
+    )
+    with TestClient(create_app(settings)) as client:
+        api = Api(client)
+        conversation = api.create_conversation()
+        api.ask(conversation, "Where is my order ORD-1002?")
+        follow_up = api.ask(conversation, "When was it shipped?")  # no id: the verified order and the session carry it
+        invoice = api.ask(conversation, "Can I get the invoice for it?")
+        print(f"follow-up: {follow_up['route']} {follow_up['reply']['kind']}: {follow_up['reply']['text'][:160]}")
+        print(f"invoice: {invoice['route']} {invoice['reply']['kind']}: {invoice['reply']['text'][:160]}")
+        assert follow_up["route"]["target"] == "orders"
+        assert follow_up["reply"]["kind"] == "answer"
+        assert "30" in follow_up["reply"]["text"]  # shipped on October 30
+        assert invoice["route"]["target"] == "billing"
+        assert "INV-5002" in invoice["reply"]["text"]
