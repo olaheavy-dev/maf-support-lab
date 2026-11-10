@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -24,6 +25,7 @@ from support_agent.settings import (
     ModelMode,
     ModelProviderSettings,
     Settings,
+    StorageSettings,
 )
 from tests.helpers import Api
 
@@ -136,3 +138,52 @@ def test_claude_pauses_a_write_for_approval_and_completes_it_only_when_approved(
         print(f"refund rejected: {rejected['reply']['text'][:160]}")
         assert client.get(f"/api/v1/operations/{rp['operation_id']}").json()["status"] == "rejected"
         assert app.state.services.state.orders["ORD-1001"].refund_status == "none"
+
+
+def test_claude_resumes_an_approval_in_a_host_restarted_on_the_same_file(tmp_path: Path) -> None:
+    """L38: the request is made in one host; the approval is answered by a new host on the same SQLite file."""
+    key = LIVE_KEY
+    if not key:
+        pytest.skip("Set ANTHROPIC_API_KEY to run live checks.")
+    storage = tmp_path / "support.db"
+
+    def live_host() -> Any:
+        return create_app(
+            Settings(
+                app_environment=Environment.DEVELOPMENT,
+                identity=IdentitySettings(development_customer_id="CUST-1001"),
+                model_provider=ModelProviderSettings(
+                    mode=ModelMode.LIVE, anthropic=AnthropicSettings(model="claude-haiku-5-5", api_key=SecretStr(key))
+                ),
+                storage=StorageSettings(path=storage),
+            )
+        )
+
+    before = live_host()
+    with TestClient(before) as client:
+        api = Api(client)
+        conversation = api.create_conversation()
+        asked = api.ask(conversation, "Please open a support ticket: my fridge shows error Z-77 and won't cool.")
+        print(f"ticket asked: {asked['outcome']} {asked.get('pending_approval', {}).get('arguments')}")
+        assert asked["outcome"] == "awaiting_approval"
+        pending = asked["pending_approval"]
+
+    after = live_host()
+    with TestClient(after) as client:
+        listed = client.get(f"/api/v1/conversations/{conversation}").json()["pending_approvals"]
+        assert [p["operation_id"] for p in listed] == [pending["operation_id"]]
+        decided = client.post(
+            f"/api/v1/conversations/{conversation}/approvals/{pending['approval_id']}",
+            json={"operation_id": pending["operation_id"], "decision": "approve"},
+        ).json()
+        print(f"ticket approved after restart: {decided['reply']['text'][:200]}")
+        assert decided["resumed_from_turn_id"] == asked["turn_id"]
+        assert not decided["reply"]["text"].startswith("Done. ")  # Claude's own words, not the factual fallback
+        assert client.get(f"/api/v1/operations/{pending['operation_id']}").json()["status"] == "committed"
+        assert len(after.state.services.state.tickets_of("CUST-1001")) == 1
+        again = client.post(
+            f"/api/v1/conversations/{conversation}/approvals/{pending['approval_id']}",
+            json={"operation_id": pending["operation_id"], "decision": "approve"},
+        ).json()
+        assert again["turn_id"] == decided["turn_id"]
+        assert len(after.state.services.state.tickets_of("CUST-1001")) == 1

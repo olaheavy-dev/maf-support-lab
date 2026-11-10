@@ -91,11 +91,11 @@ async def gate(
                         outcome.turn_id,
                         call.name or "",
                         arguments,
+                        pending[0],  # stored with the operation, in one transaction
                     )
                 except WriteError as error:
                     declined_code, reason = error.code, error.detail
                 else:
-                    operations.pending_requests[operation.operation_id] = pending[0]
                     return GateResult(response, operation)
         response = await decline(agent, session, pending)
         declined_reason = reason

@@ -12,6 +12,7 @@ import os
 from typing import Any
 
 from support_agent.agents import create_agents
+from support_agent.database import Database
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal, set_process_principal
 from support_agent.model_provider import create_client
@@ -26,8 +27,10 @@ def entities(settings: Settings) -> list[Any]:
     if settings.app_environment is not Environment.DEVELOPMENT or not settings.identity.development_customer_id:
         raise RuntimeError("DevUI is only available in development.")
     set_process_principal(Principal(settings.identity.development_customer_id))
-    services = Services.from_fixtures(Fixtures.load())
-    operations = build_operations(services.state)
+    # DevUI chats are stateless and never decide approvals; it gets its own store, never the API's file.
+    database = Database(settings.storage.path.with_name("devui.db"))
+    services = Services.create(Fixtures.load(), database)
+    operations = build_operations(services.state, database)
     agents = create_agents(create_client(settings), services, operations)
     return [*agents.specialists.values(), build_workflow(agents, operations, for_chat=True)]
 

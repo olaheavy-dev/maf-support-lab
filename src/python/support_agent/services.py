@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from support_agent.database import Database
 from support_agent.domain import Invoice, KnowledgeArticle, Order, Payment
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal
@@ -37,7 +38,7 @@ class OrderService:
         normalized = normalize(order_id)
         if not ORDER_ID.match(normalized):
             raise InvalidReferenceError(order_id)
-        order = self.state.orders.get(normalized)
+        order = self.state.order(normalized)
         return order if order is not None and order.customer_id == principal.customer_id else None
 
 
@@ -84,7 +85,7 @@ class Services:
     state: SimulatedState
 
     @classmethod
-    def from_fixtures(cls, fixtures: Fixtures) -> Services:
-        """Fresh simulated state per host (per test), copied from the fixtures."""
-        state = SimulatedState.from_fixtures(fixtures)
+    def create(cls, fixtures: Fixtures, database: Database) -> Services:
+        """The services over the simulated state stored in this host's database (L38)."""
+        state = SimulatedState(fixtures, database)
         return cls(OrderService(state), BillingService(state), KnowledgeService(fixtures), state)

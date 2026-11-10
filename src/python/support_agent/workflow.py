@@ -155,6 +155,8 @@ class SpecialistExecutor(Executor):
             response = await agent.run(messages, session=session)
             # A write tool pauses natively for approval; the gate binds it to an operation or declines it (L37).
             gated = await gate(agent, session, response, outcome, self._target, self._operations)
+        if outcome.sessions is not None:
+            outcome.sessions.save(self._target)  # durable history (L38); a failure here fails the turn
         verified = activity.verified_order_id
         if gated.proposed is not None:
             operation = gated.proposed

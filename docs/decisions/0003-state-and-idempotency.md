@@ -1,7 +1,7 @@
 # 0003 - Durable state and idempotent writes
 
-- Status: Accepted (L11, 2026-11-10). Assistant-drafted; the owner reviews it with the L11 PR.
-- Applies to: `src/dotnet/Support.Api`. The Python backend (L17 onwards) makes the same guarantees with its own store and file.
+- Status: Accepted (L11, 2026-11-10); the Python port was added in L38 (2026-11-10). Assistant-drafted; the owner reviews it with each PR.
+- Applies to: `src/dotnet/Support.Api` (L11) and `src/python/support_agent` (L38, see "The Python backend" below). Each backend has its own store and file.
 
 ## Context
 
@@ -91,6 +91,31 @@ The decision resumes them as a new turn (`ResumeAsync`). Checkpoints would add a
   - Only one process should serve one file in production. SQLite serializes writers, and the guards keep data correct across processes, but the in-process "one turn at a time" lock is per process. Two processes on one file could each run a turn of the same conversation. The tests use two hosts on one file only to simulate a restart.
   - Expiry is still lazy: it's applied when an approval is touched.
   - There are no retention or cleanup rules yet.
+
+## The Python backend (L38)
+
+The same design and guarantees, ported idiomatically. The observable behaviour is the same, and the durable-state test suite is ported case by case (`tests/test_durable_state.py`).
+
+- **Store:** the standard library's `sqlite3`, so no new dependency. The file is `STORAGE__PATH`, by default `.data/python/support.db` (ignored by Git), never the .NET file. Tests give each host its own temporary file, and the DevUI process uses its own `devui.db`.
+- **Same tables, same rules** (`database.py`):
+  - `Database.atomically()` is one `BEGIN IMMEDIATE` transaction. Nested use joins it, through a `ContextVar` holding the connection.
+  - Other calls use a short-lived connection, so no connection outlives a call. At shutdown, the lifespan checkpoints the write-ahead log (`Resources` owns the database).
+- **Mapping:**
+
+  | .NET | Python |
+  | --- | --- |
+  | `IUnitOfWork.AtomicallyAsync` | `Database.atomically()` |
+  | `IOperationStore.TryUpdate` | `OperationStore.try_update` (reloads the stored record on conflict) |
+  | `PendingNativeApprovals` (`ToolApprovalRequestContent` JSON) | `native_approval_requests` with `Content.to_dict()` / `Content.from_dict()` of the `function_approval_request` |
+  | `SerializeSessionAsync` / `DeserializeSessionAsync` | `AgentSession.to_dict()` / `AgentSession.from_dict()` (the bounded history lives in `state["in_memory"]`) |
+  | Module repositories over `changed_orders`, `payments`, `tickets`, `counters` | `SimulatedState` over the same tables; fixture files are never changed |
+
+- **Verified against MAF Python 1.25.0:**
+  - a session round-trips through JSON with its history;
+  - a restored `function_approval_request` still produces `to_function_approval_response(approved=…)`;
+  - the resumed run after a restart commits once (tested for all three writes, and live with Claude Haiku).
+- **Python-specific detail:** MAF Python runs an approved tool on the event loop, inside `approval_scope`. `execute_approved` re-reads the stored status inside the transaction before writing. A run that is stale (the operation was already finished) writes nothing and reports the stored result. If the guarded commit still loses, the business change rolls back with it (`Rollback`).
+- **Same limits** as section 5. Within one process, at most one turn per conversation runs at a time; across processes, only the stored guards apply. A test with two hosts on one file approving at once shows that the guards alone still give one write and one stored turn.
 
 ## Consequences
 

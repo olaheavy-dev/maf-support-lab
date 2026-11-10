@@ -5,7 +5,8 @@ exact arguments (canonical JSON). The customer's decision is recorded once; an a
 only inside an ``approval_scope`` naming exactly that operation. Eligibility and ownership are checked by the module
 that owns the data, both before asking (so customers aren't asked to approve impossible actions) and again,
 authoritatively, at execution. Approval is human consent; these checks are business authorization. Both are needed.
-In memory only: durability and atomic duplicate protection arrive in L38.
+Durable since L38: operations and their paused native requests are stored in SQLite, every status change is guarded
+on the stored status, and an approved write commits in one transaction with its "committed" record.
 """
 
 from __future__ import annotations
@@ -16,11 +17,14 @@ import secrets
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
+from agent_framework import Content
+
+from support_agent.database import Database, Rollback
 from support_agent.domain import Order, Payment
 from support_agent.identity import Principal
 from support_agent.policy import Policy
@@ -94,7 +98,27 @@ class Operation:
     decision_reason: str | None = None
     result: dict[str, Any] | None = None
     failure: tuple[str, str] | None = None
-    executing: bool = False
+
+    def to_json(self) -> str:
+        data: dict[str, Any] = asdict(self)
+        for name in ("created_at", "expires_at", "updated_at"):
+            data[name] = getattr(self, name).isoformat()
+        return json.dumps(data)
+
+    @classmethod
+    def from_json(cls, text: str) -> Operation:
+        data: dict[str, Any] = json.loads(text)
+        for name in ("created_at", "expires_at", "updated_at"):
+            data[name] = datetime.fromisoformat(data[name])
+        data["kind"], data["status"] = Kind(data["kind"]), Status(data["status"])
+        data["decision"] = Decision(data["decision"]) if data["decision"] else None
+        data["failure"] = tuple(data["failure"]) if data["failure"] else None
+        return cls(**data)
+
+    def refresh_from(self, stored: Operation) -> None:
+        """Takes the stored record's state (after losing a guarded update, or after another run finished it)."""
+        for name, value in vars(stored).items():
+            setattr(self, name, value)
 
     def expire_if_due(self, at: datetime) -> bool:
         if self.status is Status.AWAITING_APPROVAL and at >= self.expires_at:
@@ -149,22 +173,87 @@ def _timestamp(value: datetime) -> str:
 
 
 class OperationStore:
-    def __init__(self) -> None:
-        self._by_id: dict[str, Operation] = {}
+    """The authoritative operation records. Every read is fresh from the database; every change is guarded."""
 
-    def add(self, operation: Operation) -> None:
-        self._by_id[operation.operation_id] = operation
+    def __init__(self, database: Database) -> None:
+        self._database = database
+
+    def add(self, operation: Operation, native_request: Content) -> None:
+        """The operation and the paused native request it answers are stored together, or neither is."""
+        with self._database.atomically():
+            self._database.execute(
+                "INSERT INTO operations(operation_id, approval_id, conversation_id, owner, status, json) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    operation.operation_id,
+                    operation.approval_id,
+                    operation.conversation_id,
+                    operation.owner,
+                    str(operation.status),
+                    operation.to_json(),
+                ),
+            )
+            self._database.execute(
+                "INSERT INTO native_approval_requests(operation_id, json) VALUES (?, ?)",
+                (operation.operation_id, json.dumps(native_request.to_dict())),
+            )
+
+    def _one(self, column: str, value: str) -> Operation | None:
+        rows = self._database.query(f"SELECT json FROM operations WHERE {column} = ?", (value,))  # noqa: S608 - fixed column names
+        return Operation.from_json(rows[0][0]) if rows else None
 
     def find(self, operation_id: str) -> Operation | None:
-        return self._by_id.get(operation_id)
+        return self._one("operation_id", operation_id)
 
     def find_by_approval(self, approval_id: str) -> Operation | None:
-        return next((op for op in self._by_id.values() if op.approval_id == approval_id), None)
+        return self._one("approval_id", approval_id)
 
     def for_conversation(self, conversation_id: str) -> list[Operation]:
-        return sorted(
-            (op for op in self._by_id.values() if op.conversation_id == conversation_id), key=lambda op: op.created_at
+        rows = self._database.query("SELECT json FROM operations WHERE conversation_id = ?", (conversation_id,))
+        return sorted((Operation.from_json(text) for (text,) in rows), key=lambda op: op.created_at)
+
+    def try_update(self, operation: Operation, expected: Status) -> bool:
+        """Stores the operation only if its stored status is still ``expected``; otherwise takes the stored record."""
+        changed = self._database.execute(
+            "UPDATE operations SET status = ?, json = ? WHERE operation_id = ? AND status = ?",
+            (str(operation.status), operation.to_json(), operation.operation_id, str(expected)),
         )
+        if changed == 1:
+            return True
+        if (stored := self.find(operation.operation_id)) is not None:
+            operation.refresh_from(stored)
+        return False
+
+    def expire_if_due(self, operation: Operation, at: datetime) -> bool:
+        if operation.status is Status.AWAITING_APPROVAL and operation.expire_if_due(at):
+            self.try_update(operation, Status.AWAITING_APPROVAL)
+        return operation.status is Status.EXPIRED
+
+    def expire(self, operation: Operation, at: datetime) -> None:
+        """Withdraws an approval that can no longer be shown or answered (its turn failed or was never stored)."""
+        if operation.status is Status.AWAITING_APPROVAL:
+            operation.status, operation.updated_at = Status.EXPIRED, at
+            self.try_update(operation, Status.AWAITING_APPROVAL)
+
+    def decide(self, operation: Operation, decision: Decision, reason: str | None, at: datetime) -> bool:
+        """Records the customer's decision once: the first stored decision wins."""
+        if not operation.decide(decision, at):
+            return False
+        operation.decision_reason = reason
+        return self.try_update(operation, Status.AWAITING_APPROVAL)
+
+    def fail(self, operation: Operation, detail: str, at: datetime) -> None:
+        """An approved write that could not be carried out. Only a still-running operation can fail."""
+        if operation.status is Status.RUNNING:
+            operation.status, operation.failure, operation.updated_at = Status.FAILED, ("internal_error", detail), at
+            self.try_update(operation, Status.RUNNING)
+
+    def native_request(self, operation_id: str) -> Content | None:
+        rows = self._database.query("SELECT json FROM native_approval_requests WHERE operation_id = ?", (operation_id,))
+        return Content.from_dict(json.loads(rows[0][0])) if rows else None
+
+    def answered(self, operation_id: str) -> None:
+        """The paused request was answered: a later retry reports from the record and never resumes it again."""
+        self._database.execute("DELETE FROM native_approval_requests WHERE operation_id = ?", (operation_id,))
 
 
 _approved: ContextVar[Operation | None] = ContextVar("approved_operation", default=None)
@@ -232,7 +321,7 @@ class WriteHandlers:
     policy: Policy
 
     def _owned(self, principal: Principal, order_id: str | None) -> Order:
-        order = self.state.orders.get(order_id or "")
+        order = self.state.order(order_id or "")
         if order is None or order.customer_id != principal.customer_id:
             raise not_found()
         return order
@@ -261,14 +350,14 @@ class WriteHandlers:
         self.check(principal, kind, arguments)
         if kind is Kind.CANCEL_ORDER:
             order = self._owned(principal, arguments["order_id"])
-            self.state.orders[order.order_id] = order.model_copy(update={"status": "cancelled"})
+            self.state.save_order(order.model_copy(update={"status": "cancelled"}))
             return {"order_id": order.order_id, "order_status": "cancelled"}
         if kind is Kind.REFUND_ORDER:
             order = self._owned(principal, arguments["order_id"])
             invoice = self._invoice(order)
-            refund_id = f"RFD-{self.state.next_refund:04d}"
+            refund_id = self.state.next_refund_id()
             payment = Payment(
-                payment_id=f"PAY-{self.state.next_payment}",
+                payment_id=self.state.next_payment_id(),
                 customer_id=invoice.customer_id,
                 order_id=invoice.order_id,
                 invoice_id=invoice.invoice_id,
@@ -277,17 +366,15 @@ class WriteHandlers:
                 method=invoice.payment_method,
                 kind="refund",
             )
-            self.state.next_refund += 1
-            self.state.next_payment += 1
-            self.state.payments.append(payment)
-            self.state.orders[order.order_id] = order.model_copy(update={"refund_status": "refunded"})
+            self.state.add_payment(payment)
+            self.state.save_order(order.model_copy(update={"refund_status": "refunded"}))
             return {
                 "refund_id": refund_id,
                 "order_id": order.order_id,
                 "amount": {"amount_minor": invoice.total.amount_minor, "currency": invoice.total.currency},
             }
         ticket = Ticket(
-            f"TKT-{self.state.next_ticket:04d}",
+            self.state.next_ticket_id(),
             principal.customer_id,
             arguments["subject"],
             arguments["description"],
@@ -295,8 +382,7 @@ class WriteHandlers:
             arguments.get("related_order_id"),
             at,
         )
-        self.state.next_ticket += 1
-        self.state.tickets.append(ticket)
+        self.state.add_ticket(ticket)
         return {"ticket_id": ticket.ticket_id}
 
     def _invoice(self, order: Order) -> Any:
@@ -311,7 +397,7 @@ class OperationService:
     store: OperationStore
     handlers: WriteHandlers
     policy: Policy
-    pending_requests: dict[str, Any] = field(default_factory=dict[str, Any])  # operation id → native approval request
+    database: Database
 
     def propose(
         self,
@@ -321,6 +407,7 @@ class OperationService:
         source_turn_id: str,
         tool: str,
         arguments: Mapping[str, Any],
+        native_request: Content,
     ) -> Operation:
         """Validates the tool call and checks eligibility before asking; only then creates a bound operation."""
         try:
@@ -344,7 +431,7 @@ class OperationService:
             at + timedelta(minutes=self.policy.approval_expiry_minutes),
             at,
         )
-        self.store.add(operation)
+        self.store.add(operation, native_request)
         return operation
 
     def execute_approved(self, principal: Principal, kind: Kind, arguments: Mapping[str, Any]) -> dict[str, Any]:
@@ -358,30 +445,44 @@ class OperationService:
             or operation.owner != principal.customer_id
         ):
             raise WriteError("not_approved", "This exact action has not been approved.")
-        if (
-            operation.status is not Status.RUNNING
-            or operation.executing
-            or operation.result is not None
-            or operation.failure is not None
-        ):
-            if operation.result is not None:
-                return operation.result
-            raise WriteError("not_approved", "This action is not awaiting execution.")
-        operation.executing = True
+        if operation.result is not None:
+            return operation.result  # this run already committed it
         at = now()
+        failure: WriteError | None = None
         try:
-            result = self.handlers.execute(principal, kind, operation.arguments, at)
-        except WriteError as error:
-            operation.status, operation.failure, operation.updated_at = (
-                Status.FAILED,
-                (error.code if error.code in ("not_eligible", "not_found") else "internal_error", error.detail),
-                at,
-            )
-            raise
-        operation.status, operation.result, operation.updated_at = Status.COMMITTED, result, at
-        return result
+            # One transaction: the business change and the "committed" record are stored together or not at all.
+            with self.database.atomically():
+                stored = self.store.find(operation.operation_id)
+                if stored is None or stored.status is not Status.RUNNING:
+                    # Another run already finished it (or it was never approved): report the stored record, write nothing.
+                    if stored is not None:
+                        operation.refresh_from(stored)
+                    if operation.status is Status.COMMITTED and operation.result is not None:
+                        return operation.result
+                    raise WriteError("not_approved", "This action is not awaiting execution.")
+                try:
+                    result = self.handlers.execute(principal, kind, stored.arguments, at)
+                except WriteError as error:
+                    failure = error
+                    code = error.code if error.code in ("not_eligible", "not_found") else "internal_error"
+                    stored.status, stored.failure, stored.updated_at = Status.FAILED, (code, error.detail), at
+                    self.store.try_update(stored, Status.RUNNING)
+                else:
+                    stored.status, stored.result, stored.updated_at = Status.COMMITTED, result, at
+                    if not self.store.try_update(stored, Status.RUNNING):
+                        operation.refresh_from(stored)  # try_update loaded the stored record into `stored`
+                        raise Rollback  # a stale run: undo this write and report what is stored
+                operation.refresh_from(stored)
+        except Rollback:
+            if operation.status is Status.COMMITTED and operation.result is not None:
+                return operation.result
+            raise WriteError("not_approved", "This action is not awaiting execution.") from None
+        if failure is not None:
+            raise failure
+        assert operation.result is not None
+        return operation.result
 
 
-def build_operations(state: SimulatedState, policy: Policy | None = None) -> OperationService:
+def build_operations(state: SimulatedState, database: Database, policy: Policy | None = None) -> OperationService:
     policy = policy or Policy.load()
-    return OperationService(OperationStore(), WriteHandlers(state, policy), policy)
+    return OperationService(OperationStore(database), WriteHandlers(state, policy), policy, database)

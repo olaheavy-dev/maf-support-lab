@@ -1,22 +1,26 @@
 """Conversations and their turns (L18): owned by one customer, one turn at a time, each client_turn_id run once.
 
-In memory for now: isolated sessions arrive in L19 and durable state in L38. Behaviour follows the version-1
-contract: a repeated client_turn_id returns the original turn and never runs it again; reusing one with a different
-message is a conflict; a different turn while one runs is rejected (turn_in_progress), never queued.
+Behaviour follows the version-1 contract: a repeated client_turn_id returns the original turn and never runs it again;
+reusing one with a different message is a conflict; a different turn while one runs is rejected (turn_in_progress),
+never queued. Durable since L38: conversations, finished turns, and their context are stored in SQLite. The first
+stored turn for a client key wins, and a turn is stored together with the context it produced, or not at all. Which
+turn is *running* is in-process state: after a restart, nothing is running.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import secrets
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
+from support_agent.database import Database
 from support_agent.identity import Principal
 from support_agent.operations import OperationStore, Status
-from support_agent.routing import TurnRoute
+from support_agent.routing import TurnRoute, UnroutedReason
 from support_agent.sessions import ConversationContext, ConversationSessions
 
 
@@ -50,6 +54,54 @@ class Turn:
     pending_operation_id: str | None = None
     operation_ids: tuple[str, ...] = ()
     resumed_from_turn_id: str | None = None
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "conversation_id": self.conversation_id,
+                "turn_id": self.turn_id,
+                "client_turn_id": self.client_turn_id,
+                "route": None
+                if self.route is None
+                else {"target": self.route.target, "unrouted_reason": self.route.unrouted_reason},
+                "reply_kind": self.reply_kind,
+                "reply_text": self.reply_text,
+                "trace_id": self.trace_id,
+                "created_at": self.created_at.isoformat(),
+                "finished_at": self.finished_at.isoformat(),
+                "outcome": self.outcome,
+                "error": None if self.error is None else {"code": self.error.code, "detail": self.error.detail},
+                "pending_operation_id": self.pending_operation_id,
+                "operation_ids": list(self.operation_ids),
+                "resumed_from_turn_id": self.resumed_from_turn_id,
+            }
+        )
+
+    @classmethod
+    def from_json(cls, text: str) -> Turn:
+        data: dict[str, Any] = json.loads(text)
+        route: dict[str, Any] | None = data["route"]
+        error: dict[str, str] | None = data["error"]
+        return cls(
+            data["conversation_id"],
+            data["turn_id"],
+            data["client_turn_id"],
+            None
+            if route is None
+            else TurnRoute(
+                route["target"], UnroutedReason(route["unrouted_reason"]) if route["unrouted_reason"] else None
+            ),
+            data["reply_kind"],
+            data["reply_text"],
+            data["trace_id"],
+            datetime.fromisoformat(data["created_at"]),
+            datetime.fromisoformat(data["finished_at"]),
+            data["outcome"],
+            None if error is None else TurnError(error["code"], error["detail"]),
+            data["pending_operation_id"],
+            tuple(data["operation_ids"]),
+            data["resumed_from_turn_id"],
+        )
 
     def to_contract(self, contract_version: str, operations: OperationStore) -> dict[str, Any]:
         """The turn with each operation's *current* status (the authoritative record)."""
@@ -101,6 +153,7 @@ class Claim:
     client_turn_id: str | None = None
     started_at: datetime = field(default_factory=now)
     trace_id: str = ""
+    key: str = ""  # the client_turn_id, or "approval:<id>" for a decision (lower case)
 
     def running_contract(self, conversation_id: str, contract_version: str) -> dict[str, Any]:
         """A turn still running: what a status lookup can say before it finishes (no outcome yet)."""
@@ -126,6 +179,7 @@ class Conversation:
     # This conversation's own state (L19): verified context and native sessions. Never shared, never global.
     context: ConversationContext = field(default_factory=ConversationContext)
     sessions: ConversationSessions = field(default_factory=ConversationSessions)
+    database: Database | None = None
 
     def is_owned_by(self, principal: Principal) -> bool:
         return self.owner == principal.customer_id
@@ -145,19 +199,76 @@ class Conversation:
             else client_turn_id,  # a decision's turn has no client_turn_id
             now(),
             secrets.token_hex(16),
+            client_turn_id.lower(),
         )
         self.claims[client_turn_id.lower()] = claim
         self.active_turn_id = claim.turn_id
         return claim, Reservation.OWNER
 
-    def complete(self, claim: Claim, turn: Turn, verified_order_id: str | None = None) -> None:
-        self.turns[turn.turn_id] = turn
-        if turn.outcome == "completed":
-            self.context = self.context.after(turn.route.target if turn.route else None, verified_order_id)
+    def complete(
+        self, claim: Claim, turn: Turn, operations: OperationStore, verified_order_id: str | None = None
+    ) -> Turn:
+        """Stores the finished turn and the context it produced, then answers everyone waiting on the claim.
+
+        The first stored turn for a client key wins: if another run (for example on a host that restarted while this
+        one was stuck) stored one first, that stored turn is the answer. If storing fails, the claim is released so a
+        retry can run, and the waiters get the error.
+        """
+        try:
+            self._withdraw_unanswerable(turn, operations)
+            context = (
+                self.context.after(turn.route.target if turn.route else None, verified_order_id)
+                if turn.outcome == "completed"
+                else self.context
+            )
+            stored, context = self._store(claim, turn, context)
+        except BaseException as error:
+            self.abandon(claim.key, claim)
+            if not claim.done.done():
+                claim.done.set_exception(error)
+                claim.done.exception()  # retrieved: a turn nobody waits for must not log "never retrieved"
+            raise
+        self.turns[stored.turn_id] = stored
+        self.context = context
         if self.active_turn_id == claim.turn_id:
             self.active_turn_id = None
         if not claim.done.done():
-            claim.done.set_result(turn)
+            claim.done.set_result(stored)
+        return stored
+
+    def _withdraw_unanswerable(self, turn: Turn, operations: OperationStore) -> None:
+        """Approvals the customer can never answer expire: those of a failed turn, and those whose turn was never
+        stored (the process stopped between proposing and storing the turn). Only one turn runs at a time, so any
+        other unstored proposal is an orphan."""
+        at = now()
+        for operation in operations.for_conversation(self.conversation_id):
+            if operation.status is not Status.AWAITING_APPROVAL or operation.source_turn_id in self.turns:
+                continue
+            if operation.source_turn_id != turn.turn_id or turn.outcome == "failed":
+                operations.expire(operation, at)
+
+    def _store(self, claim: Claim, turn: Turn, context: ConversationContext) -> tuple[Turn, ConversationContext]:
+        if self.database is None:
+            return turn, context
+        with self.database.atomically():
+            inserted = self.database.execute(
+                "INSERT INTO turns(turn_id, conversation_id, client_key, message, json) VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT DO NOTHING",
+                (turn.turn_id, self.conversation_id, claim.key, claim.message, turn.to_json()),
+            )
+            if inserted:
+                self.database.execute(
+                    "UPDATE conversations SET context_json = ? WHERE conversation_id = ?",
+                    (context.to_json(), self.conversation_id),
+                )
+                return turn, context
+            stored = self.database.query(
+                "SELECT json FROM turns WHERE conversation_id = ? AND client_key = ?", (self.conversation_id, claim.key)
+            )
+            current = self.database.query(
+                "SELECT context_json FROM conversations WHERE conversation_id = ?", (self.conversation_id,)
+            )
+            return Turn.from_json(stored[0][0]), ConversationContext.from_json(current[0][0])
 
     def running(self, turn_id: str) -> Claim | None:
         """The claim for this turn if it is the one running now."""
@@ -178,7 +289,9 @@ class Conversation:
         pending = [
             op.pending_approval()
             for op in operations.for_conversation(self.conversation_id)
-            if not op.expire_if_due(at) and op.status is Status.AWAITING_APPROVAL and op.source_turn_id in self.turns
+            if not operations.expire_if_due(op, at)
+            and op.status is Status.AWAITING_APPROVAL
+            and op.source_turn_id in self.turns
         ]
         return {
             "contract_version": contract_version,
@@ -191,15 +304,64 @@ class Conversation:
 
 
 class ConversationStore:
-    def __init__(self) -> None:
+    """Owned conversations, kept in memory once loaded, and stored in the database (L38)."""
+
+    def __init__(self, database: Database) -> None:
+        self._database = database
         self._conversations: dict[str, Conversation] = {}
 
     def start(self, principal: Principal) -> Conversation:
-        conversation = Conversation(new_id("conv_"), principal.customer_id, now())
+        conversation = self._new(new_id("conv_"), principal.customer_id, now(), ConversationContext())
+        self._database.execute(
+            "INSERT INTO conversations(conversation_id, owner, created_at, context_json) VALUES (?, ?, ?, ?)",
+            (
+                conversation.conversation_id,
+                conversation.owner,
+                conversation.created_at.isoformat(),
+                conversation.context.to_json(),
+            ),
+        )
         self._conversations[conversation.conversation_id] = conversation
         return conversation
 
     def find_owned(self, conversation_id: str, principal: Principal) -> Conversation | None:
         """Only for its owner: anyone else gets None, reported exactly like a conversation that does not exist."""
-        conversation = self._conversations.get(conversation_id)
+        conversation = self._conversations.get(conversation_id) or self._load(conversation_id)
         return conversation if conversation is not None and conversation.is_owned_by(principal) else None
+
+    def _new(
+        self, conversation_id: str, owner: str, created_at: datetime, context: ConversationContext
+    ) -> Conversation:
+        return Conversation(
+            conversation_id,
+            owner,
+            created_at,
+            context=context,
+            sessions=ConversationSessions(conversation_id, self._database),
+            database=self._database,
+        )
+
+    def _load(self, conversation_id: str) -> Conversation | None:
+        """A conversation stored before this process started: its finished turns replay; nothing is running."""
+        rows = self._database.query(
+            "SELECT owner, created_at, context_json FROM conversations WHERE conversation_id = ?", (conversation_id,)
+        )
+        if not rows:
+            return None
+        owner, created_at, context_json = rows[0]
+        conversation = self._new(
+            conversation_id, owner, datetime.fromisoformat(created_at), ConversationContext.from_json(context_json)
+        )
+        loop = asyncio.get_running_loop()
+        for key, message, text in self._database.query(
+            "SELECT client_key, message, json FROM turns WHERE conversation_id = ?", (conversation_id,)
+        ):
+            turn = Turn.from_json(text)
+            conversation.turns[turn.turn_id] = turn
+            done: asyncio.Future[Turn] = loop.create_future()
+            done.set_result(turn)
+            conversation.claims[key] = Claim(
+                turn.turn_id, message, done, turn.client_turn_id, turn.created_at, turn.trace_id, key
+            )
+        self._conversations[conversation_id] = conversation
+        return conversation
