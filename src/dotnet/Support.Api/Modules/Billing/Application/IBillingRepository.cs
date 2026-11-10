@@ -10,4 +10,7 @@ public interface IBillingRepository
     Invoice? FindInvoiceForOrder(string orderId);
 
     IReadOnlyList<Payment> PaymentsFor(string customerId);
+
+    /// <summary>Records a simulated refund (in memory only) and returns it with its new refund id.</summary>
+    (Payment Payment, string RefundId) AddRefund(Invoice invoice, DateTimeOffset at);
 }

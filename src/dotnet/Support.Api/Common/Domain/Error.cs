@@ -15,5 +15,7 @@ public sealed record Error(string Code, string Description, ErrorType Type)
 
     public static Error Conflict(string code, string description) => new(code, description, ErrorType.Conflict);
 
+    public static Error Gone(string code, string description) => new(code, description, ErrorType.Gone);
+
     public static Error Validation(string code, string description) => new(code, description, ErrorType.Validation);
 }

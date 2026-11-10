@@ -6,7 +6,10 @@ using Support.Api.Modules.Billing.Application.GetInvoice;
 using Support.Api.Modules.Billing.Application.GetPaymentHistory;
 using Support.Api.Modules.Billing.Domain;
 using Support.Api.Modules.Billing.Infrastructure;
+using Support.Api.Modules.Billing.Application.RefundOrder;
 using Support.Api.Modules.Billing.Presentation;
+using Support.Api.Modules.Operations.Application;
+using Support.Api.Modules.Operations.Presentation;
 
 namespace Support.Api.Modules.Billing;
 
@@ -19,9 +22,10 @@ internal static class BillingModule
         services.AddSingleton<IQueryHandler<GetInvoiceQuery, Invoice>, GetInvoiceQueryHandler>();
         services.AddSingleton<IQueryHandler<GetPaymentHistoryQuery, IReadOnlyList<Payment>>, GetPaymentHistoryQueryHandler>();
         services.AddSingleton<BillingTools>();
+        services.AddSingleton<IWriteHandler, RefundOrderWriteHandler>();
         services.AddSingleton(provider => new SupportAgent(
             SupportAgents.BillingAgentName,
-            BillingAgentFactory.Create(provider.GetRequiredService<IChatClient>(), provider.GetRequiredService<BillingTools>(), provider.GetService<ILoggerFactory>())));
+            BillingAgentFactory.Create(provider.GetRequiredService<IChatClient>(), provider.GetRequiredService<BillingTools>(), provider.GetRequiredService<OperationTools>(), provider.GetService<ILoggerFactory>())));
         return services;
     }
 }

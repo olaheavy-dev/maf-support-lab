@@ -37,6 +37,9 @@ public static class Names
         ReplyKind.NotFound => "not_found",
         ReplyKind.Clarification => "clarification",
         ReplyKind.EscalationOffer => "escalation_offer",
+        ReplyKind.NotEligible => "not_eligible",
+        ReplyKind.ApprovalRequest => "approval_request",
+        ReplyKind.ApprovalResult => "approval_result",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }

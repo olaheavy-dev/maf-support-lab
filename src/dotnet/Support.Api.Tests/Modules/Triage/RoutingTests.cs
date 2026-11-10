@@ -20,23 +20,6 @@ public sealed class RoutingTests
         Assert.Equal(2, model.Calls);
     }
 
-    [Theory]
-    [InlineData("I want a refund for ORD-1001", "billing", "request a refund")]
-    [InlineData("Please cancel order ORD-1003.", "orders", "cancel an order")]
-    [InlineData("Please open a support ticket for my fridge.", "technical", "open a support ticket")]
-    public async Task Write_requests_are_answered_deterministically_until_approvals_exist(string message, string target, string what)
-    {
-        // Until L10: no agent is given the chance to claim it changed something, and no model call is spent.
-        var model = new CountingScript();
-        var turn = await AskAsync(message, model);
-
-        AssertRoute(turn, "routed", target);
-        Assert.Equal("escalation_offer", turn.ReplyKind());
-        Assert.Contains(what, turn.ReplyText(), StringComparison.Ordinal);
-        Assert.Contains("Nothing has been changed", turn.ReplyText(), StringComparison.Ordinal);
-        Assert.Equal(0, model.Calls);
-    }
-
     [Fact]
     public async Task An_order_question_without_an_order_id_asks_for_it_without_a_model_call()
     {

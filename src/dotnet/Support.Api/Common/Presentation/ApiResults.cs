@@ -18,6 +18,7 @@ internal static class ApiResults
             ErrorType.Validation => StatusCodes.Status400BadRequest,
             ErrorType.NotFound => StatusCodes.Status404NotFound,
             ErrorType.Conflict => StatusCodes.Status409Conflict,
+            ErrorType.Gone => StatusCodes.Status410Gone,
             _ => StatusCodes.Status500InternalServerError,
         };
         return Problem(status, error.Code, Title(error.Code), error.Description);
@@ -40,6 +41,9 @@ internal static class ApiResults
         "not_found" => "Not found",
         "client_turn_id_reused" => "client_turn_id reused",
         "turn_in_progress" => "Turn in progress",
+        "approval_mismatch" => "Approval mismatch",
+        "approval_already_decided" => "Approval already decided",
+        "approval_expired" => "Approval expired",
         _ => "Request failed",
     };
 }

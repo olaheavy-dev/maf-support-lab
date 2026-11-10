@@ -1,7 +1,10 @@
 using Microsoft.Extensions.AI;
 using Support.Api.Common.Application.Messaging;
 using Support.Api.Modules.Agents.Application;
+using Support.Api.Modules.Operations.Application;
+using Support.Api.Modules.Operations.Presentation;
 using Support.Api.Modules.Technical.Application;
+using Support.Api.Modules.Technical.Application.CreateTicket;
 using Support.Api.Modules.Technical.Application.SearchKnowledge;
 using Support.Api.Modules.Technical.Domain;
 using Support.Api.Modules.Technical.Infrastructure;
@@ -17,9 +20,11 @@ internal static class TechnicalModule
         services.AddSingleton<IKnowledgeBase>(_ => FixtureKnowledgeBase.Load());
         services.AddSingleton<IQueryHandler<SearchKnowledgeQuery, IReadOnlyList<KnowledgeArticle>>, SearchKnowledgeQueryHandler>();
         services.AddSingleton<KnowledgeSearchTool>();
+        services.AddSingleton<ITicketStore, InMemoryTicketStore>();
+        services.AddSingleton<IWriteHandler, CreateTicketWriteHandler>();
         services.AddSingleton(provider => new SupportAgent(
             SupportAgents.TechnicalAgentName,
-            TechnicalAgentFactory.Create(provider.GetRequiredService<IChatClient>(), provider.GetRequiredService<KnowledgeSearchTool>(), provider.GetService<ILoggerFactory>())));
+            TechnicalAgentFactory.Create(provider.GetRequiredService<IChatClient>(), provider.GetRequiredService<KnowledgeSearchTool>(), provider.GetRequiredService<OperationTools>(), provider.GetService<ILoggerFactory>())));
         return services;
     }
 }

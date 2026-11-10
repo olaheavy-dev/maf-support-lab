@@ -1,6 +1,7 @@
 using Support.Api.Common.Application.Messaging;
 using Support.Api.Modules.Conversations.Application;
 using Support.Api.Modules.Conversations.Application.CreateConversation;
+using Support.Api.Modules.Conversations.Application.DecideApproval;
 using Support.Api.Modules.Conversations.Application.GetConversation;
 using Support.Api.Modules.Conversations.Application.GetTurn;
 using Support.Api.Modules.Conversations.Application.SubmitTurn;
@@ -21,6 +22,7 @@ internal static class ConversationsModule
         services.AddSingleton<IQueryHandler<GetConversationQuery, Conversation>, GetConversationQueryHandler>();
         services.AddSingleton<ICommandHandler<SubmitTurnCommand, Turn>, SubmitTurnCommandHandler>();
         services.AddSingleton<IQueryHandler<GetTurnQuery, Turn>, GetTurnQueryHandler>();
+        services.AddSingleton<ICommandHandler<DecideApprovalCommand, Turn>, DecideApprovalCommandHandler>();
         return services;
     }
 

@@ -34,7 +34,7 @@ internal sealed partial class TriageExecutor(SupportAgents agents, TriageMetrics
             ? new TriageOutcome(request.Message, parsed.Value, RoutingRules.Route(parsed.Value))
             : new TriageOutcome(request.Message, null, TurnRoute.Unrouted(UnroutedReason.InvalidModelOutput)))
             with
-        { ConversationId = request.ConversationId, Context = request.Context };
+        { ConversationId = request.ConversationId, TurnId = request.TurnId, Context = request.Context };
 
         Describe(outcome, parsed.IsSuccess ? null : parsed.Error.Description);
         return outcome;

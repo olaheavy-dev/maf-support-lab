@@ -15,12 +15,15 @@ internal sealed class FixtureBillingRepository : IBillingRepository
     };
 
     private readonly IReadOnlyList<Invoice> invoices;
-    private readonly IReadOnlyList<Payment> payments;
+    private readonly List<Payment> payments;
+    private readonly Lock gate = new();
+    private int nextRefund = 1;
+    private int nextPayment = 8001;
 
     private FixtureBillingRepository(IReadOnlyList<Invoice> invoices, IReadOnlyList<Payment> payments)
     {
         this.invoices = invoices;
-        this.payments = payments;
+        this.payments = [.. payments];
     }
 
     public Invoice? FindInvoice(string invoiceId) =>
@@ -29,8 +32,27 @@ internal sealed class FixtureBillingRepository : IBillingRepository
     public Invoice? FindInvoiceForOrder(string orderId) =>
         invoices.FirstOrDefault(invoice => string.Equals(invoice.OrderId, orderId, StringComparison.Ordinal));
 
-    public IReadOnlyList<Payment> PaymentsFor(string customerId) =>
-        [.. payments.Where(payment => string.Equals(payment.CustomerId, customerId, StringComparison.Ordinal))];
+    public IReadOnlyList<Payment> PaymentsFor(string customerId)
+    {
+        lock (gate)
+        {
+            return [.. payments.Where(payment => string.Equals(payment.CustomerId, customerId, StringComparison.Ordinal))];
+        }
+    }
+
+    public (Payment Payment, string RefundId) AddRefund(Invoice invoice, DateTimeOffset at)
+    {
+        ArgumentNullException.ThrowIfNull(invoice);
+        lock (gate)
+        {
+            var refundId = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"RFD-{nextRefund++:0000}");
+            var payment = new Payment(
+                string.Create(System.Globalization.CultureInfo.InvariantCulture, $"PAY-{nextPayment++}"),
+                invoice.CustomerId, invoice.OrderId, invoice.InvoiceId, at, invoice.Total, invoice.PaymentMethod, "refund");
+            payments.Add(payment);
+            return (payment, refundId);
+        }
+    }
 
     /// <summary>Loads the fixture files copied next to the binaries (see Support.Api.csproj).</summary>
     public static FixtureBillingRepository Load(string? directory = null)

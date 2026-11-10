@@ -1,5 +1,8 @@
 using Microsoft.Extensions.AI;
 using Support.Api.Common.Application.Messaging;
+using Support.Api.Modules.Operations.Application;
+using Support.Api.Modules.Operations.Presentation;
+using Support.Api.Modules.Orders.Application.CancelOrder;
 using Support.Api.Modules.Agents.Application;
 using Support.Api.Modules.Orders.Application;
 using Support.Api.Modules.Orders.Application.GetOrderStatus;
@@ -18,11 +21,13 @@ internal static class OrdersModule
         services.AddSingleton<IOrderRepository>(_ => FixtureOrderRepository.Load());
         services.AddSingleton<IQueryHandler<GetOrderStatusQuery, Order>, GetOrderStatusQueryHandler>();
         services.AddSingleton<OrderStatusTool>();
+        services.AddSingleton<IWriteHandler, CancelOrderWriteHandler>();
         services.AddSingleton(provider => new SupportAgent(
             SupportAgents.OrdersAgentName,
             OrdersAgentFactory.Create(
                 provider.GetRequiredService<IChatClient>(),
                 provider.GetRequiredService<OrderStatusTool>(),
+                provider.GetRequiredService<OperationTools>(),
                 provider.GetService<ILoggerFactory>())));
         return services;
     }

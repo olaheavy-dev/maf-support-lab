@@ -146,6 +146,7 @@ Version 1 is the initial shared specification. The approval and streaming parts 
 | Version | Ticket | Change | Compatibility |
 | --- | --- | --- | --- |
 | 1.0 | L02 | Initial specification. Approval and streaming provisional until L10/L12. | — |
+| 1.0 (checked) | L10 | Approval checked against the native .NET SDK (MAF 1.28.0 / M.E.AI 10.11: `ApprovalRequiredAIFunction`, `ToolApprovalRequestContent`, `CreateResponse(approved, reason)`). **No change needed.** The native request carries the exact tool call, which maps to `kind` and `arguments`, and the decision's optional `reason` maps to the native response reason. Native approval has no customer, conversation, operation, or expiry binding and no operation state; the server adds those, exactly as specified here. | None |
 
 ## Running the checks
 
