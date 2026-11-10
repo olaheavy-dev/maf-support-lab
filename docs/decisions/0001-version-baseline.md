@@ -39,9 +39,12 @@ Not selected: `Microsoft.Agents.AI.OpenAI` and `Microsoft.Extensions.AI.OpenAI` 
 | --- | --- | --- |
 | agent-framework-core | 1.25.0 | Stable. Install core plus the specific integrations; **not** the `agent-framework` meta-package, which pulls `core[all]` and many beta integrations. |
 | agent-framework-anthropic | 1.0.0b261106 | **Prerelease, unavoidable**: the only MAF Claude integration for Python; no stable release exists. |
-| anthropic (Python SDK) | 1.17.0 | Latest 1.x. **Not** the latest overall (2.7.0), because agent-framework-anthropic requires `anthropic>=1.11.0,<2`. |
+| anthropic (Python SDK) | 1.17.0 | Latest 1.x. **Not** the latest overall (2.8.0 when rechecked in L17), because agent-framework-anthropic requires `anthropic>=1.11.0,<2`. |
 | agent-framework-devui | 1.0.0b261106 | **Prerelease, unavoidable**: no stable release exists. Development only. |
 | opentelemetry-sdk / exporter-otlp | 1.45.2 | Stable |
+| fastapi / uvicorn | 0.162.3 / 0.54.0 | Stable. The web framework, chosen by the owner in L17 (MAF's DevUI is built on FastAPI). |
+| pydantic / pydantic-settings | 2.14.3 / 2.16.2 | Stable. Contract models and validated settings. |
+| Dev tools: pytest, httpx, ruff, pyright | 9.2.0, 0.28.1, 0.17.4, 1.1.414 | Stable. pyright chosen by the owner in L17 (strict mode). |
 
 ## Model provider and model
 

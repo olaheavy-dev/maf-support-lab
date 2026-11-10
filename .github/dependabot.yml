@@ -27,4 +27,17 @@ updates:
         patterns: ["Microsoft.Extensions.*", "Microsoft.AspNetCore.*"]
       tests:
         patterns: ["xunit*"]
-# Add uv and frontend updates when their manifests are introduced.
+  - package-ecosystem: uv
+    # The Python backend (L17): pyproject.toml plus uv.lock; Dependabot updates both together.
+    directory: /src/python
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      agent-framework:
+        patterns: ["agent-framework*", "anthropic"]
+      web:
+        patterns: ["fastapi", "uvicorn", "starlette", "pydantic*"]
+      dev-tools:
+        dependency-type: development
+# Add frontend updates when its manifest is introduced.
