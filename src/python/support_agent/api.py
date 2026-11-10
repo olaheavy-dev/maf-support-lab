@@ -1,12 +1,12 @@
-"""The version-1 contract API (L18; approvals and operations since L37). JSON only.
+"""The version-1 contract API (L18; approvals and operations since L37; streaming and cancellation since L20).
 
 Every request body is validated against the shared contract schema before anything runs. Another customer's
 conversation, turn, approval, or operation is 404, exactly like a missing one. A turn that runs and fails is a result
-(200, outcome failed). Each turn runs as its own task (a dropped or cancelled request never stops it) with the
-caller's principal pinned. Approval decisions are bound to the customer, the conversation, the operation, and one
-decision; repeating the same decision returns the same turn and never runs the write twice, also after a restart
-(L38): a decision recorded before a crash finishes from the stored record, resuming the paused run only if its write
-never happened.
+(200, outcome failed). Each turn runs as its own task with the caller's principal pinned: a dropped request never
+stops it, and only ``POST …/turns/{id}/cancel`` does (cooperatively). ``Accept: text/event-stream`` on the turn and
+approval routes streams the turn as Server-Sent Events. Approval decisions are bound to the customer, the
+conversation, the operation, and one decision; repeating the same decision returns the same turn and never runs the
+write twice, also after a restart (L38).
 """
 
 from __future__ import annotations
@@ -15,21 +15,23 @@ import asyncio
 import json
 import logging
 import secrets
+from collections.abc import Coroutine
 from datetime import UTC, datetime
 from typing import Any
 
-from agent_framework import AgentResponse
+from agent_framework import AgentResponse, Message, SupportsAgentRun
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
-from support_agent import contract
+from support_agent import contract, streaming
 from support_agent.agents import SupportAgents
-from support_agent.approval_gate import answer, decline, requests
+from support_agent.approval_gate import answer, batch_of, decline, requests
 from support_agent.conversations import Claim, Conversation, ConversationStore, Reservation, Turn, TurnError, now
 from support_agent.dependencies import Caller
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Operation, OperationService, Status, approval_scope
 from support_agent.routing import TurnRoute
+from support_agent.turn_control import Delta, Progress, TurnControl, controlling, emit
 from support_agent.workflow import FALLBACK, RoutingRequest, SupportReply, build_workflow
 
 log = logging.getLogger(__name__)
@@ -39,6 +41,7 @@ TITLES = {
     "not_found": "Not found",
     "client_turn_id_reused": "client_turn_id reused",
     "turn_in_progress": "Turn in progress",
+    "turn_already_finished": "Turn already finished",
     "approval_mismatch": "Approval mismatch",
     "approval_already_decided": "Approval already decided",
     "approval_expired": "Approval expired",
@@ -48,11 +51,13 @@ STATUS = {
     "not_found": 404,
     "client_turn_id_reused": 409,
     "turn_in_progress": 409,
+    "turn_already_finished": 409,
     "approval_mismatch": 409,
     "approval_already_decided": 409,
     "approval_expired": 410,
 }
 FAILED = TurnError("internal_error", "Something went wrong while handling your message. Please try again.")
+SHUTDOWN_GRACE_SECONDS = 5.0
 
 
 def trace_id() -> str:
@@ -91,29 +96,69 @@ async def read_body(request: Request, schema: str) -> tuple[Any, JSONResponse | 
     return body, (problem("invalid_request", "The request does not match the contract.", found) if found else None)
 
 
-running_turns: set[asyncio.Task[None]] = set()
+class RunningTurns:
+    """The host's running turn tasks. Each runs detached from any request; shutdown cancels and awaits them, so every
+    turn ends stored (as cancelled if it had to be stopped) before the database closes."""
+
+    def __init__(self) -> None:
+        self._tasks: dict[asyncio.Task[None], TurnControl] = {}
+
+    def detach(self, work: Coroutine[Any, Any, None], control: TurnControl) -> None:
+        task: asyncio.Task[None] = asyncio.create_task(work)
+        control.task = task
+        self._tasks[task] = control
+        task.add_done_callback(self._finished)
+
+    def _finished(self, task: asyncio.Task[None]) -> None:
+        """The waiters already got the outcome (or the error, e.g. a turn that could not be stored); this only logs."""
+        self._tasks.pop(task, None)
+        if not task.cancelled() and (error := task.exception()) is not None:
+            log.error("A detached turn ended with an error", exc_info=error)
+
+    async def shutdown(self) -> None:
+        for control in list(self._tasks.values()):
+            control.request_cancel()
+        if self._tasks:
+            await asyncio.wait(list(self._tasks), timeout=SHUTDOWN_GRACE_SECONDS)
+
+    def __len__(self) -> int:
+        return len(self._tasks)
 
 
-def detach(work: Any) -> None:
-    """Runs a turn as its own task: no request's cancellation can stop it or leave its result unset."""
-    task: asyncio.Task[None] = asyncio.create_task(work)
-    running_turns.add(task)
-    task.add_done_callback(finished)
-
-
-def finished(task: asyncio.Task[None]) -> None:
-    """The waiters already got the outcome (or the error, e.g. a turn that could not be stored); this only logs it."""
-    running_turns.discard(task)
-    if not task.cancelled() and (error := task.exception()) is not None:
-        log.error("A detached turn ended with an error", exc_info=error)
-
-
-def create_router(store: ConversationStore, agents: SupportAgents, operations: OperationService) -> APIRouter:
+def create_router(
+    store: ConversationStore, agents: SupportAgents, operations: OperationService, turns: RunningTurns
+) -> APIRouter:
     router = APIRouter(prefix="/api/v1")
     ops = operations.store
 
     def turn_json(turn: Turn) -> JSONResponse:
         return JSONResponse(turn.to_contract(contract.CONTRACT_VERSION, ops))
+
+    def final_of(conversation: Conversation, claim: Claim, resumed_from: str | None) -> Any:
+        """The final result for a stream: the stored turn, or (if it could not be stored) a failed one."""
+
+        def final(turn: Turn | None) -> dict[str, Any]:
+            if turn is None:
+                turn = failed_turn(conversation, claim, claim.started_at, resumed_from)
+            return turn.to_contract(contract.CONTRACT_VERSION, ops)
+
+        return final
+
+    async def answer_claim(
+        request: Request,
+        conversation: Conversation,
+        claim: Claim,
+        live: bool,
+        resumed_from: str | None = None,
+    ) -> Response:
+        if streaming.is_requested(request):
+            started: dict[str, Any] = {"client_turn_id": claim.client_turn_id}
+            if resumed_from is not None:
+                started["resumed_from_turn_id"] = resumed_from
+            return streaming.respond(
+                claim, conversation.conversation_id, started, live, final_of(conversation, claim, resumed_from)
+            )
+        return turn_json(await asyncio.shield(claim.done))
 
     @router.post("/conversations", status_code=201)
     async def create_conversation(request: Request, principal: Caller) -> JSONResponse:
@@ -131,7 +176,7 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
         return JSONResponse(conversation.to_contract(contract.CONTRACT_VERSION, contract.BACKEND, ops))
 
     @router.post("/conversations/{conversation_id}/turns")
-    async def submit_turn(conversation_id: str, request: Request, principal: Caller) -> JSONResponse:
+    async def submit_turn(conversation_id: str, request: Request, principal: Caller) -> Response:
         # A conversation you can't see is 404 before anything else, so the body's validity reveals nothing about it.
         conversation = store.find_owned(conversation_id, principal)
         if conversation is None:
@@ -145,9 +190,12 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
             return problem("turn_in_progress", "Another turn is still running in this conversation.")
         if claim.message != message:
             return problem("client_turn_id_reused", "This client_turn_id was already used with a different message.")
-        if outcome is Reservation.OWNER:
-            detach(complete_turn(agents, operations, conversation, claim, message, principal))
-        return turn_json(await asyncio.shield(claim.done))
+        owner = outcome is Reservation.OWNER
+        if owner:
+            if streaming.is_requested(request):
+                claim.control.observer = asyncio.Queue()  # attached before the turn starts, so nothing is missed
+            turns.detach(complete_turn(agents, operations, conversation, claim, message, principal), claim.control)
+        return await answer_claim(request, conversation, claim, live=owner)
 
     @router.get("/conversations/{conversation_id}/turns/{turn_id}")
     async def get_turn(conversation_id: str, turn_id: str, principal: Caller) -> JSONResponse:
@@ -160,8 +208,23 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
             return JSONResponse(running.running_contract(conversation_id, contract.CONTRACT_VERSION))
         return not_found()
 
+    @router.post("/conversations/{conversation_id}/turns/{turn_id}/cancel", status_code=202)
+    async def cancel_turn(conversation_id: str, turn_id: str, principal: Caller) -> JSONResponse:
+        """Cooperative: asks the running turn to stop. Its final outcome reports what actually happened."""
+        conversation = store.find_owned(conversation_id, principal)
+        if conversation is None:
+            return not_found()
+        if turn_id in conversation.turns:
+            return problem("turn_already_finished", "This turn has already finished.")
+        running = conversation.running(turn_id)
+        if running is None:
+            return not_found()
+        running.control.request_cancel()
+        body = {"contract_version": contract.CONTRACT_VERSION, "turn_id": turn_id, "cancel_requested": True}
+        return JSONResponse(body, status_code=202)
+
     @router.post("/conversations/{conversation_id}/approvals/{approval_id}")
-    async def decide(conversation_id: str, approval_id: str, request: Request, principal: Caller) -> JSONResponse:
+    async def decide(conversation_id: str, approval_id: str, request: Request, principal: Caller) -> Response:
         conversation = store.find_owned(conversation_id, principal)
         operation = ops.find_by_approval(approval_id)
         # Bound to this customer and this conversation: anyone else, or any other conversation, gets 404.
@@ -195,7 +258,7 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
                 return problem(
                     "approval_already_decided", "A different decision was already recorded for this approval."
                 )
-            return turn_json(await asyncio.shield(claim.done))
+            return await answer_claim(request, conversation, claim, live=False, resumed_from=operation.source_turn_id)
         try:
             # The first stored decision wins (guarded on the stored status). The same decision recorded earlier, by a
             # run whose turn was never stored (a crash), is finished from the record below.
@@ -210,8 +273,10 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
             return problem(
                 "approval_expired" if expired else "approval_already_decided", "This approval can no longer be decided."
             )
-        detach(complete_decision(agents, operations, conversation, claim, operation, principal))
-        return turn_json(await asyncio.shield(claim.done))
+        if streaming.is_requested(request):
+            claim.control.observer = asyncio.Queue()
+        turns.detach(complete_decision(agents, operations, conversation, claim, operation, principal), claim.control)
+        return await answer_claim(request, conversation, claim, live=True, resumed_from=operation.source_turn_id)
 
     @router.get("/operations/{operation_id}")
     async def get_operation(operation_id: str, principal: Caller) -> JSONResponse:
@@ -224,6 +289,12 @@ def create_router(store: ConversationStore, agents: SupportAgents, operations: O
     return router
 
 
+def acknowledge_cancellation() -> None:
+    """The turn handled its cancellation (it stores a cancelled or factual result), so its task carries on normally."""
+    if (task := asyncio.current_task()) is not None and task.cancelling():
+        task.uncancel()
+
+
 async def complete_turn(
     agents: SupportAgents,
     operations: OperationService,
@@ -234,14 +305,19 @@ async def complete_turn(
 ) -> None:
     """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once."""
     try:
-        turn, verified_order_id = await run_turn(agents, operations, conversation, claim, message, principal)
+        with controlling(claim.control):
+            turn, verified_order_id = await run_turn(agents, operations, conversation, claim, message, principal)
+    except asyncio.CancelledError:
+        acknowledge_cancellation()
+        conversation.complete(claim, cancelled_turn(conversation, claim, claim.started_at), operations.store)
+        return
     except BaseException:
         conversation.complete(claim, failed_turn(conversation, claim, claim.started_at), operations.store)
         raise
     conversation.complete(claim, turn, operations.store, verified_order_id)
 
 
-def failed_turn(conversation: Conversation, claim: Claim, started: datetime) -> Turn:
+def failed_turn(conversation: Conversation, claim: Claim, started: datetime, resumed_from: str | None = None) -> Turn:
     return Turn(
         conversation.conversation_id,
         claim.turn_id,
@@ -254,6 +330,32 @@ def failed_turn(conversation: Conversation, claim: Claim, started: datetime) -> 
         now(),
         "failed",
         FAILED,
+        resumed_from_turn_id=resumed_from,
+    )
+
+
+def cancelled_turn(
+    conversation: Conversation,
+    claim: Claim,
+    started: datetime,
+    resumed_from: str | None = None,
+    operation_ids: tuple[str, ...] = (),
+    route: TurnRoute | None = None,
+) -> Turn:
+    """Stopped on request before doing anything further: no reply, and nothing changed."""
+    return Turn(
+        conversation.conversation_id,
+        claim.turn_id,
+        claim.client_turn_id,
+        route,
+        None,
+        None,
+        claim.trace_id,
+        started,
+        now(),
+        "cancelled",
+        operation_ids=operation_ids,
+        resumed_from_turn_id=resumed_from,
     )
 
 
@@ -265,15 +367,24 @@ async def run_turn(
     message: str,
     principal: Principal,
 ) -> tuple[Turn, str | None]:
-    """Runs the workflow as the caller (pinned) in this conversation's own sessions and context."""
+    """Runs the workflow as the caller (pinned) in this conversation's own sessions and context.
+
+    The workflow is read as a native stream: its progress and reply-text events go to the turn's control (and to a
+    streaming client, if one is attached). Cancellation propagates (``CancelledError``); other failures are results."""
     started = now()
+    reply: SupportReply | None = None
     with pinned(principal):
         try:
             request = RoutingRequest(
                 message, conversation.conversation_id, conversation.context, conversation.sessions, claim.turn_id
             )
-            result = await build_workflow(agents, operations).run(request)
-            reply: SupportReply = result.get_outputs()[0]
+            async for event in build_workflow(agents, operations).run(request, stream=True):
+                if event.type == "data" and isinstance(event.data, Progress | Delta):
+                    emit(event.data)
+                elif event.type == "output" and isinstance(event.data, SupportReply):
+                    reply = event.data
+            if reply is None:
+                raise RuntimeError("The workflow finished without a reply.")
         except Exception:
             log.exception("Turn %s failed in conversation %s", claim.turn_id, conversation.conversation_id)
             return failed_turn(conversation, claim, started), None
@@ -321,10 +432,25 @@ async def complete_decision(
     operation: Operation,
     principal: Principal,
 ) -> None:
-    """Resumes the paused specialist with the customer's decision, as a new turn; always completes the claim."""
+    """Resumes the paused specialist with the customer's decision, as a new turn; always completes the claim.
+
+    Cancelled before the write commits: the turn is cancelled, and an approved operation fails with code ``cancelled``.
+    Cancelled after it committed: the committed result stands, and the turn completes from the record."""
     started = now()
+    route = TurnRoute(target=operation.specialist)
     try:
-        text = await resume(agents, operations, conversation, operation, principal)
+        with controlling(claim.control):
+            text = await resume(agents, operations, conversation, operation, principal)
+    except asyncio.CancelledError:
+        acknowledge_cancellation()
+        operations.store.fail(operation, "Cancelled before the change was made.", datetime.now(UTC), code="cancelled")
+        if not committed(operation):
+            turn = cancelled_turn(
+                conversation, claim, started, operation.source_turn_id, (operation.operation_id,), route
+            )
+            conversation.complete(claim, turn, operations.store)
+            return
+        text = factual(operation)
     except BaseException as error:
         conversation.abandon(claim.key, claim)
         if not claim.done.done():
@@ -334,7 +460,7 @@ async def complete_decision(
         conversation.conversation_id,
         claim.turn_id,
         None,
-        TurnRoute(target=operation.specialist),
+        route,
         "approval_result",
         text,
         claim.trace_id,
@@ -347,6 +473,20 @@ async def complete_decision(
         operation.source_turn_id,
     )
     conversation.complete(claim, turn, operations.store)
+
+
+async def streamed_run(agent: SupportsAgentRun, messages: list[Message], session: Any) -> AgentResponse[Any]:
+    """Runs the agent as a native stream, sending its text and tool calls to the turn's live events. Closed
+    deterministically, also when cancelled mid-stream."""
+    async with agent.run(messages, session=session, stream=True) as stream:
+        async for update in stream:
+            for content in update.contents:
+                if content.type == "function_call" and content.name:
+                    emit(Progress("tool_call", tool=content.name))
+            if update.text:
+                emit(Delta(update.text))
+        response: AgentResponse[Any] = await stream.get_final_response()
+        return response
 
 
 async def resume(
@@ -362,11 +502,12 @@ async def resume(
     Only a paused request whose decision has not been carried out is resumed. Anything already finished (for example
     a write committed just before a crash) is reported from the stored record, without a model call."""
     ops = operations.store
-    native = ops.native_request(operation.operation_id)
-    if native is None:
+    paused = ops.native_request(operation.operation_id)
+    if paused is None:
         # Nothing is paused any more. An approval that can no longer run fails instead of staying "running".
         ops.fail(operation, "The approved action could not be resumed.", datetime.now(UTC))
         return factual(operation)
+    native, batch = paused
     if operation.status not in (Status.RUNNING, Status.REJECTED):
         ops.answered(operation.operation_id)
         return factual(operation)
@@ -376,11 +517,12 @@ async def resume(
     try:
         with pinned(principal):
             if approved:
+                emit(Progress("executing_operation", route={"status": "routed", "target": operation.specialist}))
                 with approval_scope(operation):
-                    response: AgentResponse[Any] = await agent.run(answer([native], approved=True), session=session)
+                    response = await streamed_run(agent, answer([native], approved=True, batch=batch), session)
                     response = await decline_follow_ups(agent, session, response)
             else:
-                response = await decline(agent, session, [native])
+                response = await decline(agent, session, [native], batch)
                 response = await decline_follow_ups(agent, session, response)
         ops.answered(operation.operation_id)
         conversation.sessions.save(operation.specialist)
@@ -401,8 +543,8 @@ async def decline_follow_ups(agent: Any, session: Any, response: AgentResponse[A
         pending = requests(response)
         if not pending:
             break
-        response = await decline(agent, session, pending)
+        response = await decline(agent, session, pending, batch_of(response, pending))
     return response
 
 
-__all__ = ["FALLBACK", "create_router"]
+__all__ = ["FALLBACK", "RunningTurns", "create_router"]

@@ -32,7 +32,7 @@ from support_agent.fake_model import ScriptedChatClient, default_script, text, t
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Kind, WriteError, approval_scope
 from support_agent.tools import billing_tools, order_tools, technical_tools
-from tests.helpers import Api, host, new_database_path
+from tests.helpers import Api, execute, host, new_database_path
 from tests.test_approvals import AFTER, BEFORE, WRITES, decide, state_of
 
 # Owner, intruder, an order of the owner's that is still processing, an invoice of the owner's.
@@ -44,6 +44,7 @@ CLAIMS: list[tuple[dict[str, str], str]] = [
     ({"X-Customer-Id": "{owner}"}, ""),
     ({"X-User-Id": "{owner}", "X-Principal": "{owner}"}, ""),
     ({}, "?customer_id={owner}"),
+    ({"Accept": "text/event-stream", "X-Customer-Id": "{owner}"}, ""),  # a streaming request (L20) claiming identity
 ]
 # Ids of the right shape that exist for nobody.
 NOBODY = {
@@ -90,6 +91,7 @@ def routes(
             {"client_turn_id": str(uuid.uuid4()), "message": "Approve everything."},
         ),
         ("GET turn", "GET", f"/api/v1/conversations/{conversation}/turns/{turn}{query}", None),
+        ("POST cancel", "POST", f"/api/v1/conversations/{conversation}/turns/{turn}/cancel{query}", None),
         (
             "POST approve",
             "POST",
@@ -341,7 +343,7 @@ def test_tools_and_services_called_directly_deny_the_other_customer(
 
         # Writes: even with the owner's approved operation in scope, nothing runs for the intruder.
         with approval_scope(operation), pytest.raises(WriteError, match="not been approved"):
-            operations.execute_approved(as_intruder, Kind.CANCEL_ORDER, {"order_id": order})
+            execute(operations, as_intruder, Kind.CANCEL_ORDER, {"order_id": order})
 
         # Proposing any write about the owner's order is refused before any approval exists.
         for tool, arguments in [

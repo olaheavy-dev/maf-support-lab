@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from support_agent.fake_model import ScriptedChatClient, default_script, last_user_text
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Kind, WriteError, approval_scope
-from tests.helpers import Api, assert_contract, host, let_expire
+from tests.helpers import Api, assert_contract, execute, host, let_expire
 
 WRITES = [
     ("Please cancel order ORD-1003.", "orders", "cancel_order", {"order_id": "ORD-1003"}),
@@ -221,7 +221,7 @@ def test_a_write_cannot_run_without_an_approval_for_exactly_its_arguments() -> N
     operation = operations.store.find(pending["operation_id"])
     with pinned(Principal("CUST-1001")):
         with pytest.raises(WriteError, match="not been approved"):
-            operations.execute_approved(Principal("CUST-1001"), Kind.CANCEL_ORDER, {"order_id": "ORD-1003"})  # no scope
+            execute(operations, Principal("CUST-1001"), Kind.CANCEL_ORDER, {"order_id": "ORD-1003"})  # no scope
         assert operation.decide(Decision.APPROVE, datetime.now(UTC))
         with approval_scope(operation):
             for kind, arguments in [
@@ -229,10 +229,10 @@ def test_a_write_cannot_run_without_an_approval_for_exactly_its_arguments() -> N
                 (Kind.REFUND_ORDER, {"order_id": "ORD-1003", "reason": "x"}),
             ]:
                 with pytest.raises(WriteError, match="not been approved"):
-                    operations.execute_approved(Principal("CUST-1001"), kind, arguments)  # changed arguments or kind
+                    execute(operations, Principal("CUST-1001"), kind, arguments)  # changed arguments or kind
             with pytest.raises(WriteError, match="not been approved"):
-                operations.execute_approved(
-                    Principal("CUST-1002"), Kind.CANCEL_ORDER, {"order_id": "ORD-1003"}
+                execute(
+                    operations, Principal("CUST-1002"), Kind.CANCEL_ORDER, {"order_id": "ORD-1003"}
                 )  # another customer
     assert app.state.services.state.orders["ORD-1003"].status == "processing"
     assert app.state.services.state.orders["ORD-1002"].status == "shipped"

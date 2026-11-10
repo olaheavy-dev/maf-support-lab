@@ -14,7 +14,7 @@ from fastapi import Depends, FastAPI
 from fastapi.responses import PlainTextResponse
 
 from support_agent.agents import create_agents
-from support_agent.api import create_router
+from support_agent.api import RunningTurns, create_router
 from support_agent.conversations import ConversationStore
 from support_agent.database import Database
 from support_agent.dependencies import get_principal, get_principal_source, get_settings
@@ -32,9 +32,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
     resources = Resources()
 
+    turns = RunningTurns()
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
         yield
+        # Running turns are cancelled cooperatively and stored before the database and clients close (L20).
+        await turns.shutdown()
         await resources.close_all()
 
     app = FastAPI(
@@ -55,7 +59,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.operations = build_operations(app.state.services.state, database)
     app.state.agents = create_agents(client, app.state.services, app.state.operations)
     app.state.conversations = ConversationStore(database)
-    app.include_router(create_router(app.state.conversations, app.state.agents, app.state.operations))
+    app.state.turns = turns
+    app.include_router(create_router(app.state.conversations, app.state.agents, app.state.operations, turns))
 
     @app.get("/health", response_class=PlainTextResponse)
     def health(current: Annotated[Settings, Depends(get_settings)]) -> str:

@@ -15,9 +15,12 @@ from support_agent.identity import current_principal
 from support_agent.operations import Kind, OperationService, WriteError
 
 
-def _run(operations: OperationService, kind: Kind, arguments: dict[str, Any]) -> dict[str, Any]:
+async def _run(operations: OperationService, kind: Kind, arguments: dict[str, Any]) -> dict[str, Any]:
     try:
-        return {"status": "committed", "result": operations.execute_approved(current_principal(), kind, arguments)}
+        return {
+            "status": "committed",
+            "result": await operations.execute_approved(current_principal(), kind, arguments),
+        }
     except WriteError as error:
         status = (
             "invalid_arguments"
@@ -35,10 +38,10 @@ def cancel_tool(operations: OperationService) -> FunctionTool:
         description="Cancel one of the current customer's orders. Requires the customer's approval; only orders still processing can be cancelled.",
         approval_mode="always_require",
     )
-    def cancel_order(
+    async def cancel_order(
         order_id: Annotated[str, Field(description="The order id, in the form ORD-1234.")],
     ) -> dict[str, Any]:
-        return _run(operations, Kind.CANCEL_ORDER, {"order_id": order_id})
+        return await _run(operations, Kind.CANCEL_ORDER, {"order_id": order_id})
 
     return cancel_order
 
@@ -49,11 +52,11 @@ def refund_tool(operations: OperationService) -> FunctionTool:
         description="Refund one of the current customer's delivered orders in full. Requires the customer's approval.",
         approval_mode="always_require",
     )
-    def refund_order(
+    async def refund_order(
         order_id: Annotated[str, Field(description="The order id, in the form ORD-1234.")],
         reason: Annotated[str, Field(description="The customer's reason, in their words.")],
     ) -> dict[str, Any]:
-        return _run(operations, Kind.REFUND_ORDER, {"order_id": order_id, "reason": reason})
+        return await _run(operations, Kind.REFUND_ORDER, {"order_id": order_id, "reason": reason})
 
     return refund_order
 
@@ -64,13 +67,13 @@ def ticket_tool(operations: OperationService) -> FunctionTool:
         description="Open a support ticket for a problem the knowledge base could not solve. Requires the customer's approval.",
         approval_mode="always_require",
     )
-    def create_ticket(
+    async def create_ticket(
         subject: Annotated[str, Field(description="A short subject line.")],
         description: Annotated[str, Field(description="What is wrong, in the customer's words.")],
         priority: Annotated[str, Field(description="low, normal, or high.")] = "normal",
         related_order_id: Annotated[str | None, Field(description="A related order id (ORD-1234), if any.")] = None,
     ) -> dict[str, Any]:
-        return _run(
+        return await _run(
             operations,
             Kind.CREATE_TICKET,
             {
