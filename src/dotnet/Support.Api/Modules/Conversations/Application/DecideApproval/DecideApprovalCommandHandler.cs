@@ -105,7 +105,18 @@ internal sealed partial class DecideApprovalCommandHandler(
         reservation.ResumedFromTurnId = operation.SourceTurnId;
         command.Observer.Started(new(conversation.ConversationId, reservation.TurnId, null, operation.SourceTurnId));
         var decided = operation;
-        _ = Task.Run(() => ResumeAsync(conversation, key, reservation, decided, recordedEarlier, command), CancellationToken.None);
+        // The caller's principal is pinned for the whole detached run (L13): identity never changes mid-turn and never
+        // depends on a request that has ended.
+        var caller = principal;
+        _ = Task.Run(
+            async () =>
+            {
+                using (PrincipalScope.Begin(caller))
+                {
+                    await ResumeAsync(conversation, key, reservation, decided, recordedEarlier, command).ConfigureAwait(false);
+                }
+            },
+            CancellationToken.None);
         return Result.Success(await reservation.Completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false));
     }
 
