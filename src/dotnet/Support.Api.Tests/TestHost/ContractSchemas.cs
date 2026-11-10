@@ -12,6 +12,10 @@ internal static class ContractSchemas
     private const string BaseUri = "https://contracts.maf-support-lab.example/v1/";
     private static readonly Lazy<(BuildOptions Options, Dictionary<string, JsonSchema> Schemas)> Loaded = new(Load);
 
+    /// <summary>Whether the shared contract schema accepts the document (no assertion).</summary>
+    public static bool IsValid(string schemaName, JsonElement document) =>
+        Loaded.Value.Schemas[schemaName].Evaluate(document).IsValid;
+
     public static void AssertValid(string schemaName, JsonElement document)
     {
         var schema = Loaded.Value.Schemas[schemaName];

@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Support.Api.Common.Presentation;
 using Support.Api.Modules.Conversations.Domain;
+using Support.Api.Modules.Triage.Domain;
 
 namespace Support.Api.Modules.Conversations.Presentation;
 
@@ -27,7 +28,16 @@ public sealed record TurnRequest(
 public sealed record RouteResult(
     string Status,
     string? Target,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? UnroutedReason = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? UnroutedReason = null)
+{
+    public static RouteResult From(TurnRoute route)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+        return route.Target is { } target
+            ? new RouteResult("routed", Names.Of(target))
+            : new RouteResult("unrouted", null, Names.Of(route.UnroutedReason!.Value));
+    }
+}
 
 public sealed record ReplyResult(string Kind, string Text);
 
@@ -55,19 +65,11 @@ public sealed record TurnResult(
             turn.ClientTurnId,
             State: "finished",
             Outcome: "completed",
-            new RouteResult("routed", turn.RouteTarget),
-            new ReplyResult(ReplyKindName(turn.ReplyKind), turn.ReplyText),
+            RouteResult.From(turn.Route),
+            new ReplyResult(Names.Of(turn.ReplyKind), turn.ReplyText),
             Operations: [],
             turn.TraceId,
             turn.CreatedAt,
             turn.FinishedAt);
     }
-
-    private static string ReplyKindName(ReplyKind kind) => kind switch
-    {
-        ReplyKind.Answer => "answer",
-        ReplyKind.NotFound => "not_found",
-        ReplyKind.Clarification => "clarification",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown reply kind."),
-    };
 }

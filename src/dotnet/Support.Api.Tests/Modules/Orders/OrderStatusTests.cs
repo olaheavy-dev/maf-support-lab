@@ -32,8 +32,10 @@ public sealed class OrderStatusTests
 
         var turn = await api.AskAsync(await api.CreateConversationAsync(), "Where is my order?");
 
+        // Since L07 the routing rules ask for the id deterministically: no specialist model call, no lookup.
         Assert.Equal("clarification", turn.ReplyKind());
-        Assert.Equal(1, model.Calls);
+        Assert.Equal("orders", turn.GetProperty("route").GetProperty("target").GetString());
+        Assert.Equal(0, model.Calls);
     }
 
     [Fact]

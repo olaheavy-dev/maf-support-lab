@@ -17,7 +17,7 @@ public sealed class TelemetryTests
     private const string CustomerId = "CUST-1001";
 
     [Fact]
-    public async Task A_turn_is_one_trace_from_HTTP_through_agent_model_and_tool()
+    public async Task A_turn_is_one_trace_from_HTTP_through_workflow_triage_agent_model_and_tool()
     {
         var capture = new TelemetryCapture();
         using var factory = SupportApiFactory.Create(configureServices: capture.AddTo);
@@ -28,28 +28,67 @@ public sealed class TelemetryTests
 
         var http = Assert.Single(spans, span => span.Kind == ActivityKind.Server);
         var turnSpan = Assert.Single(spans, span => span.Source.Name == "Support.Api" && span.DisplayName == "support.turn");
-        var agent = Assert.Single(spans, span => Tag(span, "gen_ai.operation.name") == "invoke_agent");
-        var modelCalls = spans.Where(span => span.Source.Name == "Support.Model" && Tag(span, "gen_ai.operation.name") == "chat").ToList();
+        var workflow = Assert.Single(spans, span => Tag(span, "gen_ai.operation.name") == "invoke_workflow");
+        var triage = Assert.Single(spans, span => span.DisplayName == "executor.process triage");
+        var specialist = Assert.Single(spans, span => span.DisplayName == "executor.process orders-specialist");
+        var triageAgent = Assert.Single(spans, span => Tag(span, "gen_ai.agent.name") == "triage");
+        var ordersAgent = Assert.Single(spans, span => Tag(span, "gen_ai.agent.name") == "orders");
         var tool = Assert.Single(spans, span => Tag(span, "gen_ai.operation.name") == "execute_tool");
 
-        // Nested and distinguishable: HTTP > support.turn > invoke_agent (Support.Agents) > chat calls and the tool.
+        // HTTP > support.turn > invoke_workflow (Support.Workflows) > triage executor > triage agent > one JSON chat call,
+        // and the selected executor > orders agent (Support.Agents) > model calls (Support.Model) and the tool.
         Assert.Equal(http.SpanId, turnSpan.ParentSpanId);
-        Assert.Equal(turnSpan.SpanId, agent.ParentSpanId);
-        Assert.Equal("Support.Agents", agent.Source.Name);
-        Assert.Equal(2, modelCalls.Count);
-        Assert.All(modelCalls, call => Assert.Equal(agent.SpanId, call.ParentSpanId));
-        Assert.Equal(agent.SpanId, tool.ParentSpanId);
-        Assert.Equal("get_order_status", Tag(tool, "gen_ai.tool.name"));
+        Assert.True(IsWithin(workflow, turnSpan, spans));
+        Assert.Equal("Support.Workflows", workflow.Source.Name);
+        Assert.Equal("support-routing", Tag(workflow, "gen_ai.workflow.name"));
+        Assert.True(IsWithin(triage, workflow, spans) && IsWithin(specialist, workflow, spans));
+        Assert.Equal(triage.SpanId, triageAgent.ParentSpanId);
+        Assert.Equal("json", Tag(Assert.Single(spans, span => span.ParentSpanId == triageAgent.SpanId), "gen_ai.output.type"));
+        Assert.Equal(specialist.SpanId, ordersAgent.ParentSpanId);
+        Assert.Equal(2, spans.Count(span => span.ParentSpanId == ordersAgent.SpanId && Tag(span, "gen_ai.operation.name") == "chat"));
+        Assert.Equal(ordersAgent.SpanId, tool.ParentSpanId);
 
-        // Identifiers belong on the turn span, where they correlate with the API response.
+        // The routing decision is on the triage executor span, which links it to the executor that ran.
+        Assert.Equal("routed", Tag(triage, "support.triage.outcome"));
+        Assert.Equal("orders", Tag(triage, "support.triage.target"));
+        Assert.Equal("order_status", Tag(triage, "support.triage.requested_action"));
+
         Assert.Equal(turn.GetProperty("conversation_id").GetString(), Tag(turnSpan, "support.conversation.id"));
         Assert.Equal(turn.GetProperty("turn_id").GetString(), Tag(turnSpan, "support.turn.id"));
         Assert.Equal("completed", Tag(turnSpan, "support.turn.outcome"));
         Assert.Equal("answer", Tag(turnSpan, "support.reply_kind"));
 
-        // Logs from the handler and the tool carry the same trace, so Aspire links them to these spans.
         Assert.Contains(capture.Logs, log => log.TraceId == http.TraceId && log.CategoryName!.EndsWith("SubmitTurnCommandHandler", StringComparison.Ordinal));
         Assert.Contains(capture.Logs, log => log.TraceId == http.TraceId && log.CategoryName!.EndsWith("OrderStatusTool", StringComparison.Ordinal));
+        Assert.Contains(capture.Logs, log => log.TraceId == http.TraceId && log.CategoryName!.EndsWith("SupportWorkflowRouter", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("Can you send me a copy of my invoice?", "billing-placeholder", "routed", "billing", "none")]
+    [InlineData("Hello there, nice weather today.", "unrouted", "unrouted", "none", "ambiguous_request")]
+    [InlineData("Where is ORD-1002? " + FakeChatClient.MalformedTriageTrigger, "unrouted", "unrouted", "none", "invalid_model_output")]
+    public async Task The_trace_and_metrics_connect_each_routing_decision_to_its_executor(
+        string message, string executor, string outcome, string target, string reason)
+    {
+        var capture = new TelemetryCapture();
+        using var factory = SupportApiFactory.Create(configureServices: capture.AddTo);
+        var api = new ApiClient(factory.CreateClient());
+
+        var turn = await api.AskAsync(await api.CreateConversationAsync(), message);
+        var spans = await capture.TraceAsync(factory, TraceIdOf(turn));
+
+        var triage = Assert.Single(spans, span => span.DisplayName == "executor.process triage");
+        Assert.Equal(outcome, Tag(triage, "support.triage.outcome"));
+        Assert.Equal(target, Tag(triage, "support.triage.target"));
+        Assert.Equal(reason, Tag(triage, "support.triage.unrouted_reason"));
+        var selected = Assert.Single(spans, span => span.DisplayName.StartsWith("executor.process ", StringComparison.Ordinal) && span != triage);
+        Assert.Equal($"executor.process {executor}", selected.DisplayName);
+        Assert.DoesNotContain(spans, span => Tag(span, "gen_ai.agent.name") == "orders");
+
+        var decisions = Point(capture.FlushMetrics(factory), "Support.Api", "support.triage.decisions");
+        Assert.Equal(
+            new Dictionary<string, string> { ["support.triage.outcome"] = outcome, ["support.triage.target"] = target, ["support.triage.unrouted_reason"] = reason },
+            Tags(decisions));
     }
 
     [Fact]
@@ -103,14 +142,15 @@ public sealed class TelemetryTests
         Assert.Equal(1, toolCalls.GetSumLong());
         Assert.Equal(new Dictionary<string, string> { ["support.tool.name"] = "get_order_status", ["support.tool.outcome"] = "found" }, Tags(toolCalls));
 
-        // The fake model reports 100 input tokens per call and this turn makes two calls. Summed over every meter,
-        // exactly 200 input tokens must be recorded: the agent layer's re-count of the same tokens is dropped.
+        // The fake model reports 100 input tokens per call and this turn makes three calls (triage, then the orders
+        // agent twice). Summed over every meter, exactly 300 input tokens must be recorded: the agent layer's
+        // re-count of the same tokens is dropped.
         var inputTokens = metrics
             .Where(metric => metric.Name == "gen_ai.client.token.usage")
             .SelectMany(metric => metric.MetricPoints)
             .Where(point => Tags(point).GetValueOrDefault("gen_ai.token.type") == "input")
             .Sum(point => point.GetHistogramSum());
-        Assert.Equal(2 * FakeChatClient.FakeInputTokens, inputTokens);
+        Assert.Equal(3 * FakeChatClient.FakeInputTokens, inputTokens);
         Assert.DoesNotContain(metrics, metric => metric.MeterName == "Support.Agents" && metric.Name == "gen_ai.client.token.usage");
 
         // No metric label may carry an id: ids are unbounded and belong on spans and logs.
@@ -192,6 +232,21 @@ public sealed class TelemetryTests
         ActivityTraceId.CreateFromString(turn.GetProperty("trace_id").GetString());
 
     private static string? Tag(Activity span, string name) => span.GetTagItem(name)?.ToString();
+
+    /// <summary>Whether <paramref name="span"/> is nested anywhere below <paramref name="ancestor"/> in this trace.</summary>
+    private static bool IsWithin(Activity span, Activity ancestor, IReadOnlyList<Activity> spans)
+    {
+        var byId = spans.ToDictionary(item => item.SpanId);
+        for (var current = span; byId.TryGetValue(current.ParentSpanId, out var parent); current = parent)
+        {
+            if (parent.SpanId == ancestor.SpanId)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static MetricPoint Point(IEnumerable<MetricSnapshot> metrics, string meter, string name)
     {

@@ -10,7 +10,9 @@ namespace Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 /// The default script behaves like a well-behaved orders model. Tests can pass their own script,
 /// for example one that requests another customer's order, to prove the services still decide.
 /// </summary>
-public sealed partial class FakeChatClient(Func<IReadOnlyList<ChatMessage>, ChatResponse>? script = null) : IChatClient
+public sealed partial class FakeChatClient(
+    Func<IReadOnlyList<ChatMessage>, ChatResponse>? script = null,
+    Func<string, string>? triage = null) : IChatClient
 {
     /// <summary>
     /// The tool the default script asks for. A literal, not a reference to the Orders module, so the shared
@@ -29,12 +31,29 @@ public sealed partial class FakeChatClient(Func<IReadOnlyList<ChatMessage>, Chat
 
     public const int FakeOutputTokens = 20;
 
+    /// <summary>Messages containing this marker get triage output that is not JSON (fake mode only).</summary>
+    public const string MalformedTriageTrigger = "[fake:triage-malformed]";
+
+    /// <summary>Messages containing this marker get triage output naming a target the contract does not allow (fake mode only).</summary>
+    public const string UnknownRouteTrigger = "[fake:triage-unknown-route]";
+
     private readonly Func<IReadOnlyList<ChatMessage>, ChatResponse> script = script ?? DefaultScript;
+    private readonly Func<string, string> triage = triage ?? DefaultTriage;
 
     public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(script([.. messages]));
+        IReadOnlyList<ChatMessage> history = [.. messages];
+
+        // Only the triage agent asks for JSON output, so a JSON response format means "this is the triage call".
+        // Scripted tests therefore control the specialist model while triage stays deterministic.
+        if (options?.ResponseFormat is ChatResponseFormatJson)
+        {
+            var userText = history.LastOrDefault(message => message.Role == ChatRole.User)?.Text ?? string.Empty;
+            return Task.FromResult(Text(triage(userText)));
+        }
+
+        return Task.FromResult(script(history));
     }
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
@@ -81,6 +100,45 @@ public sealed partial class FakeChatClient(Func<IReadOnlyList<ChatMessage>, Chat
 
         return Text("Which order do you mean? Please share the order id, for example ORD-1234.");
     }
+
+    /// <summary>
+    /// Keyword triage that behaves like a well-behaved classifier: it returns the contract's triage-decision JSON.
+    /// An order id or order words mean orders; invoice, payment, or refund words mean billing; problem words mean
+    /// technical; anything else is "other", which the routing rules treat as ambiguous.
+    /// </summary>
+    public static string DefaultTriage(string userText)
+    {
+        ArgumentNullException.ThrowIfNull(userText);
+        if (userText.Contains(MalformedTriageTrigger, StringComparison.Ordinal))
+        {
+            return "Sure! This looks like an order question.";
+        }
+
+        var orderId = OrderIdPattern().Match(userText);
+        var text = userText.ToUpperInvariant();
+        var (target, action) =
+            userText.Contains(UnknownRouteTrigger, StringComparison.Ordinal) ? ("shipping", "order_status")
+            : ContainsAny(text, "REFUND") ? ("billing", "refund_order")
+            : ContainsAny(text, "INVOICE", "BILL", "RECEIPT") ? ("billing", "invoice")
+            : ContainsAny(text, "PAYMENT", "CHARGE", "PAID") ? ("billing", "payment_history")
+            : ContainsAny(text, "CANCEL") ? ("orders", "cancel_order")
+            : orderId.Success || ContainsAny(text, "ORDER", "DELIVER", "PACKAGE", "SHIPP", "TRACK") ? ("orders", "order_status")
+            : ContainsAny(text, "ERROR", "CRASH", "NOT WORKING", "BROKEN", "LOGIN", "LOG IN", "RESET", "WON'T") ? ("technical", "troubleshooting")
+            : ("orders", "other");
+
+        return JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["target"] = target,
+            ["requested_action"] = action,
+            ["order_id"] = orderId.Success ? orderId.Value.ToUpperInvariant() : null,
+            ["summary"] = "Customer support request.",
+            ["customer_sentiment"] = ContainsAny(text, "ANGRY", "FRUSTRAT", "!!", "RIDICULOUS") ? "frustrated" : "neutral",
+            ["confidence"] = action == "other" ? 0.4 : 0.9,
+        });
+    }
+
+    private static bool ContainsAny(string text, params string[] words) =>
+        words.Any(word => text.Contains(word, StringComparison.Ordinal));
 
     public static ChatResponse Text(string text) =>
         WithUsage(new ChatResponse(new ChatMessage(ChatRole.Assistant, text)));

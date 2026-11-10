@@ -4,6 +4,7 @@ using Support.Api.Modules.Agents;
 using Support.Api.Modules.Conversations;
 using Support.Api.Modules.Identity;
 using Support.Api.Modules.Orders;
+using Support.Api.Modules.Triage;
 
 // Composition root only: each module registers its own services and maps its own endpoints.
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddOrdersModule();
+builder.Services.AddTriageModule();
 builder.Services.AddConversationsModule();
 builder.AddAgentsModule();
 

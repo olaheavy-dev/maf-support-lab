@@ -29,11 +29,19 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST localhost:5180/api/v1/conversat
 ```text
 POST /api/v1/conversations/{conversationId}/turns   Microsoft.AspNetCore   HTTP status, route
 └─ support.turn                                       Support.Api            conversation, client turn and turn ids; outcome; reply kind
-   └─ invoke_agent orders                             Support.Agents         agent name and id; run-total token usage (as attributes)
-      ├─ chat <model>                                 Support.Model          one per model call; that call's token usage
-      ├─ execute_tool get_order_status                Support.Agents         tool name and call id
-      └─ chat <model>                                 Support.Model
+   ├─ workflow.build                                  Support.Workflows      the routing workflow is built per turn (see below)
+   └─ workflow.session                                Support.Workflows
+      └─ invoke_workflow support-routing              Support.Workflows      gen_ai.workflow.name
+         ├─ executor.process triage                   Support.Workflows      the routing decision: support.triage.* (outcome, target, reason, action)
+         │  └─ invoke_agent triage → chat <model>     Support.Agents/Model   one JSON call (gen_ai.output.type=json)
+         └─ executor.process <selected executor>      Support.Workflows      orders-specialist, ask-for-order-id, billing-/technical-placeholder, or unrouted
+            └─ invoke_agent orders                    Support.Agents         only for orders-specialist
+               ├─ chat <model>                        Support.Model          one per model call; that call's token usage
+               ├─ execute_tool get_order_status       Support.Agents         tool name and call id
+               └─ chat <model>                        Support.Model
 ```
+
+The triage executor's span carries the routing decision. Its sibling, the selected executor's span, shows what ran because of it. A test checks this link for routed, ambiguous and invalid triage.
 
 On failure, every span from HTTP down to the failing call has error status. `support.turn` also carries `error.type` and an `exception` event.
 
@@ -63,10 +71,17 @@ There is **one** OpenTelemetry pipeline and **one** OTLP exporter, both in `Supp
 | Source / meter | Registered by | Emitted by | Signals |
 | --- | --- | --- | --- |
 | ASP.NET Core, HttpClient, runtime | `Support.ServiceDefaults` | framework instrumentation | HTTP server/client spans and `http.server.request.duration` (route, method, status); runtime metrics. `/health` and `/alive` are not traced. |
-| `Support.Api` | `Common/Infrastructure/Observability/SupportTelemetryRegistration` | `SubmitTurnCommandHandler`, `OrderStatusTool` | `support.turn` span; `support.turns`, `support.turn.duration`, `support.tool.calls` metrics |
+| `Support.Api` | `Common/Infrastructure/Observability/SupportTelemetryRegistration` | `SubmitTurnCommandHandler`, `OrderStatusTool`, `TriageExecutor` | `support.turn` span and `support.triage.*` tags; `support.turns`, `support.turn.duration`, `support.tool.calls`, `support.triage.decisions` metrics |
 | `Support.Agents` | `Modules/Agents/Infrastructure/Observability/AgentTelemetryRegistration` | MAF `OpenTelemetryAgent`, applied to **every** agent by `SupportAgents` | `invoke_agent` and `execute_tool` spans; whole-run `gen_ai.client.operation.duration` |
 | `Support.Model` | same | M.E.AI `OpenTelemetryChatClient`, wrapped around the provider client in `ModelProviderRegistration` | `chat` spans; per-call `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` |
+| `Support.Workflows` | same | MAF Workflows `WithOpenTelemetry`, in `SupportWorkflowRouter` (L07) | `invoke_workflow`, `executor.process`, edge and message spans; `workflow.build` per turn |
 | Logs (`ILogger`) | `Support.ServiceDefaults` | the handler (turn completed or failed), the tool (lookup outcome), framework categories | structured logs, automatically stamped with the trace and span id |
+
+**Workflow notes (MAF 1.28.0):**
+- Workflow spans use the 1.28.0 names: `invoke_workflow {name}` and `gen_ai.workflow.name`. The course predates them.
+- `WorkflowTelemetryOptions.EnableSensitiveData` is now an obsolete no-op, so it isn't set.
+- Because a fresh workflow is built per turn, every turn also has a `workflow.build` span. Its `workflow.definition` attribute describes the graph (executor ids and types), not customer data.
+- **The conversation id is not passed as OpenTelemetry baggage**, even though 1.28.0 reads `gen_ai.conversation.id` from it. .NET forwards Activity baggage as a `baggage` header on outgoing HTTP calls, which would send our conversation ids to the model provider. The id is on `support.turn` instead, which every workflow span sits under.
 
 **Why two AI sources?**
 - They keep the layers apart in Aspire: the whole agent run, and each model call within it.
@@ -89,9 +104,10 @@ The agent layer re-records the whole run's tokens in `gen_ai.client.token.usage`
 
 | Metric | Type | Labels (all bounded) |
 | --- | --- | --- |
-| `support.turns` | counter | `support.agent`, `support.turn.outcome` (`completed`, `failed`, `replayed`), `support.reply_kind` (`answer`, `not_found`, `clarification`, `none`) |
+| `support.turns` | counter | `support.agent` (route target, `unrouted`, or `unknown` on failure), `support.turn.outcome` (`completed`, `failed`, `replayed`), `support.reply_kind` (`answer`, `not_found`, `clarification`, `escalation_offer`, `none`) |
 | `support.turn.duration` (s) | histogram | `support.agent`, `support.turn.outcome` |
 | `support.tool.calls` | counter | `support.tool.name`, `support.tool.outcome` (`found`, `not_found`, `invalid_order_id`) |
+| `support.triage.decisions` | counter | `support.triage.outcome` (`routed`, `unrouted`), `support.triage.target` (`orders`, `billing`, `technical`, `none`), `support.triage.unrouted_reason` (`invalid_model_output`, `ambiguous_request`, `none`) |
 | `gen_ai.client.token.usage` | histogram | provider, model, `gen_ai.token.type` (`Support.Model` only) |
 | `gen_ai.client.operation.duration` (s) | histogram | provider, model, operation |
 | `http.server.request.duration` (s) | histogram | route template, method, status code |
@@ -117,9 +133,15 @@ Conversation, turn and trace ids are **never** metric labels: each new value wou
 
 ## Fake mode
 
-The fake model reports fixed token counts (100 input, 20 output per call), so the token and duration metrics have real samples without a Claude key. A message containing `[fake:model-error]` makes the fake model throw, which produces a failed turn to inspect. Neither affects Live mode.
+The fake model reports fixed token counts (100 input, 20 output per call), so the token and duration metrics have real samples without a Claude key. It also triages by keywords, returning contract JSON, so routing works offline.
+
+Markers, all in fake mode only:
+- `[fake:model-error]`: the specialist model throws, producing a failed turn.
+- `[fake:triage-malformed]`: triage returns text that isn't JSON.
+- `[fake:triage-unknown-route]`: triage names a target the contract doesn't allow.
+
+The last two both produce `unrouted / invalid_model_output`. None of the markers affect Live mode.
 
 ## Not yet covered
 
-- Workflow and triage spans arrive with routing in L07.
 - A failed turn currently returns a plain HTTP 500. Mapping it to the contract's failed turn result belongs with resilience work (L15).

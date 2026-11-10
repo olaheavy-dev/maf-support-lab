@@ -34,6 +34,10 @@ Support.Api/
    │  ├─ Application/         GetOrderStatus query + handler (ownership check); IOrderRepository
    │  ├─ Infrastructure/      FixtureOrderRepository (fixtures/data/orders.json), OrdersAgentFactory (the orders agent)
    │  └─ Presentation/        OrderStatusTool: the model's "endpoint"
+   ├─ Triage/                 (L07) every message is triaged, then routed by code
+   │  ├─ Domain/              TriageDecision, RouteTarget, RoutingRules (action must match target), TurnRoute, SupportReply
+   │  ├─ Application/         TriageDecisionParser (full contract validation), TriageOutcome, ISupportRouter, TriageMetrics
+   │  └─ Infrastructure/      TriageAgentFactory (JSON-only classifier, no tools); Routing/ (the MAF workflow and executors)
    ├─ Identity/               SupportPrincipal, IPrincipalSource, DevelopmentPrincipalSource, /dev/whoami
    └─ Agents/                 shared AI runtime, depends on no other module: SupportAgents (adds agent telemetry),
                               TurnActivity, ToolMetrics (Application); model provider, FakeChatClient, agent/model
@@ -133,13 +137,32 @@ The rules:
 - Someone else's conversation or turn returns `404 not_found`.
 - Re-sending a `client_turn_id` returns the original turn; reusing it with a different message returns `409`.
 
-Not yet implemented: triage (L07), the one-turn-at-a-time rule and conversation memory (L09), writes and approvals (L10), and streaming (L12). Until L07 every turn routes to `orders`.
+Not yet implemented: the one-turn-at-a-time rule and conversation memory (L09), writes and approvals (L10), and streaming (L12). Billing and technical are routed but answered by placeholders until L08 (see Routing).
 
 ```bash
 curl -s -X POST localhost:5180/api/v1/conversations -H 'content-type: application/json' -d '{}'
 curl -s -X POST localhost:5180/api/v1/conversations/<conversation_id>/turns -H 'content-type: application/json' \
   -d '{"client_turn_id":"'$(uuidgen)'","message":"Where is my order ORD-1002?"}'
 ```
+
+## Routing (L07)
+
+Every turn runs the `support-routing` workflow (MAF Workflows 1.28.0, built per turn):
+
+```text
+triage ─┬─ orders + an order-specific action, no order id ─▶ ask-for-order-id   (clarification, no model call)
+        ├─ orders                                          ─▶ orders-specialist  (the orders agent and its tool)
+        ├─ billing                                         ─▶ billing-placeholder    (escalation_offer, until L08)
+        ├─ technical                                       ─▶ technical-placeholder  (escalation_offer, until L08)
+        └─ default                                         ─▶ unrouted (clarification; route.status = unrouted)
+```
+
+**The model classifies; code decides:**
+- **Triage** is a JSON-only agent with no tools. Its output is validated against the **full** `contracts/schemas/triage-decision.schema.json`. A test keeps the C# validator in agreement with the schema on the contract examples and on edge cases.
+- **Invalid output** (not JSON, extra or missing fields, values outside the allowed sets) is `unrouted / invalid_model_output`.
+- **A valid answer can still be ambiguous.** If the action is `other`, or doesn't belong to the chosen target (e.g. `invoice` → `orders`), the result is `unrouted / ambiguous_request`.
+- **`confidence` is recorded on the triage span only.** It never affects routing: it is model-generated and uncalibrated.
+- **The specialist receives the original message**, alongside the validated fields. The customer stays in trusted server context, and the triage `order_id` is only a claim: ownership is still checked by the orders handler.
 
 ## Agents, tools, and the model boundary
 
@@ -163,7 +186,11 @@ export ANTHROPIC_API_KEY=...   # never commit it
 dotnet test --solution maf-support-lab.slnx -- --filter-trait "Category=Live" --explicit only
 ```
 
-This is one turn against `claude-haiku-5-5` (two model calls including the tool round trip). It never runs in CI or a plain `dotnet test`.
+These are two turns against `claude-haiku-5-5`:
+- an order question: triage plus the orders agent's tool round trip, three model calls;
+- an invoice question: triage only, which must route to billing.
+
+They never run in CI or a plain `dotnet test`.
 
 ## Who does what
 
