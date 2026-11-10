@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Support.Api.Common.Infrastructure.Observability;
 using Support.Api.Modules.Agents;
 using Support.Api.Modules.Conversations;
 using Support.Api.Modules.Identity;
@@ -8,6 +9,7 @@ using Support.Api.Modules.Orders;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.AddSupportTelemetry();
 
 // Contract convention: snake_case JSON (contracts/README.md).
 builder.Services.ConfigureHttpJsonOptions(options =>

@@ -20,7 +20,8 @@ Support.Api/
 ├─ Program.cs                 composition root: each module's Add…Module() and Map…Module()
 ├─ Common/
 │  ├─ Domain/                 Result, Error, ErrorType
-│  ├─ Application/            ICommand/IQuery + handler interfaces, TraceIds
+│  ├─ Application/            ICommand/IQuery + handler interfaces, TraceIds, SupportTelemetry (span/meter name)
+│  ├─ Infrastructure/         SupportTelemetryRegistration (subscribes the OTel pipeline, service version)
 │  └─ Presentation/           ContractJson, ApiResults (every problem response), Result.Match
 └─ Modules/
    ├─ Conversations/          the contract API
@@ -34,8 +35,9 @@ Support.Api/
    │  ├─ Infrastructure/      FixtureOrderRepository (fixtures/data/orders.json), OrdersAgentFactory (the orders agent)
    │  └─ Presentation/        OrderStatusTool: the model's "endpoint"
    ├─ Identity/               SupportPrincipal, IPrincipalSource, DevelopmentPrincipalSource, /dev/whoami
-   └─ Agents/                 shared AI runtime, depends on no other module: SupportAgents and TurnActivity (Application);
-                              model provider and FakeChatClient (Infrastructure); DevUI (Presentation)
+   └─ Agents/                 shared AI runtime, depends on no other module: SupportAgents (adds agent telemetry),
+                              TurnActivity, ToolMetrics (Application); model provider, FakeChatClient, agent/model
+                              telemetry registration (Infrastructure); DevUI (Presentation)
 ```
 
 | Layer | Holds | Must not use |
@@ -98,6 +100,18 @@ ModelProvider__Mode=Live dotnet run --project src/dotnet/Support.Api
 
 In Live mode with a missing model or key, the API refuses to start and names the missing setting. Error messages never include configured values. The `model-provider` health check reports the mode, never a secret.
 
+## Observability
+
+Traces, metrics, and structured logs go to the Aspire dashboard over OTLP. Each turn is one trace:
+- HTTP;
+- `support.turn`;
+- `invoke_agent`;
+- model `chat` calls and `execute_tool`.
+
+The turn result's `trace_id` finds it. Token usage is counted once, and metric labels are bounded. Message text and customer ids stay out of telemetry unless `Telemetry:CaptureSensitiveData=true` (local debugging only).
+
+In fake mode, a message containing `[fake:model-error]` produces a failed turn to inspect. Details, sources, and ownership: [docs/observability.md](../../docs/observability.md).
+
 ## Identity
 
 - The API gets the customer **only** from `IPrincipalSource`.
@@ -138,7 +152,7 @@ curl -s -X POST localhost:5180/api/v1/conversations/<conversation_id>/turns -H '
 
 ## DevUI (Development only)
 
-Run the API and open `http://localhost:5180/devui/` to chat with the `orders` agent and inspect its tool calls. DevUI and its OpenAI-compatible `/v1/responses` and `/v1/entities` endpoints are mapped only in Development, and they use the same agent instance as the API.
+Run the API (or the AppHost, where the `support-api-dotnet` resource shows a **DevUI** link) and open `http://localhost:5180/devui/` to chat with the `orders` agent and inspect its tool calls. DevUI and its OpenAI-compatible `/v1/responses` and `/v1/entities` endpoints are mapped only in Development, and they use the same agent instance as the API.
 
 DevUI's built-in guard admits only loopback callers with a localhost `Host` header. It applies to any path containing the segments `/v1/responses` or `/v1/conversations`, **which includes our `/api/v1/conversations` routes in Development**. Local use is unaffected. A proxy that forwards a non-localhost `Host` (relevant to L23) must preserve a loopback host in Development.
 

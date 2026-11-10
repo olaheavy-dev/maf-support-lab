@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Support.Api.Modules.Agents.Application;
 using Support.Api.Modules.Agents.Infrastructure.ModelProvider;
+using Support.Api.Modules.Agents.Infrastructure.Observability;
 using Support.Api.Modules.Agents.Presentation;
 
 namespace Support.Api.Modules.Agents;
@@ -13,6 +14,9 @@ internal static class AgentsModule
 {
     public static WebApplicationBuilder AddAgentsModule(this WebApplicationBuilder builder)
     {
+        builder.Services.AddOptions<AgentTelemetryOptions>().Bind(builder.Configuration.GetSection(AgentTelemetryOptions.SectionName));
+        builder.Services.AddAgentTelemetry();
+        builder.Services.AddSingleton<ToolMetrics>();
         builder.Services.AddModelProvider(builder.Configuration);
         // Feature modules (Orders today) register their own SupportAgent; this only collects them.
         builder.Services.AddSingleton<SupportAgents>();

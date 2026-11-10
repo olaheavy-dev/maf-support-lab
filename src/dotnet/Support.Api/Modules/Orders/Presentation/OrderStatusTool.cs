@@ -14,7 +14,10 @@ namespace Support.Api.Modules.Orders.Presentation;
 /// The only order capability the model gets: the model's "endpoint" into the Orders module. The model supplies an
 /// order id and nothing else (no customer id, no confirmation). Ownership is decided by the query handler.
 /// </summary>
-public sealed class OrderStatusTool(IQueryHandler<GetOrderStatusQuery, Order> getOrderStatus)
+public sealed partial class OrderStatusTool(
+    IQueryHandler<GetOrderStatusQuery, Order> getOrderStatus,
+    ToolMetrics metrics,
+    ILogger<OrderStatusTool> logger)
 {
     public const string Name = "get_order_status";
 
@@ -27,7 +30,7 @@ public sealed class OrderStatusTool(IQueryHandler<GetOrderStatusQuery, Order> ge
     {
         var result = await getOrderStatus.Handle(new GetOrderStatusQuery(orderId), cancellationToken).ConfigureAwait(false);
         return result.Match(
-            order => Record(OrderLookupOutcome.Found, new OrderStatusResult(
+            order => Record(OrderLookupOutcome.Found, "found", new OrderStatusResult(
                 "found",
                 order.OrderId,
                 order.Status,
@@ -36,14 +39,26 @@ public sealed class OrderStatusTool(IQueryHandler<GetOrderStatusQuery, Order> ge
                 order.DeliveredAt,
                 [.. order.Items.Select(item => item.Name)])),
             error => error == OrderErrors.InvalidOrderId
-                ? Record(OrderLookupOutcome.InvalidOrderId, new OrderStatusResult("invalid_order_id", null, null, null, null, null, null))
-                : Record(OrderLookupOutcome.NotFound, new OrderStatusResult("not_found", OrderId.Normalize(orderId), null, null, null, null, null)));
+                ? Record(OrderLookupOutcome.InvalidOrderId, "invalid_order_id", new OrderStatusResult("invalid_order_id", null, null, null, null, null, null))
+                : Record(OrderLookupOutcome.NotFound, "not_found", new OrderStatusResult("not_found", OrderId.Normalize(orderId), null, null, null, null, null)));
     }
 
-    private static OrderStatusResult Record(OrderLookupOutcome outcome, OrderStatusResult result)
+    /// <summary>
+    /// Records the outcome three ways: for the turn's reply kind (TurnActivity), as a bounded metric, and as a log line.
+    /// The order id is not logged: it is model-controlled input, and the execute_tool span already shows the call.
+    /// </summary>
+    private OrderStatusResult Record(OrderLookupOutcome outcome, string outcomeName, OrderStatusResult result)
     {
         TurnActivity.Current?.RecordOrderLookup(outcome);
+        metrics.Record(Name, outcomeName);
+        Log.LookupFinished(logger, Name, outcomeName);
         return result;
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(Level = LogLevel.Information, Message = "Tool {Tool} finished with outcome {Outcome}")]
+        public static partial void LookupFinished(ILogger logger, string tool, string outcome);
     }
 }
 
