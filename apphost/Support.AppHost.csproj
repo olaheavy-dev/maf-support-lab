@@ -1,0 +1,15 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.4">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>maf-support-lab-apphost</UserSecretsId>
+    <!-- Keep the dashboard and orchestrator as NuGet packages so a clean checkout and CI run without
+         the Aspire CLI installed. ASPIRE010 only notes that CLI-bundle-only features are off. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\dotnet\Support.Api\Support.Api.csproj" />
+  </ItemGroup>
+
+</Project>

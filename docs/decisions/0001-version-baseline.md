@@ -83,7 +83,7 @@ The audit in `docs/course-audit.md` is confirmed:
 
 | Ticket | Check |
 | --- | --- |
-| L03 | Clean restore/build on SDK 10.0.403 with the selected packages, including Anthropic 13.7.0 against MAF 1.28.0; fake-mode startup through AppHost 13.6.4 without a key. |
+| L03 | **Done:** clean restore/build on SDK 10.0.403; Anthropic 13.7.0 runs with MAF 1.28.0 (`DependencyCompatibilityTests`); fake-mode startup through AppHost 13.6.4 without a key. |
 | L04 | Locked restore (`packages.lock.json`), central package versions, CI builds and tests offline. |
 | L05 | Agent + tool call through the Anthropic `IChatClient` with the fake client; one opt-in live smoke check on `claude-haiku-5-5`; DevUI prerelease runs in Development only. |
 | L07 | .NET structured triage output with Claude; record any fallback. |

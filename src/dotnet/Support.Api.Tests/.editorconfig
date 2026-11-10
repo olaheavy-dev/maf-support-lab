@@ -1,0 +1,3 @@
+# Test names read as sentences (Fake_mode_starts_without_a_key), so underscores are allowed here only.
+[*.cs]
+dotnet_diagnostic.CA1707.severity = none
