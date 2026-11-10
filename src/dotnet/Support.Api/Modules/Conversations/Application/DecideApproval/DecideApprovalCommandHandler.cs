@@ -118,7 +118,16 @@ internal sealed partial class DecideApprovalCommandHandler(
             {
                 using (PrincipalScope.Begin(caller))
                 {
-                    await ResumeAsync(conversation, key, reservation, decided, recordedEarlier, command).ConfigureAwait(false);
+                    try
+                    {
+                        await ResumeAsync(conversation, key, reservation, decided, recordedEarlier, command).ConfigureAwait(false);
+                    }
+                    catch (Exception error) when (!reservation.Completion.Task.IsCompleted)
+                    {
+                        // A failure before the run's own handlers (for example while setting up its limits) must
+                        // still release the turn: otherwise the request waits forever (Codex review on PR #81).
+                        conversation.Abandon(key, reservation, error);
+                    }
                 }
             },
             CancellationToken.None);

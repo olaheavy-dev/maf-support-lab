@@ -29,3 +29,32 @@ public sealed class ResilienceOptions
     /// <summary>Output cap per model call.</summary>
     public int MaxOutputTokens { get; set; } = 1024;
 }
+
+/// <summary>
+/// Refuses to start with limits that would break or unbound a turn (Codex review on PR #81): every limit must be
+/// positive (retries may be zero) and within a sane maximum, so a deadline can always be created.
+/// </summary>
+internal sealed class ResilienceOptionsValidator : Microsoft.Extensions.Options.IValidateOptions<ResilienceOptions>
+{
+    public Microsoft.Extensions.Options.ValidateOptionsResult Validate(string? name, ResilienceOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        List<string> failures = [];
+        Check(options.TurnTimeoutSeconds, 1, 3600, nameof(options.TurnTimeoutSeconds));
+        Check(options.MaxModelCallsPerTurn, 1, 100, nameof(options.MaxModelCallsPerTurn));
+        Check(options.MaxToolIterations, 1, 50, nameof(options.MaxToolIterations));
+        Check(options.ToolTimeoutSeconds, 1, 600, nameof(options.ToolTimeoutSeconds));
+        Check(options.ModelMaxRetries, 0, 10, nameof(options.ModelMaxRetries));
+        Check(options.ModelAttemptTimeoutSeconds, 1, 600, nameof(options.ModelAttemptTimeoutSeconds));
+        Check(options.MaxOutputTokens, 1, 64000, nameof(options.MaxOutputTokens));
+        return failures.Count == 0 ? Microsoft.Extensions.Options.ValidateOptionsResult.Success : Microsoft.Extensions.Options.ValidateOptionsResult.Fail(failures);
+
+        void Check(int value, int min, int max, string setting)
+        {
+            if (value < min || value > max)
+            {
+                failures.Add($"{ResilienceOptions.SectionName}:{setting} must be between {min} and {max} (was {value}).");
+            }
+        }
+    }
+}

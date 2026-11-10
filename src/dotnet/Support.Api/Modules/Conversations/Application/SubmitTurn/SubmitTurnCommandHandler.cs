@@ -83,7 +83,16 @@ internal sealed partial class SubmitTurnCommandHandler(
             {
                 using (PrincipalScope.Begin(caller))
                 {
-                    await ExecuteAsync(conversation, reservation, command).ConfigureAwait(false);
+                    try
+                    {
+                        await ExecuteAsync(conversation, reservation, command).ConfigureAwait(false);
+                    }
+                    catch (Exception error) when (!reservation.Completion.Task.IsCompleted)
+                    {
+                        // A failure before the run's own handlers (for example while setting up its limits) must
+                        // still release the turn: otherwise the request waits forever (Codex review on PR #81).
+                        conversation.Abandon(command.ClientTurnId, reservation, error);
+                    }
                 }
             },
             CancellationToken.None);

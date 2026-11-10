@@ -196,6 +196,48 @@ public sealed class ResilienceTests
         Assert.Equal("timeout", turn.GetProperty("error").GetProperty("code").GetString());
     }
 
+    [Theory]
+    [InlineData("Resilience:TurnTimeoutSeconds", "-1")]
+    [InlineData("Resilience:TurnTimeoutSeconds", "99999999")]
+    [InlineData("Resilience:MaxModelCallsPerTurn", "0")]
+    [InlineData("Resilience:ModelMaxRetries", "-1")]
+    public async Task Limits_that_would_break_or_unbound_a_turn_are_refused_at_startup(string setting, string value)
+    {
+        // Codex review on PR #81: an impossible deadline must stop the app at startup, not fault a turn later.
+        await using var factory = SupportApiFactory.Create(settings: new Dictionary<string, string?> { [setting] = value });
+
+        var error = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains(setting.Split(':')[1], error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_failure_while_a_turn_sets_up_its_limits_releases_the_conversation()
+    {
+        // Codex review on PR #81: anything that fails before the run's own handlers must not leave the turn reserved.
+        var timers = new FailingTimers();
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001", configureServices: services =>
+            services.Replace(ServiceDescriptor.Singleton<TimeProvider>(timers)));
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+
+        timers.Fail = true; // the turn deadline's timer cannot be created
+        HttpStatusCode status;
+        using (var response = await factory.CreateClient().PostAsync(
+            new Uri($"/api/v1/conversations/{conversation}/turns", UriKind.Relative),
+            System.Net.Http.Json.JsonContent.Create(new { client_turn_id = Guid.NewGuid().ToString(), message = "Where is my order ORD-1002?" }),
+            TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken))
+        {
+            status = response.StatusCode; // a 500 body is the developer error page, not JSON
+        }
+
+        timers.Fail = false;
+
+        Assert.Equal(HttpStatusCode.InternalServerError, status);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, (await api.GetConversationAsync(conversation)).GetProperty("active_turn_id").ValueKind);
+        Assert.Equal("completed", (await api.AskAsync(conversation, "Where is my order ORD-1002?")).GetProperty("outcome").GetString());
+    }
+
     private static WebApplicationFactory<Program> LiveOverFakeHttp(FakeAnthropicHttp http, Dictionary<string, string?>? extra = null)
     {
         var settings = new Dictionary<string, string?>
@@ -211,6 +253,15 @@ public sealed class ResilienceTests
 
         return SupportApiFactory.Create(settings: settings, principal: "CUST-1001", configureServices: services =>
             services.AddKeyedSingleton<HttpMessageHandler>(ModelProviderRegistration.ProviderHttpHandlerKey, http));
+    }
+
+    /// <summary>The system clock, except that creating a timer can be made to fail.</summary>
+    private sealed class FailingTimers : TimeProvider
+    {
+        public volatile bool Fail;
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
+            Fail ? throw new InvalidOperationException("Simulated timer failure.") : System.CreateTimer(callback, state, dueTime, period);
     }
 
     /// <summary>An order lookup that never answers (until cancelled).</summary>

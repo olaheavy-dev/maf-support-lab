@@ -22,7 +22,8 @@ internal static class ModelProviderRegistration
 
     public static IServiceCollection AddModelProvider(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddOptions<ResilienceOptions>().Bind(configuration.GetSection(ResilienceOptions.SectionName));
+        services.AddOptions<ResilienceOptions>().Bind(configuration.GetSection(ResilienceOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<ResilienceOptions>, ResilienceOptionsValidator>();
         services.AddOptions<ModelProviderOptions>()
             .Bind(configuration.GetSection(ModelProviderOptions.SectionName))
             .PostConfigure(options =>
