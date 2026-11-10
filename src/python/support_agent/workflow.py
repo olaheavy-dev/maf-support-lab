@@ -1,7 +1,6 @@
 """The support workflow (MAF Workflows, L18, porting L07/L08): triage, then a deterministic switch to one executor.
 
     triage ─┬─ orders, no order id     ─▶ ask-for-order-id
-            ├─ cancel/refund/ticket    ─▶ write-not-available   (no write tools until L37)
             ├─ orders                  ─▶ orders-specialist
             ├─ billing                 ─▶ billing-specialist
             ├─ technical               ─▶ technical-specialist
@@ -31,15 +30,14 @@ from agent_framework import (
 
 from support_agent.activity import begin_activity
 from support_agent.agents import SPECIALISTS, SupportAgents
+from support_agent.approval_gate import gate
+from support_agent.operations import OperationService
 from support_agent.routing import TriageDecision, TriageOutcome, TurnRoute, UnroutedReason, parse, route
 from support_agent.sessions import ConversationContext, ConversationSessions, context_note
 
 WORKFLOW_NAME = "support-routing"
 ASK_FOR_ORDER_ID = "Which order do you mean? Please share the order id, for example ORD-1234."
 UNROUTED = "I'm not sure what you need. Is this about an order, billing, or a technical problem?"
-WRITE_NOT_AVAILABLE = (
-    "I can't make changes like that here yet. Nothing has been changed. I can pass this to a human support agent."
-)
 FALLBACK = "Sorry, I couldn't produce an answer. Please try again."
 
 
@@ -49,6 +47,7 @@ class RoutingRequest:
     conversation_id: str | None = None
     context: ConversationContext = field(default_factory=ConversationContext)
     sessions: ConversationSessions | None = None  # None: stateless (DevUI workflow chats)
+    turn_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +56,8 @@ class SupportReply:
     kind: str
     text: str
     verified_order_id: str | None = None
+    pending_operation_id: str | None = None
+    operation_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +92,13 @@ class TriageExecutor(Executor):
         response = await self._agents.triage.run(messages, options={"response_format": TriageDecision})
         decision = parse(response.text)  # the model's output is untrusted until it passes the full schema
         outcome = TriageOutcome(
-            request.message, decision, route(decision), request.conversation_id, request.context, request.sessions
+            request.message,
+            decision,
+            route(decision),
+            request.conversation_id,
+            request.context,
+            request.sessions,
+            request.turn_id,
         )
         await ctx.add_event(progress("routed", route=outcome.route.to_contract()))
         await ctx.send_message(outcome)
@@ -104,17 +111,6 @@ class AskForOrderIdExecutor(Executor):
     @handler
     async def ask(self, outcome: TriageOutcome, ctx: WorkflowContext[SupportReply]) -> None:
         await ctx.send_message(SupportReply(outcome.route, "clarification", ASK_FOR_ORDER_ID))
-
-
-class WriteNotAvailableExecutor(Executor):
-    """Cancel, refund, and ticket requests: no write tool exists until the approval gate (L37). No model call."""
-
-    def __init__(self) -> None:
-        super().__init__(id="write-not-available")
-
-    @handler
-    async def decline(self, outcome: TriageOutcome, ctx: WorkflowContext[SupportReply]) -> None:
-        await ctx.send_message(SupportReply(outcome.route, "escalation_offer", WRITE_NOT_AVAILABLE))
 
 
 class UnroutedExecutor(Executor):
@@ -134,9 +130,10 @@ class UnroutedExecutor(Executor):
 class SpecialistExecutor(Executor):
     """Runs the routed specialist on the customer's original message (never a model-written summary)."""
 
-    def __init__(self, agents: SupportAgents, target: str) -> None:
+    def __init__(self, agents: SupportAgents, operations: OperationService, target: str) -> None:
         super().__init__(id=f"{target}-specialist")
         self._agents = agents
+        self._operations = operations
         self._target = target
 
     @handler
@@ -156,9 +153,32 @@ class SpecialistExecutor(Executor):
             )
         with begin_activity() as activity:
             response = await agent.run(messages, session=session)
+            # A write tool pauses natively for approval; the gate binds it to an operation or declines it (L37).
+            gated = await gate(agent, session, response, outcome, self._target, self._operations)
+        verified = activity.verified_order_id
+        if gated.proposed is not None:
+            operation = gated.proposed
+            await ctx.add_event(progress("awaiting_approval"))
+            text = f"I can do this for you: {operation.summary} Please approve or reject."
+            await ctx.send_message(
+                SupportReply(
+                    outcome.route, "approval_request", text, verified, operation.operation_id, (operation.operation_id,)
+                )
+            )
+            return
+        if gated.declined_code in ("not_eligible", "not_found"):
+            # A declined write: the factual reason, written by code (never inferred from the model's wording).
+            text = (
+                f"I can't do that: {gated.declined_reason} Nothing has been changed."
+                if gated.declined_code == "not_eligible"
+                else "I couldn't find that order on your account, so nothing has been changed."
+            )
+            await ctx.send_message(SupportReply(outcome.route, gated.declined_code, text, verified))
+            return
+        reply = gated.response.text.strip() or FALLBACK
         # The reply kind comes from what the tools recorded, not from the model's wording.
-        reply = response.text.strip() or FALLBACK
-        await ctx.send_message(SupportReply(outcome.route, activity.reply_kind(), reply, activity.verified_order_id))
+        kind = "clarification" if gated.declined_code else activity.reply_kind()
+        await ctx.send_message(SupportReply(outcome.route, kind, reply, verified))
 
 
 class ReplyExecutor(Executor):
@@ -195,12 +215,11 @@ class ChatReplyExecutor(Executor):
         await ctx.yield_output(f"[route: {where} | reply: {reply.kind}]\n{reply.text}")
 
 
-def build_workflow(agents: SupportAgents, *, for_chat: bool = False) -> Workflow:
+def build_workflow(agents: SupportAgents, operations: OperationService, *, for_chat: bool = False) -> Workflow:
     triage = TriageExecutor(agents)
     ask = AskForOrderIdExecutor()
-    write = WriteNotAvailableExecutor()
     unrouted = UnroutedExecutor()
-    specialists = {target: SpecialistExecutor(agents, target) for target in SPECIALISTS}
+    specialists = {target: SpecialistExecutor(agents, operations, target) for target in SPECIALISTS}
     reply: Executor = ChatReplyExecutor() if for_chat else ReplyExecutor()
     start: Executor = ChatInputExecutor() if for_chat else triage
 
@@ -212,7 +231,7 @@ def build_workflow(agents: SupportAgents, *, for_chat: bool = False) -> Workflow
 
     builder = WorkflowBuilder(
         name=WORKFLOW_NAME,
-        description="Triage, then one read-only specialist (or a clarification).",
+        description="Triage, then one specialist (reads, or one approval-gated write), or a clarification.",
         start_executor=start,
         output_from=[reply],
     )
@@ -222,11 +241,10 @@ def build_workflow(agents: SupportAgents, *, for_chat: bool = False) -> Workflow
         triage,
         [
             Case(lambda outcome: isinstance(outcome, TriageOutcome) and outcome.is_missing_order_id, ask),
-            Case(lambda outcome: isinstance(outcome, TriageOutcome) and outcome.is_write, write),
             *(Case(routed_to(target), executor) for target, executor in specialists.items()),
             Default(unrouted),
         ],
     )
-    for ending in (ask, write, unrouted, *specialists.values()):
+    for ending in (ask, unrouted, *specialists.values()):
         builder.add_edge(ending, reply)
     return builder.build()

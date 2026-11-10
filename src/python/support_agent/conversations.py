@@ -15,6 +15,7 @@ from enum import StrEnum
 from typing import Any
 
 from support_agent.identity import Principal
+from support_agent.operations import OperationStore, Status
 from support_agent.routing import TurnRoute
 from support_agent.sessions import ConversationContext, ConversationSessions
 
@@ -37,7 +38,7 @@ class TurnError:
 class Turn:
     conversation_id: str
     turn_id: str
-    client_turn_id: str
+    client_turn_id: str | None  # None for a turn that resumed after an approval decision
     route: TurnRoute | None
     reply_kind: str | None
     reply_text: str | None
@@ -46,8 +47,13 @@ class Turn:
     finished_at: datetime
     outcome: str = "completed"
     error: TurnError | None = None
+    pending_operation_id: str | None = None
+    operation_ids: tuple[str, ...] = ()
+    resumed_from_turn_id: str | None = None
 
-    def to_contract(self, contract_version: str) -> dict[str, Any]:
+    def to_contract(self, contract_version: str, operations: OperationStore) -> dict[str, Any]:
+        """The turn with each operation's *current* status (the authoritative record)."""
+        touched = [op for op in (operations.find(op_id) for op_id in self.operation_ids) if op is not None]
         body: dict[str, Any] = {
             "contract_version": contract_version,
             "conversation_id": self.conversation_id,
@@ -55,7 +61,7 @@ class Turn:
             "client_turn_id": self.client_turn_id,
             "state": "finished",
             "outcome": self.outcome,
-            "operations": [],
+            "operations": [op.summary_contract() for op in touched],
             "trace_id": self.trace_id,
             "created_at": _timestamp(self.created_at),
             "finished_at": _timestamp(self.finished_at),
@@ -66,6 +72,14 @@ class Turn:
             body["reply"] = {"kind": self.reply_kind, "text": self.reply_text}
         if self.error is not None:
             body["error"] = {"code": self.error.code, "detail": self.error.detail}
+        if self.resumed_from_turn_id is not None:
+            body["resumed_from_turn_id"] = self.resumed_from_turn_id
+        if (
+            self.outcome == "awaiting_approval"
+            and self.pending_operation_id
+            and (pending := operations.find(self.pending_operation_id))
+        ):
+            body["pending_approval"] = pending.pending_approval()
         return body
 
 
@@ -84,7 +98,7 @@ class Claim:
     turn_id: str
     message: str
     done: asyncio.Future[Turn]
-    client_turn_id: str = ""
+    client_turn_id: str | None = None
     started_at: datetime = field(default_factory=now)
     trace_id: str = ""
 
@@ -126,7 +140,9 @@ class Conversation:
             new_id("turn_"),
             message,
             asyncio.get_running_loop().create_future(),
-            client_turn_id,
+            None
+            if client_turn_id.startswith("approval:")
+            else client_turn_id,  # a decision's turn has no client_turn_id
             now(),
             secrets.token_hex(16),
         )
@@ -149,14 +165,28 @@ class Conversation:
             return None
         return next((claim for claim in self.claims.values() if claim.turn_id == turn_id), None)
 
-    def to_contract(self, contract_version: str, backend: str) -> dict[str, Any]:
+    def abandon(self, key: str, claim: Claim) -> None:
+        """Releases a claim that never produced a turn (for example a decision that could not be recorded)."""
+        if self.claims.get(key.lower()) is claim:
+            del self.claims[key.lower()]
+        if self.active_turn_id == claim.turn_id:
+            self.active_turn_id = None
+
+    def to_contract(self, contract_version: str, backend: str, operations: OperationStore) -> dict[str, Any]:
+        """The conversation with its approvals still awaiting a decision (expired ones are marked and left out)."""
+        at = datetime.now(UTC)
+        pending = [
+            op.pending_approval()
+            for op in operations.for_conversation(self.conversation_id)
+            if not op.expire_if_due(at) and op.status is Status.AWAITING_APPROVAL and op.source_turn_id in self.turns
+        ]
         return {
             "contract_version": contract_version,
             "conversation_id": self.conversation_id,
             "backend": backend,
             "created_at": _timestamp(self.created_at),
             "active_turn_id": self.active_turn_id,
-            "pending_approvals": [],
+            "pending_approvals": pending,
         }
 
 

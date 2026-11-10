@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from support_agent.domain import Invoice, KnowledgeArticle, Order, Payment
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal
+from support_agent.state import SimulatedState
 
 ORDER_ID = re.compile(r"^ORD-[0-9]{4}$")
 INVOICE_ID = re.compile(r"^INV-[0-9]{4}$")
@@ -30,33 +31,33 @@ class InvalidReferenceError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class OrderService:
-    fixtures: Fixtures
+    state: SimulatedState
 
     def order_status(self, principal: Principal, order_id: str) -> Order | None:
         normalized = normalize(order_id)
         if not ORDER_ID.match(normalized):
             raise InvalidReferenceError(order_id)
-        order = self.fixtures.orders.get(normalized)
+        order = self.state.orders.get(normalized)
         return order if order is not None and order.customer_id == principal.customer_id else None
 
 
 @dataclass(frozen=True, slots=True)
 class BillingService:
-    fixtures: Fixtures
+    state: SimulatedState
 
     def invoice(self, principal: Principal, reference: str) -> Invoice | None:
         """An invoice by its own id (INV-1234) or by its order (ORD-1234); only the caller's own."""
         normalized = normalize(reference)
         if INVOICE_ID.match(normalized):
-            found = next((invoice for invoice in self.fixtures.invoices if invoice.invoice_id == normalized), None)
+            found = next((invoice for invoice in self.state.invoices if invoice.invoice_id == normalized), None)
         elif ORDER_ID.match(normalized):
-            found = next((invoice for invoice in self.fixtures.invoices if invoice.order_id == normalized), None)
+            found = next((invoice for invoice in self.state.invoices if invoice.order_id == normalized), None)
         else:
             raise InvalidReferenceError(reference)
         return found if found is not None and found.customer_id == principal.customer_id else None
 
     def payment_history(self, principal: Principal) -> list[Payment]:
-        payments = [payment for payment in self.fixtures.payments if payment.customer_id == principal.customer_id]
+        payments = [payment for payment in self.state.payments if payment.customer_id == principal.customer_id]
         return sorted(payments, key=lambda payment: payment.paid_at, reverse=True)
 
 
@@ -80,7 +81,10 @@ class Services:
     orders: OrderService
     billing: BillingService
     knowledge: KnowledgeService
+    state: SimulatedState
 
     @classmethod
     def from_fixtures(cls, fixtures: Fixtures) -> Services:
-        return cls(OrderService(fixtures), BillingService(fixtures), KnowledgeService(fixtures))
+        """Fresh simulated state per host (per test), copied from the fixtures."""
+        state = SimulatedState.from_fixtures(fixtures)
+        return cls(OrderService(state), BillingService(state), KnowledgeService(fixtures), state)

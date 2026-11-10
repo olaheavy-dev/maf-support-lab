@@ -20,6 +20,7 @@ from support_agent.dependencies import get_principal, get_principal_source, get_
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal, principal_source_for
 from support_agent.model_provider import create_client
+from support_agent.operations import build_operations
 from support_agent.resources import Resources
 from support_agent.services import Services
 from support_agent.settings import Environment, Settings
@@ -46,9 +47,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     client = create_client(settings)
     resources.own("model client", _closer(client))
     app.state.services = Services.from_fixtures(Fixtures.load())
-    app.state.agents = create_agents(client, app.state.services)
+    app.state.operations = build_operations(app.state.services.state)
+    app.state.agents = create_agents(client, app.state.services, app.state.operations)
     app.state.conversations = ConversationStore()
-    app.include_router(create_router(app.state.conversations, app.state.agents))
+    app.include_router(create_router(app.state.conversations, app.state.agents, app.state.operations))
 
     @app.get("/health", response_class=PlainTextResponse)
     def health(current: Annotated[Settings, Depends(get_settings)]) -> str:

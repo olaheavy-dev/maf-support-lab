@@ -84,6 +84,7 @@ class TriageOutcome:
     conversation_id: str | None = None
     context: ConversationContext = field(default_factory=ConversationContext)
     sessions: ConversationSessions | None = None
+    turn_id: str | None = None
 
     @property
     def action(self) -> str | None:

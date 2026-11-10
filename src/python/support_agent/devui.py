@@ -15,6 +15,7 @@ from support_agent.agents import create_agents
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal, set_process_principal
 from support_agent.model_provider import create_client
+from support_agent.operations import build_operations
 from support_agent.services import Services
 from support_agent.settings import Environment, Settings
 from support_agent.workflow import build_workflow
@@ -25,8 +26,10 @@ def entities(settings: Settings) -> list[Any]:
     if settings.app_environment is not Environment.DEVELOPMENT or not settings.identity.development_customer_id:
         raise RuntimeError("DevUI is only available in development.")
     set_process_principal(Principal(settings.identity.development_customer_id))
-    agents = create_agents(create_client(settings), Services.from_fixtures(Fixtures.load()))
-    return [*agents.specialists.values(), build_workflow(agents, for_chat=True)]
+    services = Services.from_fixtures(Fixtures.load())
+    operations = build_operations(services.state)
+    agents = create_agents(create_client(settings), services, operations)
+    return [*agents.specialists.values(), build_workflow(agents, operations, for_chat=True)]
 
 
 def main() -> None:

@@ -12,6 +12,7 @@ from support_agent.agents import SPECIALISTS, create_agents
 from support_agent.fake_model import FakeChatClient
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal, pinned, set_process_principal
+from support_agent.operations import build_operations
 from support_agent.services import Services
 from support_agent.tools import billing_tools, order_tools, technical_tools
 
@@ -75,18 +76,28 @@ def test_no_tool_takes_a_customer_id_or_a_confirmation() -> None:
         assert not {name for name in parameters if "customer" in name or "confirm" in name}, tool.name
 
 
-def test_the_agents_have_only_read_tools_and_triage_has_none() -> None:
-    agents = create_agents(FakeChatClient(), SERVICES)
+def test_each_specialist_has_its_reads_and_one_approval_gated_write_and_triage_has_none() -> None:
+    agents = create_agents(FakeChatClient(), SERVICES, build_operations(SERVICES.state))
     tools: dict[str, list[str]] = {
         name: tool_names(agents.specialist(name).default_options.get("tools")) for name in SPECIALISTS
     }
     assert tools == {
-        "orders": ["get_order_status"],
-        "billing": ["get_invoice", "get_payment_history"],
-        "technical": ["search_knowledge_base"],
+        "orders": ["get_order_status", "cancel_order"],
+        "billing": ["get_invoice", "get_payment_history", "refund_order"],
+        "technical": ["search_knowledge_base", "create_ticket"],
     }
     assert not agents.triage.default_options.get("tools")
-    assert not [name for names in tools.values() for name in names if WRITE_VERBS.search(name)]
+    every = [
+        tool
+        for name in SPECIALISTS
+        for tool in cast(list[Any], agents.specialist(name).default_options.get("tools") or [])
+    ]
+    writes = [tool for tool in every if WRITE_VERBS.search(str(getattr(tool, "name", "")))]
+    reads = [tool for tool in every if tool not in writes]
+    # Every write needs the customer's approval (L37); no read does.
+    assert [str(getattr(tool, "name", "")) for tool in writes] == ["cancel_order", "refund_order", "create_ticket"]
+    assert all(getattr(tool, "approval_mode", None) == "always_require" for tool in writes)
+    assert all(getattr(tool, "approval_mode", None) != "always_require" for tool in reads)
 
 
 def tool_names(tools: Any) -> list[str]:

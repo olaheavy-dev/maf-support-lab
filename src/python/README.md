@@ -2,13 +2,13 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L19): the host, read-only agents, and per-conversation sessions.
+Status (L37): the host, agents, per-conversation sessions, and approval-gated writes.
 - **Read-only agents:** triage plus the orders, billing and technical specialists.
 - **The routing workflow:** `support-routing`.
 - **The version-1 contract API** for conversations and turns (JSON).
 - **Python DevUI** (development only).
 
-There are no tools that change anything; writes arrive with the approval gate (L37). Durable state comes in L38.
+Each specialist has one write tool (cancel, refund, ticket) that needs the customer's approval of the exact action. Durable state and atomic duplicate protection come in L38.
 
 ## How it fits together
 
@@ -24,6 +24,7 @@ There are no tools that change anything; writes arrive with the approval gate (L
 | `api.py`, `conversations.py` | The contract API: schema-validated requests, the same 404 for foreign or missing, `client_turn_id` replay, `failed` results |
 | `fake_model.py`, `model_provider.py` | A deterministic fake model on MAF's real chat-client layers; Claude in live mode |
 | `devui.py` | Development-only DevUI process over the same agents and services |
+| `operations.py`, `write_tools.py`, `approval_gate.py`, `policy.py`, `state.py` | Bound approvals: operations, the approval-required write tools, the gate that turns a native approval request into an operation (or declines it), the eligibility rules, and the simulated state the writes change |
 | `sessions.py` | Per-conversation native `AgentSession`s, `BoundedHistory` (12 plain messages; no tool traffic or notes), and the verified `ConversationContext` |
 
 ## Conversation memory (L19)
@@ -53,6 +54,23 @@ APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run p
 ## Run it with Aspire
 
 `aspire start --apphost apphost/Support.AppHost.csproj` starts both backends. The AppHost runs `uv sync --locked` for this project, then starts Uvicorn with `support_agent.app:app`. It sets `APP_ENVIRONMENT=development` and the development customer, and checks `/health`.
+
+## Approvals (L37)
+
+1. "Please cancel order ORD-1003." The model calls `cancel_order`. MAF does **not** run it: it pauses with a `function_approval_request`.
+2. The gate checks the arguments, ownership and eligibility *before* asking. Then it creates an `Operation` bound to the customer, conversation, kind and exact arguments (15-minute expiry). The turn ends `awaiting_approval` with `pending_approval`.
+   - An ineligible or foreign request is declined natively instead, and the reply states the factual reason (`not_eligible` / `not_found`).
+3. `POST /api/v1/conversations/{id}/approvals/{approval_id}` with `{operation_id, decision}` goes through the bindings:
+   - another customer or conversation → `404`;
+   - wrong operation → `409 approval_mismatch`;
+   - a different decision later → `409 approval_already_decided`;
+   - too late → `410 approval_expired`;
+   - the same decision again → the same turn.
+4. **Approve:** the native response, inside `approval_scope(operation)`. The tool runs only for that customer, kind and exact arguments, once; Orders, Billing or Technical re-check eligibility; the result is `committed` (or `failed`).
+   **Reject:** the tool never runs → `rejected`.
+5. `GET /api/v1/operations/{id}` is the authoritative status.
+
+The tool call is re-sent before each native answer: stored history is plain text, and Anthropic rejects a tool result that doesn't follow its call. No note may sit between them. Both rules were found live; the fake model now enforces Anthropic's pairing rule.
 
 ## DevUI (development only)
 
