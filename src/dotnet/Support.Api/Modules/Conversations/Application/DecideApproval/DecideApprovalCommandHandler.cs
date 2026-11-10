@@ -1,5 +1,6 @@
 using Support.Api.Common.Application;
 using Support.Api.Common.Application.Messaging;
+using Support.Api.Common.Application.Safety;
 using Support.Api.Common.Domain;
 using Support.Api.Modules.Conversations.Domain;
 using Support.Api.Modules.Identity.Application;
@@ -22,6 +23,7 @@ internal sealed partial class DecideApprovalCommandHandler(
     IPrincipalSource principals,
     ISupportRouter router,
     TimeProvider clock,
+    InjectionSignals injection,
     ILogger<DecideApprovalCommandHandler> logger) : ICommandHandler<DecideApprovalCommand, Turn>
 {
     public async Task<Result<Turn>> Handle(DecideApprovalCommand command, CancellationToken cancellationToken)
@@ -124,6 +126,7 @@ internal sealed partial class DecideApprovalCommandHandler(
     private async Task ResumeAsync(Conversation conversation, string key, TurnReservation reservation, Operation operation, bool recordedEarlier, DecideApprovalCommand command)
     {
         reservation.TraceId = TraceIds.Current();
+        injection.Inspect("decision_reason", command.Reason); // the rejection reason reaches the model: diagnostic only
         try
         {
             var outcome = TurnOutcome.Completed;

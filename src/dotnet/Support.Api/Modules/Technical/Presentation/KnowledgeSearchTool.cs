@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
 using Support.Api.Common.Application.Messaging;
+using Support.Api.Common.Application.Safety;
 using Support.Api.Modules.Agents.Application;
 using Support.Api.Modules.Technical.Application.SearchKnowledge;
 using Support.Api.Modules.Technical.Domain;
@@ -15,6 +16,7 @@ namespace Support.Api.Modules.Technical.Presentation;
 public sealed partial class KnowledgeSearchTool(
     IQueryHandler<SearchKnowledgeQuery, IReadOnlyList<KnowledgeArticle>> search,
     ToolMetrics metrics,
+    InjectionSignals injection,
     ILogger<KnowledgeSearchTool> logger)
 {
     public const string Name = "search_knowledge_base";
@@ -27,7 +29,17 @@ public sealed partial class KnowledgeSearchTool(
         CancellationToken cancellationToken = default)
     {
         var result = await search.Handle(new SearchKnowledgeQuery(query), cancellationToken).ConfigureAwait(false);
-        var articles = result.IsSuccess ? result.Value : [];
+        if (result.IsFailure)
+        {
+            metrics.Record(Name, "invalid_query");
+            Log.SearchFinished(logger, Name, "invalid_query", 0);
+            return new KnowledgeSearchResult("invalid_query", []);
+        }
+
+        var articles = result.Value;
+        // Article text is data handed to the model. It is checked for injection phrasing for diagnostics only; the
+        // model may still follow it, which is why every action it could lead to is gated in code (L14).
+        injection.Inspect("tool_result", string.Join('\n', articles.SelectMany(article => article.Steps.Prepend(article.Title))));
         var outcome = articles.Count > 0 ? ToolOutcome.Found : ToolOutcome.NoMatch;
         var outcomeName = articles.Count > 0 ? "found" : "no_match";
 

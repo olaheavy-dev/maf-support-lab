@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Support.Api.Common.Application;
 using Support.Api.Common.Application.Messaging;
 using Support.Api.Common.Application.Observability;
+using Support.Api.Common.Application.Safety;
 using Support.Api.Common.Application.Streaming;
 using Support.Api.Common.Domain;
 using Support.Api.Modules.Conversations.Domain;
@@ -28,6 +29,7 @@ internal sealed partial class SubmitTurnCommandHandler(
     ISupportRouter router,
     TimeProvider clock,
     TurnMetrics metrics,
+    InjectionSignals injection,
     ILogger<SubmitTurnCommandHandler> logger) : ICommandHandler<SubmitTurnCommand, Turn>
 {
     /// <summary>What a cancelled turn says. Contract example: nothing further was done.</summary>
@@ -93,6 +95,7 @@ internal sealed partial class SubmitTurnCommandHandler(
         span?.SetTag("support.client_turn.id", command.ClientTurnId);
         span?.SetTag("support.turn.id", reservation.TurnId);
         reservation.TraceId = TraceIds.Current();
+        injection.Inspect("message", command.Message); // diagnostic only: the turn runs exactly the same either way
         var started = clock.GetTimestamp();
         var lastRoute = new RouteCapture(command.Observer);
 
