@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "dataset_id": "support-ambiguity",
-  "dataset_version": "1.0.0",
+  "dataset_version": "1.1.0",
   "category": "ambiguity",
   "description": "Requests the system must not guess at: missing ids, unknown problems, unroutable text.",
   "fixture_version": "1.0",

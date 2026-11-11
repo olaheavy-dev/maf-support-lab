@@ -34,7 +34,8 @@ internal sealed record CaseStep(
     string? Decision,
     JsonElement? RawBody,
     string? AsPrincipal,
-    Expectation Expect);
+    Expectation? Expect,
+    bool? CancelAfterStart = null);
 
 internal sealed record Expectation(
     int? HttpStatus,
@@ -52,7 +53,8 @@ internal sealed record Expectation(
     IReadOnlyList<string>? Mentions,
     IReadOnlyList<string>? MustNotMention,
     bool? SameTurnAsPrevious,
-    bool? SameOperationAsPrevious);
+    bool? SameOperationAsPrevious,
+    JsonElement? OperationResult = null);
 
 internal sealed record StateChange(string Type, string? OrderId);
 

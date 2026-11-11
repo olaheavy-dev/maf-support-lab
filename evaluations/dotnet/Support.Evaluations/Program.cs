@@ -1,18 +1,20 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Support.Evaluations;
 
-// The evaluation runner's command line (L29). Two commands:
+// The evaluation runner's command line (L29, L16). Three commands:
 //
 //   validate                         check every dataset in evaluations/datasets against its schema
-//   run --backend dotnet|python      run datasets against a running backend and write one result file per dataset
-//       --principal CUST-1001=URL    a backend process for each customer the cases act as (repeatable)
+//   run --backend dotnet|python      run datasets against a backend and write one result file per dataset
+//       --launch                     the runner starts the backend itself (fake mode, both customers): a shared store
+//                                    for read-only cases, a fresh store per write case, and restarts. Needs the built
+//                                    .NET API (Release) or uv for Python.
+//       --principal CUST-1001=URL    or: backends started elsewhere, one process per customer (repeatable)
+//       --allow-writes               with --principal: run write cases (only against a fresh, isolated store)
 //       --dataset PATH               a dataset file (repeatable; default: all)
 //       --split development,heldout  which splits to run (default: development)
-//       --allow-writes               run write cases: only against a fresh, isolated store
-//       --out DIR                    where to write results (default: evaluations/results, which Git ignores)
+//       --out DIR                    where to write results (default: evaluations/results, ignored by Git)
 //       --source-commit SHA          the backend's commit (default: unknown)
 //       --model-mode fake|recorded|live, --model-id ID
+//   compare --results DIR --out FILE  a Markdown baseline and cross-backend comparison of the run documents in DIR
 //
 // Exit codes: 0 everything selected passed, 1 a case failed or errored, 2 invalid input.
 return await Cli.MainAsync(args).ConfigureAwait(false);
@@ -27,6 +29,7 @@ internal static class Cli
             {
                 "validate" => Validate(),
                 "run" => await RunAsync(Options.Parse(args[1..])).ConfigureAwait(false),
+                "compare" => await Comparison.WriteAsync(args[1..]).ConfigureAwait(false),
                 _ => Usage(),
             };
         }
@@ -39,7 +42,7 @@ internal static class Cli
 
     private static int Usage()
     {
-        Console.Error.WriteLine("Usage: validate | run --backend dotnet|python --principal CUST-1001=http://localhost:5180 [options]");
+        Console.Error.WriteLine("Usage: validate | run --backend dotnet|python (--launch | --principal CUST-1001=URL) [options] | compare --results DIR --out FILE");
         return 2;
     }
 
@@ -67,8 +70,12 @@ internal static class Cli
     {
         var datasets = (parsed.Datasets.Count > 0 ? parsed.Datasets : DatasetLoader.AllPaths()).Select(DatasetLoader.Load).ToList();
         Directory.CreateDirectory(parsed.Out);
+        var work = Directory.CreateTempSubdirectory("support-evaluations-");
         using var handler = new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) };
         Dictionary<Uri, HttpClient> clients = [];
+        IBackends backends = parsed.Launch
+            ? new LaunchedBackends(parsed.Run.Backend, RepositoryRoot.Find(), work.FullName)
+            : new FixedBackends(parsed.Principals, parsed.AllowWrites);
         try
         {
             HttpClient ClientFor(Uri baseUrl)
@@ -82,11 +89,17 @@ internal static class Cli
                 return client;
             }
 
-            var runner = new CaseRunner(ClientFor, parsed.Run);
+            var runner = new CaseRunner(ClientFor, backends, parsed.Run);
+            var configuration = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["mode"] = parsed.Launch ? "launch" : "endpoint",
+                ["isolated_writes"] = backends.IsolatesWrites ? "true" : "false",
+                ["customers"] = parsed.Launch ? string.Join(",", LaunchedBackends.Customers) : string.Join(",", parsed.Principals.Keys.Order(StringComparer.Ordinal)),
+            };
             var failed = false;
             foreach (var dataset in datasets)
             {
-                var run = await EvaluationRun.RunAsync(dataset, runner, parsed.Run, parsed.Identity, TimeProvider.System, CancellationToken.None).ConfigureAwait(false);
+                var run = await EvaluationRun.RunAsync(dataset, runner, parsed.Run, parsed.Identity, configuration, TimeProvider.System, CancellationToken.None).ConfigureAwait(false);
                 var summary = run["summary"]!.AsObject();
                 failed |= summary["failed"]!.GetValue<int>() > 0 || summary["error"]!.GetValue<int>() > 0;
                 var file = Path.Combine(parsed.Out, $"{parsed.Run.Backend}-{dataset.DatasetId}.json");
@@ -105,15 +118,32 @@ internal static class Cli
         }
         finally
         {
+            await backends.DisposeAsync().ConfigureAwait(false);
             foreach (var client in clients.Values)
             {
                 client.Dispose();
+            }
+
+            try
+            {
+                work.Delete(recursive: true);
+            }
+            catch (IOException)
+            {
+                // A database file still closing; the temp folder is cleaned by the OS.
             }
         }
     }
 }
 
-internal sealed record Options(RunOptions Run, RunIdentity Identity, IReadOnlyList<string> Datasets, string Out)
+internal sealed record Options(
+    RunOptions Run,
+    RunIdentity Identity,
+    IReadOnlyList<string> Datasets,
+    string Out,
+    bool Launch,
+    IReadOnlyDictionary<string, Uri> Principals,
+    bool AllowWrites)
 {
     public static Options Parse(string[] args)
     {
@@ -121,13 +151,14 @@ internal sealed record Options(RunOptions Run, RunIdentity Identity, IReadOnlyLi
         Dictionary<string, Uri> principals = new(StringComparer.Ordinal);
         List<string> datasets = [];
         HashSet<string> splits = new(StringComparer.Ordinal);
-        var allowWrites = false;
+        bool allowWrites = false, launch = false;
         for (var i = 0; i < args.Length; i++)
         {
             string Value() => i + 1 < args.Length ? args[++i] : throw new ArgumentException($"{args[i]} needs a value.");
             switch (args[i])
             {
                 case "--backend": backend = Value(); break;
+                case "--launch": launch = true; break;
                 case "--principal":
                     var pair = Value().Split('=', 2);
                     if (pair.Length != 2 || !Uri.TryCreate(pair[1].EndsWith('/') ? pair[1] : pair[1] + "/", UriKind.Absolute, out var url))
@@ -153,9 +184,19 @@ internal sealed record Options(RunOptions Run, RunIdentity Identity, IReadOnlyLi
             throw new ArgumentException("--backend must be dotnet or python.");
         }
 
-        if (principals.Count == 0)
+        if (launch == principals.Count > 0)
         {
-            throw new ArgumentException("At least one --principal CUSTOMER=URL is required.");
+            throw new ArgumentException("Use either --launch or at least one --principal CUSTOMER=URL.");
+        }
+
+        if (launch && allowWrites)
+        {
+            throw new ArgumentException("--allow-writes is for --principal: --launch already gives every write case a fresh store.");
+        }
+
+        if (launch && modelMode is not (null or "fake"))
+        {
+            throw new ArgumentException("--launch runs the backends in fake mode only.");
         }
 
         if (splits.Count == 0)
@@ -169,9 +210,12 @@ internal sealed record Options(RunOptions Run, RunIdentity Identity, IReadOnlyLi
         }
 
         return new Options(
-            new RunOptions(backend, principals, splits, allowWrites),
+            new RunOptions(backend, splits),
             new RunIdentity(sourceCommit ?? "unknown", modelMode ?? "fake", modelId),
             datasets,
-            output ?? Path.Combine(RepositoryRoot.Find(), "evaluations", "results"));
+            output ?? Path.Combine(RepositoryRoot.Find(), "evaluations", "results"),
+            launch,
+            principals,
+            allowWrites);
     }
 }

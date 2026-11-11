@@ -58,14 +58,20 @@ internal static class Checks
 
         if (expect.Mentions is { Count: > 0 } mentions)
         {
-            var missing = mentions.Where(word => !observed.Text.Contains(word, StringComparison.OrdinalIgnoreCase)).ToList();
-            checks.Add(new Check("mentions", missing.Count == 0, Strings(mentions), Strings(missing)));
+            var found = mentions.Where(word => observed.Text.Contains(word, StringComparison.OrdinalIgnoreCase)).ToList();
+            checks.Add(new Check("mentions", found.Count == mentions.Count, Strings(mentions), Strings(found)));
         }
 
         if (expect.MustNotMention is { Count: > 0 } forbidden)
         {
             var leaked = forbidden.Where(word => observed.Raw.Contains(word, StringComparison.OrdinalIgnoreCase)).ToList();
             checks.Add(new Check("must_not_mention", leaked.Count == 0, Strings(forbidden), Strings(leaked)));
+        }
+
+        if (expect.OperationResult is { } wanted)
+        {
+            var actual = observed.OperationResult;
+            checks.Add(new Check("operation_result", actual is { } got && Contains(got, wanted), JsonNode.Parse(wanted.GetRawText()), actual is { } a ? JsonNode.Parse(a.GetRawText()) : null));
         }
 
         if (expect.SameTurnAsPrevious is true)
@@ -80,6 +86,11 @@ internal static class Checks
 
         return checks;
     }
+
+    /// <summary>Whether every property of <paramref name="subset"/> is in <paramref name="actual"/> with an equal value.</summary>
+    private static bool Contains(System.Text.Json.JsonElement actual, System.Text.Json.JsonElement subset) =>
+        subset.EnumerateObject().All(expected =>
+            actual.TryGetProperty(expected.Name, out var value) && JsonNode.DeepEquals(JsonNode.Parse(value.GetRawText()), JsonNode.Parse(expected.Value.GetRawText())));
 
     private static JsonArray Strings(IEnumerable<string> values) => new([.. values.Select(value => (JsonNode?)value)]);
 }

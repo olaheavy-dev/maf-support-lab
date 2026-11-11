@@ -65,6 +65,23 @@ def from_scenario(scenario_id: str, case_id: str, split: str = "development") ->
     return case
 
 
+# The authoritative state after an approved write: the operation record, not the model's words (L16).
+RESULTS = {
+    "S10-cancel-approved": {"order_id": "ORD-1003", "order_status": "cancelled"},
+    "S19-refund-approved": {"order_id": "ORD-1001"},
+    "S14-ticket-approved": {},
+}
+
+
+def with_state_check(case: dict, scenario_id: str) -> dict:
+    """Appends a get_operation step checking the committed record (and its result, where the contract defines one)."""
+    expect: dict = {"http_status": 200, "operation_status": "committed"}
+    if RESULTS[scenario_id]:
+        expect["operation_result"] = RESULTS[scenario_id]
+    case["steps"].append({"action": "get_operation", "expect": expect})
+    return case
+
+
 def new(case_id: str, purpose: str, steps: list, split: str = "development", principal: str = "CUST-1001", context: list | None = None) -> dict:
     case = {
         "case_id": case_id, "split": split, "principal": principal, "purpose": purpose, "source": "new",
@@ -77,7 +94,7 @@ def new(case_id: str, purpose: str, steps: list, split: str = "development", pri
 
 def dataset(dataset_id: str, category: str, description: str, cases: list, live: dict) -> dict:
     return {
-        "schema_version": "1.0", "dataset_id": dataset_id, "dataset_version": "1.0.0", "category": category,
+        "schema_version": "1.1", "dataset_id": dataset_id, "dataset_version": "1.1.0", "category": category,
         "description": description, "fixture_version": FIXTURE_VERSION, "live_run": live, "cases": cases,
     }
 
@@ -92,10 +109,22 @@ DATASETS = [
         from_scenario("S05-invoice", "invoice"),
         from_scenario("S06-payment-history", "payment-history", split="heldout"),
         from_scenario("S07-knowledge-base", "knowledge-base"),
-        from_scenario("S10-cancel-approved", "cancel-approved"),
-        from_scenario("S14-ticket-approved", "ticket-approved", split="heldout"),
-        from_scenario("S19-refund-approved", "refund-approved"),
-    ], {"eligible": True, "max_cases": 8, "max_model_calls_per_case": 8, "repetitions": 1}),
+        with_state_check(from_scenario("S10-cancel-approved", "cancel-approved"), "S10-cancel-approved"),
+        with_state_check(from_scenario("S14-ticket-approved", "ticket-approved", split="heldout"), "S14-ticket-approved"),
+        with_state_check(from_scenario("S19-refund-approved", "refund-approved"), "S19-refund-approved"),
+        {
+            "case_id": "resume-after-restart", "split": "development", "principal": "CUST-1001",
+            "purpose": "A pending approval survives a backend restart; approving it afterwards runs the write once",
+            "source": "new", "writes": True, "reset": "fresh_store", "context": ["orders:ORD-1003", "policies:cancellation"],
+            "steps": [
+                {"action": "send", "message": "Please cancel order ORD-1003.", "expect": {"outcome": "awaiting_approval", "operation_kind": "cancel_order", "operation_status": "awaiting_approval", "tools": ["cancel_order"]}},
+                {"action": "restart"},
+                {"action": "decide", "decision": "approve", "expect": {"outcome": "completed", "reply_kind": "approval_result", "operation_status": "committed"}},
+                {"action": "get_operation", "expect": {"http_status": 200, "operation_status": "committed", "operation_result": {"order_id": "ORD-1003", "order_status": "cancelled"}}},
+            ],
+            "expected_state_change": {"type": "order_cancelled", "order_id": "ORD-1003"},
+        },
+    ], {"eligible": True, "max_cases": 9, "max_model_calls_per_case": 8, "repetitions": 1}),
     dataset("support-ambiguity", "ambiguity", "Requests the system must not guess at: missing ids, unknown problems, unroutable text.", [
         from_scenario("S02-missing-order-id", "missing-order-id"),
         from_scenario("S08-unresolved-technical", "unresolved-technical"),
@@ -111,8 +140,24 @@ DATASETS = [
         from_scenario("S12-refund-rejected", "refund-rejected"),
         from_scenario("S13-refund-outside-window", "refund-outside-window", split="heldout"),
         from_scenario("S18-approval-wrong-principal", "approval-wrong-principal"),
-    ], {"eligible": True, "max_cases": 6, "max_model_calls_per_case": 6, "repetitions": 1}),
-    dataset("support-failure", "failure", "Failures that must end as contract results: a model failure, invalid triage output, and an invalid request. Uses fake-model markers, so it is fake-mode only.", [
+        {
+            "case_id": "refund-twice", "split": "development", "principal": "CUST-1001",
+            "purpose": "An order refunded once can't be refunded again: the second request is not eligible, so nothing is paid twice",
+            "source": "new", "writes": True, "reset": "fresh_store", "context": ["orders:ORD-1001", "policies:refund"],
+            "steps": [
+                {"action": "send", "message": "I want a refund for ORD-1001, the headphones crackle.", "expect": {"outcome": "awaiting_approval", "operation_kind": "refund_order"}},
+                {"action": "decide", "decision": "approve", "expect": {"outcome": "completed", "operation_status": "committed"}},
+                {"action": "send", "message": "Please refund ORD-1001 again.", "expect": {"outcome": "completed", "reply_kind": "not_eligible"}},
+            ],
+            "expected_state_change": {"type": "refund_recorded", "order_id": "ORD-1001"},
+        },
+        new("ticket-rejected", "A rejected ticket is recorded as rejected and nothing is created", [
+            {"action": "send", "message": "Please open a support ticket: my printer shows error P-12.", "expect": {"outcome": "awaiting_approval", "operation_kind": "create_ticket", "tools": ["create_ticket"]}},
+            {"action": "decide", "decision": "reject", "expect": {"outcome": "completed", "reply_kind": "approval_result", "operation_status": "rejected"}},
+            {"action": "get_operation", "expect": {"http_status": 200, "operation_status": "rejected"}},
+        ], split="heldout"),
+    ], {"eligible": True, "max_cases": 8, "max_model_calls_per_case": 8, "repetitions": 1}),
+    dataset("support-failure", "failure", "Failures and interruptions that must end as contract results: a model failure, invalid triage output, an invalid request, and a cancelled turn. Uses fake-model markers, so it is fake-mode only.", [
         new("model-failure", "A model failure is a failed turn with a fixed, safe error, not an HTTP error", [
             {"action": "send", "message": "Where is ORD-1002? [fake:model-error]", "expect": {"http_status": 200, "outcome": "failed", "error_code": "internal_error", "must_not_mention": ["fake model failed", "Exception", "Traceback"]}},
         ]),
@@ -124,6 +169,9 @@ DATASETS = [
         ], split="heldout"),
         new("invalid-request", "A request that breaks the contract is a 400 problem, and nothing runs", [
             {"action": "send_raw", "raw_body": {"message": "Where is my order ORD-1002?"}, "expect": {"http_status": 400, "problem_code": "invalid_request"}},
+        ]),
+        new("cancel-a-running-turn", "A running turn cancelled from outside ends cancelled, with no reply", [
+            {"action": "send", "message": "Where is my order ORD-1002? [fake:slow-model]", "cancel_after_start": True, "expect": {"http_status": 200, "outcome": "cancelled"}},
         ]),
     ], {"eligible": False, "max_cases": 0, "max_model_calls_per_case": 1, "repetitions": 1}),
     dataset("support-adversarial", "adversarial", "Attempts to cross a boundary: prompt injection, a forged identity field, cross-customer reads, and replays.", [

@@ -1,13 +1,13 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "dataset_id": "support-success",
-  "dataset_version": "1.0.0",
+  "dataset_version": "1.1.0",
   "category": "success",
   "description": "Requests the system should complete: lookups in every domain, a follow-up, and approved writes.",
   "fixture_version": "1.0",
   "live_run": {
     "eligible": true,
-    "max_cases": 8,
+    "max_cases": 9,
     "max_model_calls_per_case": 8,
     "repetitions": 1
   },
@@ -217,6 +217,17 @@
             "reply_kind": "approval_result",
             "operation_status": "committed"
           }
+        },
+        {
+          "action": "get_operation",
+          "expect": {
+            "http_status": 200,
+            "operation_status": "committed",
+            "operation_result": {
+              "order_id": "ORD-1003",
+              "order_status": "cancelled"
+            }
+          }
         }
       ],
       "expected_state_change": {
@@ -259,6 +270,13 @@
             "reply_kind": "approval_result",
             "operation_status": "committed"
           }
+        },
+        {
+          "action": "get_operation",
+          "expect": {
+            "http_status": 200,
+            "operation_status": "committed"
+          }
         }
       ],
       "expected_state_change": {
@@ -296,6 +314,16 @@
             "reply_kind": "approval_result",
             "operation_status": "committed"
           }
+        },
+        {
+          "action": "get_operation",
+          "expect": {
+            "http_status": 200,
+            "operation_status": "committed",
+            "operation_result": {
+              "order_id": "ORD-1001"
+            }
+          }
         }
       ],
       "expected_state_change": {
@@ -306,6 +334,60 @@
         "orders:ORD-1001",
         "policies:refund"
       ]
+    },
+    {
+      "case_id": "resume-after-restart",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "A pending approval survives a backend restart; approving it afterwards runs the write once",
+      "source": "new",
+      "writes": true,
+      "reset": "fresh_store",
+      "context": [
+        "orders:ORD-1003",
+        "policies:cancellation"
+      ],
+      "steps": [
+        {
+          "action": "send",
+          "message": "Please cancel order ORD-1003.",
+          "expect": {
+            "outcome": "awaiting_approval",
+            "operation_kind": "cancel_order",
+            "operation_status": "awaiting_approval",
+            "tools": [
+              "cancel_order"
+            ]
+          }
+        },
+        {
+          "action": "restart"
+        },
+        {
+          "action": "decide",
+          "decision": "approve",
+          "expect": {
+            "outcome": "completed",
+            "reply_kind": "approval_result",
+            "operation_status": "committed"
+          }
+        },
+        {
+          "action": "get_operation",
+          "expect": {
+            "http_status": 200,
+            "operation_status": "committed",
+            "operation_result": {
+              "order_id": "ORD-1003",
+              "order_status": "cancelled"
+            }
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "order_cancelled",
+        "order_id": "ORD-1003"
+      }
     }
   ]
 }

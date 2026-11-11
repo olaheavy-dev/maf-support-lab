@@ -11,11 +11,11 @@ internal sealed record RunIdentity(string SourceCommit, string ModelMode, string
 internal static class EvaluationRun
 {
     public const string RunnerName = "support-evaluations";
-    public const string RunnerVersion = "0.1.0";
+    public const string RunnerVersion = "0.2.0";
     public const string ScorerName = "contract-facts";
     public const string ScorerVersion = "1.0.0";
 
-    public static async Task<JsonObject> RunAsync(Dataset dataset, CaseRunner runner, RunOptions options, RunIdentity identity, TimeProvider clock, CancellationToken cancellationToken)
+    public static async Task<JsonObject> RunAsync(Dataset dataset, CaseRunner runner, RunOptions options, RunIdentity identity, IReadOnlyDictionary<string, string> configuration, TimeProvider clock, CancellationToken cancellationToken)
     {
         var started = clock.GetUtcNow();
         JsonArray results = [];
@@ -27,7 +27,7 @@ internal static class EvaluationRun
         int Count(string status) => results.Count(result => result!["status"]!.GetValue<string>() == status);
         var run = new JsonObject
         {
-            ["schema_version"] = "1.0",
+            ["schema_version"] = "1.1",
             ["run"] = new JsonObject
             {
                 ["run_id"] = "run_" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16)),
@@ -44,12 +44,7 @@ internal static class EvaluationRun
                 },
                 ["scorer"] = new JsonObject { ["name"] = ScorerName, ["version"] = ScorerVersion },
                 ["runner"] = new JsonObject { ["name"] = RunnerName, ["version"] = RunnerVersion },
-                ["configuration"] = new JsonObject
-                {
-                    ["allow_writes"] = options.AllowWrites,
-                    ["principals"] = string.Join(",", options.Principals.Keys.Order(StringComparer.Ordinal)),
-                    ["fixture_version"] = dataset.FixtureVersion,
-                },
+                ["configuration"] = Configuration(configuration, dataset),
             },
             ["results"] = results,
             ["summary"] = new JsonObject
@@ -65,6 +60,17 @@ internal static class EvaluationRun
         // The runner checks its own output: a result that doesn't match the schema is a runner bug, not a finding.
         var problems = EvaluationSchemas.Errors(EvaluationSchemas.Run, run);
         return problems.Count == 0 ? run : throw new InvalidOperationException($"The run document breaks its schema:\n  {string.Join("\n  ", problems)}");
+    }
+
+    private static JsonObject Configuration(IReadOnlyDictionary<string, string> values, Dataset dataset)
+    {
+        var json = new JsonObject { ["fixture_version"] = dataset.FixtureVersion };
+        foreach (var (key, value) in values.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            json[key] = value;
+        }
+
+        return json;
     }
 
     private static string Timestamp(DateTimeOffset value) => value.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
