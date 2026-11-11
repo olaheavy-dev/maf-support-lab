@@ -94,12 +94,52 @@ jobs:
       - name: Test (fake mode, no credentials)
         run: uv run pytest
 
+  # Cross-backend contract probes (L21): the real .NET and Python servers, fake mode, no credentials, the same requests,
+  # schema-validated and compared. Black-box over HTTP; it imports neither backend.
+  cross-backend:
+    name: cross-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ContinuousIntegrationBuild: "true"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install .NET SDK from global.json
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          python-version: "3.15.2"
+          enable-cache: true
+          cache-dependency-glob: src/python/uv.lock
+      - name: Build the .NET API (locked restore, Release)
+        run: |
+          dotnet restore src/dotnet/Support.Api
+          dotnet build src/dotnet/Support.Api --no-restore --configuration Release
+      - name: Sync the Python backend (locked)
+        working-directory: src/python
+        run: uv sync --locked
+      - name: Install contract test tools (hash-locked)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/contracts-venv"
+          "$RUNNER_TEMP/contracts-venv/bin/pip" install --quiet --require-hashes -r contracts/requirements.txt
+      - name: Probe both backends and compare
+        run: '"$RUNNER_TEMP/contracts-venv/bin/python" contracts/probes/run_probes.py'
+
   # The single required status check. It always reports, and it passes only when every
   # language job succeeded: a failed, cancelled, or skipped job turns it red.
   repository-checks:
     name: repository-checks
     if: always()
-    needs: [planning-and-contracts, dotnet, python]
+    needs: [planning-and-contracts, dotnet, python, cross-backend]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

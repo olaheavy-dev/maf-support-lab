@@ -20,9 +20,17 @@ internal static partial class ConversationRequests
             return null;
         }
 
+        // invalid_request always lists what is wrong as JSON pointers (contract); "" is the whole body (RFC 6901).
         using var document = await TryParseAsync(request).ConfigureAwait(false);
-        return document is null || document.RootElement.ValueKind != JsonValueKind.Object || document.RootElement.EnumerateObject().Any()
-            ? ApiResults.InvalidRequest("The request body must be an empty JSON object.")
+        if (document is null || document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return ApiResults.InvalidRequest("The request body must be an empty JSON object.", new ProblemField(string.Empty, "must be an empty JSON object"));
+        }
+
+        // JsonProperty is a struct: FirstOrDefault() on an empty object is a default value whose Name throws.
+        using var properties = document.RootElement.EnumerateObject();
+        return properties.MoveNext() && properties.Current.Name is var name
+            ? ApiResults.InvalidRequest("The request body must be an empty JSON object.", new ProblemField("/" + name.Replace("~", "~0", StringComparison.Ordinal).Replace("/", "~1", StringComparison.Ordinal), "is not allowed: the body must be an empty JSON object"))
             : null;
     }
 

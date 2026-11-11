@@ -13,6 +13,8 @@ Every pull request and every push to `main` runs `.github/workflows/repository-c
 | --- | --- |
 | `planning-and-contracts` | Roadmap and issue metadata, planning regressions, contract schemas and examples, fixtures and scenarios. |
 | `dotnet` | Locked restore, Release build with warnings as errors, and the .NET integration tests in fake mode. The test host clears any provider key. |
+| `python` | Locked sync, ruff (lint and format), pyright strict, and the Python integration tests in fake mode. |
+| `cross-backend` | (L21) The real .NET and Python servers in fake mode, sent the same requests by `contracts/probes/run_probes.py`: every response is schema-validated, and the two backends must agree (see [0004](decisions/0004-sdk-comparison.md)). |
 | `repository-checks` | **The only required status check.** It always reports and passes only if every job above succeeded. A failed, cancelled, or skipped job makes it fail, so nothing can be silently skipped or left pending. |
 
 New language checks (Python in L17, the frontend in L23) become jobs listed in `repository-checks` → `needs`.
@@ -25,6 +27,7 @@ python3 -m unittest discover -s scripts/tests
 python3 -m venv .venv && .venv/bin/pip install --require-hashes -r contracts/requirements.txt
 .venv/bin/python -m unittest discover -s contracts/tests
 .venv/bin/python -m unittest discover -s fixtures/tests
+.venv/bin/python contracts/probes/run_probes.py --dotnet-build   # needs the .NET SDK and uv
 
 dotnet restore maf-support-lab.slnx -p:ContinuousIntegrationBuild=true   # locked, like CI
 dotnet build maf-support-lab.slnx --no-restore --configuration Release

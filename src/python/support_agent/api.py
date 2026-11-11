@@ -34,7 +34,7 @@ from support_agent.dependencies import Caller
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Operation, OperationService, Status, approval_scope
 from support_agent.resilience import FailureCode, budgeting, classify, current_budget
-from support_agent.routing import TurnRoute
+from support_agent.routing import TurnRoute, UnroutedReason
 from support_agent.settings import ResilienceSettings
 from support_agent.telemetry import current_trace_id, tracer, turn_duration, turns
 from support_agent.turn_control import Delta, Progress, TurnControl, controlling, emit, raise_if_cancelled
@@ -97,7 +97,7 @@ async def read_body(request: Request, schema: str) -> tuple[Any, JSONResponse | 
         body: Any = json.loads(raw or b"{}")
     except ValueError:
         return None, problem(
-            "invalid_request", "The body is not valid JSON.", [contract.SchemaError("/", "Invalid JSON.")]
+            "invalid_request", "The body is not valid JSON.", [contract.SchemaError("", "Invalid JSON.")]
         )
     found = contract.errors(schema, body)
     return body, (problem("invalid_request", "The request does not match the contract.", found) if found else None)
@@ -431,12 +431,13 @@ def failed_turn(
     started: datetime,
     resumed_from: str | None = None,
     error: TurnError = FAILED,
+    route: TurnRoute | None = None,
 ) -> Turn:
     return Turn(
         conversation.conversation_id,
         claim.turn_id,
         claim.client_turn_id,
-        None,
+        route,
         None,
         None,
         claim.trace_id,
@@ -487,6 +488,7 @@ async def run_turn(
     streaming client, if one is attached). Cancellation propagates (``CancelledError``); other failures are results."""
     started = now()
     reply: SupportReply | None = None
+    routed: TurnRoute | None = None
     with pinned(principal):
         try:
             request = RoutingRequest(
@@ -495,6 +497,11 @@ async def run_turn(
             async for event in build_workflow(agents, operations).run(request, stream=True):
                 if event.type == "data" and isinstance(event.data, Progress | Delta):
                     emit(event.data)
+                    if isinstance(event.data, Progress) and event.data.stage == "routed" and event.data.route:
+                        routed = TurnRoute(
+                            event.data.route.get("target"),
+                            UnroutedReason(reason) if (reason := event.data.route.get("unrouted_reason")) else None,
+                        )
                 elif event.type == "output" and isinstance(event.data, SupportReply):
                     reply = event.data
             if reply is None:
@@ -506,7 +513,8 @@ async def run_turn(
             log.exception(
                 "Turn %s failed in conversation %s (%s)", claim.turn_id, conversation.conversation_id, failure.code
             )
-            return failed_turn(conversation, claim, started, error=turn_error(failure)), None
+            # A turn that failed after triage still reports where it was routed (as .NET does; found by L21's probes).
+            return failed_turn(conversation, claim, started, error=turn_error(failure), route=routed), None
     outcome = "awaiting_approval" if reply.pending_operation_id else "completed"
     turn = Turn(
         conversation.conversation_id,

@@ -164,5 +164,15 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s fixtures/tests
 ```
 
+### Cross-backend probes (L21)
+
+`probes/run_probes.py` starts the real .NET and Python servers in fake mode (no credentials), two processes each (one per customer) on one SQLite file. It sends both the same requests, validates every response against these schemas, normalizes ids, timestamps and wording, and requires the two backends to agree. It imports neither backend. It needs the .NET SDK, uv, and the tools below:
+
+```bash
+.venv/bin/python contracts/probes/run_probes.py --dotnet-build
+```
+
+The `cross-backend` CI job runs it on every pull request. `tests/test_probes.py` checks the runner's own comparison logic. Why each difference is or isn't allowed: [0004-sdk-comparison](../docs/decisions/0004-sdk-comparison.md).
+
 `requirements.txt` is generated from `requirements.in` with hashes (command at the top of `requirements.in`). These are test tools only, not application dependencies.
 | 1.1 | L12 | **Streaming checked against the native .NET SDK** (MAF 1.28.0: `AIAgent.RunStreamingAsync` → `AgentResponseUpdate`; workflows `InProcessExecution.RunStreamingAsync` + `WatchStreamAsync`). **Added the `reply.reset` event and the operation failure code `cancelled`.** Live model tokens show the model's words before the server knows the final reply. A native stream delivers text *before* a `ToolApprovalRequestContent`, and the server may then replace it (approval request, declined write), so the client needs a way to discard it. The text rule now counts only deltas after the last reset. An approved write stopped by cancellation before it commits needed a truthful status. | Additive (new event type, new enum value). A 1.0 client that ignores `reply.reset` may show stale partial text until `turn.final`, whose `reply.text` stays authoritative; streams without a reset are unchanged. Readers of operation `failure.code` must accept `cancelled`. |

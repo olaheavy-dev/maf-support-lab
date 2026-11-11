@@ -48,7 +48,9 @@ def errors(schema_name: str, document: Any) -> list[SchemaError]:
     problems: list[Any] = list(validator.iter_errors(document))
     for error in sorted(problems, key=lambda e: [str(part) for part in e.absolute_path]):
         pointer = "".join(f"/{part}" for part in error.absolute_path)
-        found.append(SchemaError(pointer or "/", error.message[:300]))
+        found.append(
+            SchemaError(pointer, error.message[:300])
+        )  # "" is the whole body (RFC 6901); "/" would mean a key ""
     return found
 
 
