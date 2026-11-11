@@ -19,6 +19,28 @@ public sealed class ContractApiTests
         Assert.Equal("/customer_id", problem.GetProperty("errors")[0].GetProperty("pointer").GetString());
     }
 
+    /// <summary>
+    /// L21 (found by the cross-backend probes): an invalid create body lists what is wrong as a JSON pointer, as the
+    /// contract requires for invalid_request; "" is the whole body, and a key is escaped (RFC 6901).
+    /// </summary>
+    [Theory]
+    [InlineData("{\"customer_id\":\"CUST-1002\"}", "/customer_id")]
+    [InlineData("{\"a/b~c\":1}", "/a~1b~0c")]
+    [InlineData("{not json", "")]
+    [InlineData("[]", "")]
+    public async Task An_invalid_create_body_lists_the_offending_pointer(string body, string expectedPointer)
+    {
+        await using var factory = SupportApiFactory.Create();
+        using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+
+        using var response = await factory.CreateClient().PostAsync(new Uri("/api/v1/conversations", UriKind.Relative), content, TestContext.Current.CancellationToken);
+        using var problem = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        ContractSchemas.AssertValid("problem", problem.RootElement);
+        Assert.Equal(expectedPointer, problem.RootElement.GetProperty("errors")[0].GetProperty("pointer").GetString());
+    }
+
     [Theory]
     [InlineData("not-a-uuid", "Where is ORD-1002?", "/client_turn_id")]
     [InlineData("3f2c8a1e-5b7d-4c9a-8e2f-1a6b9c0d4e71", "   ", "/message")]

@@ -20,10 +20,10 @@ from tests.helpers import Api, assert_contract, host
 @pytest.mark.parametrize(
     ("body", "pointer"),
     [
-        ({"client_turn_id": str(uuid.uuid4()), "message": "Hi", "customer_id": "CUST-1002"}, "/"),
+        ({"client_turn_id": str(uuid.uuid4()), "message": "Hi", "customer_id": "CUST-1002"}, ""),
         ({"client_turn_id": "not-a-uuid", "message": "Hi"}, "/client_turn_id"),
         ({"client_turn_id": str(uuid.uuid4()), "message": ""}, "/message"),
-        ({"message": "Hi"}, "/"),
+        ({"message": "Hi"}, ""),  # the whole body (RFC 6901), which lacks client_turn_id
     ],
 )
 def test_requests_that_break_the_contract_get_invalid_request(body: dict[str, object], pointer: str) -> None:
@@ -145,3 +145,14 @@ def test_a_triage_decision_whose_action_and_target_disagree_is_never_routed(targ
         turn = api.ask(api.create_conversation(), "Where is my order ORD-1002?")
         assert turn["route"] == {"status": "unrouted", "target": None, "unrouted_reason": "ambiguous_request"}
         assert turn["reply"]["kind"] == "clarification"
+
+
+def test_a_turn_that_fails_after_triage_still_reports_its_route() -> None:
+    """L21 (found by the cross-backend probes): like .NET, a failed turn keeps the route triage chose."""
+    app, _ = host()
+    with TestClient(app) as client:
+        api = Api(client)
+        result = api.ask(api.create_conversation(), "Where is ORD-1002? [fake:model-error]")
+    assert result["outcome"] == "failed"
+    assert result["error"]["code"] == "internal_error"
+    assert result["route"] == {"status": "routed", "target": "orders"}
