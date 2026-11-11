@@ -20,6 +20,7 @@ import { readFileSync } from "node:fs";
 import http from "node:http";
 import https from "node:https";
 import { dirname, join } from "node:path";
+import { pipeline } from "node:stream";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -114,7 +115,12 @@ export function createProxy(targets = upstreams()) {
         }
         response.writeHead(reply.statusCode ?? 502, forwarded);
         response.flushHeaders();
-        reply.pipe(response); // chunk by chunk: SSE events are not held back
+        // Chunk by chunk (SSE events are not held back). pipeline, not pipe: if the backend drops the connection
+        // mid-body, the browser's response is destroyed too, so the page sees the interruption instead of waiting
+        // forever (Codex review on PR #97).
+        pipeline(reply, response, (error) => {
+          if (error) response.destroy();
+        });
       },
     );
     upstream.on("error", () => {

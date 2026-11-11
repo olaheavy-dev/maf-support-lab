@@ -224,3 +224,38 @@ test("backend addresses come only from Aspire-style service variables, http firs
   expect(Object.keys(none)).toEqual([]);
   expect("constructor" in none).toBe(false); // no prototype, so no inherited "aliases"
 });
+
+test("a backend that drops the connection mid-stream ends the browser's response too", async () => {
+  // Codex review on PR #97: the proxy used to forward the first chunk and then hold the browser's response open.
+  const http = await import("node:http");
+  const { createProxy } = await import("../proxy/server.mjs");
+  const backend = http.createServer((request, response) => {
+    response.writeHead(200, { "content-type": "text/event-stream" });
+    response.write('event: turn.started\ndata: {"type":"turn.started"}\n\n');
+    setTimeout(() => response.destroy(), 50); // gone before the stream is complete
+  });
+  await new Promise((resolve) => backend.listen(0, "127.0.0.1", resolve));
+  const proxy = createProxy({ dotnet: new URL(`http://127.0.0.1:${backend.address().port}`) });
+  await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+  try {
+    const response = await fetch(`http://127.0.0.1:${proxy.address().port}/api/dotnet/v1/conversations/x/turns`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "text/event-stream" },
+      body: "{}",
+    });
+    const reader = response.body.getReader();
+    const first = await reader.read();
+    expect(new TextDecoder().decode(first.value)).toContain("turn.started");
+    // The rest must end (an error or done) promptly, not hang.
+    const outcome = await Promise.race([
+      reader.read().then(() => "ended", () => "ended"),
+      new Promise((resolve) => setTimeout(() => resolve("hung"), 3000)),
+    ]);
+    expect(outcome).toBe("ended");
+  } finally {
+    proxy.close();
+    backend.close();
+    proxy.closeAllConnections();
+    backend.closeAllConnections();
+  }
+});
