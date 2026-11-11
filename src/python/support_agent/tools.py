@@ -12,6 +12,7 @@ from typing import Annotated, Any
 from agent_framework import FunctionTool, tool
 from pydantic import Field
 
+from support_agent import injection
 from support_agent.activity import ToolOutcome, current_activity
 from support_agent.identity import current_principal
 from support_agent.services import InvalidReferenceError, Services, normalize
@@ -121,6 +122,8 @@ def technical_tools(services: Services) -> list[FunctionTool]:
         except InvalidReferenceError:
             return {"search": "invalid_query", "articles": []}
         _record(KNOWLEDGE_SEARCH, ToolOutcome.FOUND if articles else ToolOutcome.NO_MATCH)
+        # Article text is data the model reads (an indirect-injection path): diagnostic only, names recorded (L41).
+        injection.inspect("tool_result", "\n".join(line for a in articles for line in (a.title, *a.steps)))
         return {
             "search": "found" if articles else "no_match",
             "articles": [{"article_id": a.article_id, "title": a.title, "steps": list(a.steps)} for a in articles],

@@ -26,7 +26,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 from opentelemetry.trace import StatusCode
 
-from support_agent import contract, streaming
+from support_agent import contract, injection, streaming
 from support_agent.agents import SupportAgents
 from support_agent.approval_gate import answer, batch_of, decline, requests
 from support_agent.conversations import Claim, Conversation, ConversationStore, Reservation, Turn, TurnError, now
@@ -348,6 +348,7 @@ async def complete_turn(
 ) -> None:
     """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once."""
     with observed_turn(conversation, claim) as observe:
+        injection.inspect("message", message)  # diagnostic only (L41): the turn runs exactly the same either way
         await _complete_turn(agents, operations, conversation, claim, message, principal, observe)
 
 
@@ -495,6 +496,8 @@ async def complete_decision(
     Cancelled before the write commits: the turn is cancelled, and an approved operation fails with code ``cancelled``.
     Cancelled after it committed: the committed result stands, and the turn completes from the record."""
     with observed_turn(conversation, claim, resumed_from=operation.source_turn_id) as observe:
+        # Diagnostic only. In Python the reason never reaches the model (MAF's approval response carries none, L37).
+        injection.inspect("decision_reason", operation.decision_reason)
         await _complete_decision(agents, operations, conversation, claim, operation, principal, observe)
 
 
