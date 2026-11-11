@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The evaluation runner (L29+). It talks to either backend over HTTP only: it references no application project,
+       and the application manifests never gain evaluation dependencies. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Support.Evaluations</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Support.Evaluations.Tests" />
+  </ItemGroup>
+
+</Project>

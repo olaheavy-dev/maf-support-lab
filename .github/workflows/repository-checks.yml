@@ -133,13 +133,59 @@ jobs:
           "$RUNNER_TEMP/contracts-venv/bin/pip" install --quiet --require-hashes -r contracts/requirements.txt
       - name: Probe both backends and compare
         run: '"$RUNNER_TEMP/contracts-venv/bin/python" contracts/probes/run_probes.py'
+      - name: Build the evaluation runner (Release)
+        run: dotnet build evaluations/dotnet/Support.Evaluations --configuration Release
+      - name: Run the evaluation datasets against both backends (L29, fake mode, no writes)
+        run: '"$RUNNER_TEMP/contracts-venv/bin/python" evaluations/tools/run_against_backends.py'
+      - name: Upload the evaluation results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: evaluation-results
+          path: evaluations/results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Evaluation tooling (L29): the Python evaluation package's lint, types and tests (datasets and result contracts).
+  # The .NET evaluation project and its tests are part of the solution, so the dotnet job builds and tests them.
+  evaluations:
+    name: evaluations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: evaluations/python
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          python-version: "3.15.2"
+          enable-cache: true
+          cache-dependency-glob: evaluations/python/uv.lock
+      - name: Sync (locked)
+        run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format check
+        run: uv run ruff format --check .
+      - name: Type check (strict)
+        run: uv run pyright
+      - name: Dataset and result contract tests
+        run: uv run pytest
+      - name: Validate every dataset
+        run: uv run python -m support_evaluations validate
 
   # The single required status check. It always reports, and it passes only when every
   # language job succeeded: a failed, cancelled, or skipped job turns it red.
   repository-checks:
     name: repository-checks
     if: always()
-    needs: [planning-and-contracts, dotnet, python, cross-backend]
+    needs: [planning-and-contracts, dotnet, python, cross-backend, evaluations]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

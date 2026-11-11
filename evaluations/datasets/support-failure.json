@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "support-failure",
+  "dataset_version": "1.0.0",
+  "category": "failure",
+  "description": "Failures that must end as contract results: a model failure, invalid triage output, and an invalid request. Uses fake-model markers, so it is fake-mode only.",
+  "fixture_version": "1.0",
+  "live_run": {
+    "eligible": false,
+    "max_cases": 0,
+    "max_model_calls_per_case": 1,
+    "repetitions": 1
+  },
+  "cases": [
+    {
+      "case_id": "model-failure",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "A model failure is a failed turn with a fixed, safe error, not an HTTP error",
+      "source": "new",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Where is ORD-1002? [fake:model-error]",
+          "expect": {
+            "http_status": 200,
+            "outcome": "failed",
+            "error_code": "internal_error",
+            "must_not_mention": [
+              "fake model failed",
+              "Exception",
+              "Traceback"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "triage-malformed",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Triage output that isn't valid JSON is unrouted, never guessed",
+      "source": "new",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Where is my order ORD-1002? [fake:triage-malformed]",
+          "expect": {
+            "route_status": "unrouted",
+            "unrouted_reason": "invalid_model_output",
+            "outcome": "completed",
+            "reply_kind": "clarification",
+            "tools_absent": [
+              "get_order_status"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "triage-unknown-route",
+      "split": "heldout",
+      "principal": "CUST-1001",
+      "purpose": "A route outside the allowed set is invalid model output",
+      "source": "new",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Where is my order ORD-1002? [fake:triage-unknown-route]",
+          "expect": {
+            "route_status": "unrouted",
+            "unrouted_reason": "invalid_model_output",
+            "outcome": "completed",
+            "reply_kind": "clarification"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "invalid-request",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "A request that breaks the contract is a 400 problem, and nothing runs",
+      "source": "new",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send_raw",
+          "raw_body": {
+            "message": "Where is my order ORD-1002?"
+          },
+          "expect": {
+            "http_status": 400,
+            "problem_code": "invalid_request"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    }
+  ]
+}

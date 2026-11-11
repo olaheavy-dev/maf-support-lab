@@ -268,3 +268,24 @@ def test_a_plain_json_request_still_gets_one_turn_result() -> None:
         )
     assert response.headers["content-type"].startswith("application/json")
     assert_contract("turn-result", response.json())
+
+
+def test_a_write_the_model_asks_for_shows_as_a_tool_call_before_the_pause() -> None:
+    """The same as .NET (aligned in L29): a paused write tool is still reported as a tool call, then the pause."""
+    app, _ = host()
+    with TestClient(app) as client:
+        conversation = Api(client).create_conversation()
+        response = client.post(
+            f"/api/v1/conversations/{conversation}/turns",
+            json={"client_turn_id": str(uuid.uuid4()), "message": "Please cancel order ORD-1003."},
+            headers=SSE,
+        )
+        events = parse_sse(response.text)
+        progress = [e["data"] for e in events if e["type"] == "turn.progress"]
+        tool_call = next(
+            i for i, p in enumerate(progress) if p["stage"] == "tool_call" and p.get("tool") == "cancel_order"
+        )
+        paused = next(i for i, p in enumerate(progress) if p["stage"] == "awaiting_approval")
+        assert tool_call < paused
+        assert final_of(events)["outcome"] == "awaiting_approval"
+        assert state_of(app, "cancel_order") == "processing"  # asked for, not run

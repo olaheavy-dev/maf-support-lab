@@ -1,0 +1,311 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "support-success",
+  "dataset_version": "1.0.0",
+  "category": "success",
+  "description": "Requests the system should complete: lookups in every domain, a follow-up, and approved writes.",
+  "fixture_version": "1.0",
+  "live_run": {
+    "eligible": true,
+    "max_cases": 8,
+    "max_model_calls_per_case": 8,
+    "repetitions": 1
+  },
+  "cases": [
+    {
+      "case_id": "order-status",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Known order status",
+      "source": "S01-order-status",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Where is my order ORD-1002?",
+          "expect": {
+            "route_status": "routed",
+            "route_target": "orders",
+            "outcome": "completed",
+            "reply_kind": "answer",
+            "mentions": [
+              "ORD-1002",
+              "shipped"
+            ],
+            "tools": [
+              "get_order_status"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      },
+      "context": [
+        "orders:ORD-1002"
+      ]
+    },
+    {
+      "case_id": "order-follow-up",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "A follow-up without an id uses the order a tool verified earlier in the conversation",
+      "source": "new",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Where is my order ORD-1002?",
+          "expect": {
+            "route_target": "orders",
+            "outcome": "completed",
+            "reply_kind": "answer",
+            "tools": [
+              "get_order_status"
+            ]
+          }
+        },
+        {
+          "action": "send",
+          "message": "Has that order shipped yet?",
+          "expect": {
+            "route_target": "orders",
+            "outcome": "completed",
+            "reply_kind": "answer",
+            "mentions": [
+              "ORD-1002"
+            ],
+            "tools": [
+              "get_order_status"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      },
+      "context": [
+        "orders:ORD-1002"
+      ]
+    },
+    {
+      "case_id": "invoice",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Invoice lookup",
+      "source": "S05-invoice",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Can you send me the invoice for ORD-1001?",
+          "expect": {
+            "route_target": "billing",
+            "outcome": "completed",
+            "reply_kind": "answer",
+            "mentions": [
+              "INV-5001"
+            ],
+            "tools": [
+              "get_invoice"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      },
+      "context": [
+        "invoices:INV-5001"
+      ]
+    },
+    {
+      "case_id": "payment-history",
+      "split": "heldout",
+      "principal": "CUST-1002",
+      "purpose": "Payment history includes the refund",
+      "source": "S06-payment-history",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Show my payment history.",
+          "expect": {
+            "route_target": "billing",
+            "outcome": "completed",
+            "reply_kind": "answer",
+            "mentions": [
+              "ORD-2003"
+            ],
+            "tools": [
+              "get_payment_history"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      },
+      "context": [
+        "payments:PAY-7101"
+      ]
+    },
+    {
+      "case_id": "knowledge-base",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Known technical issue answered from the knowledge base",
+      "source": "S07-knowledge-base",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "My wireless headphones keep crackling.",
+          "expect": {
+            "route_target": "technical",
+            "outcome": "completed",
+            "reply_kind": "answer",
+            "mentions": [
+              "KB-102"
+            ],
+            "tools": [
+              "search_knowledge_base"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      },
+      "context": [
+        "knowledge-base:KB-102"
+      ]
+    },
+    {
+      "case_id": "cancel-approved",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Eligible cancellation runs only after approval",
+      "source": "S10-cancel-approved",
+      "writes": true,
+      "reset": "fresh_store",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Please cancel order ORD-1003.",
+          "expect": {
+            "route_target": "orders",
+            "outcome": "awaiting_approval",
+            "reply_kind": "approval_request",
+            "operation_kind": "cancel_order",
+            "operation_status": "awaiting_approval",
+            "tools": [
+              "cancel_order"
+            ]
+          }
+        },
+        {
+          "action": "decide",
+          "decision": "approve",
+          "expect": {
+            "outcome": "completed",
+            "reply_kind": "approval_result",
+            "operation_status": "committed"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "order_cancelled",
+        "order_id": "ORD-1003"
+      },
+      "context": [
+        "orders:ORD-1003",
+        "policies:cancellation"
+      ]
+    },
+    {
+      "case_id": "ticket-approved",
+      "split": "heldout",
+      "principal": "CUST-1001",
+      "purpose": "Support ticket creation requires approval",
+      "source": "S14-ticket-approved",
+      "writes": true,
+      "reset": "fresh_store",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Please open a support ticket: my smart fridge firmware shows error Z-77.",
+          "expect": {
+            "route_target": "technical",
+            "outcome": "awaiting_approval",
+            "reply_kind": "approval_request",
+            "operation_kind": "create_ticket",
+            "operation_status": "awaiting_approval",
+            "tools": [
+              "create_ticket"
+            ]
+          }
+        },
+        {
+          "action": "decide",
+          "decision": "approve",
+          "expect": {
+            "outcome": "completed",
+            "reply_kind": "approval_result",
+            "operation_status": "committed"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "ticket_created"
+      }
+    },
+    {
+      "case_id": "refund-approved",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Eligible refund runs only after approval and records the full order total",
+      "source": "S19-refund-approved",
+      "writes": true,
+      "reset": "fresh_store",
+      "steps": [
+        {
+          "action": "send",
+          "message": "I want a refund for ORD-1001, the headphones crackle.",
+          "expect": {
+            "route_target": "billing",
+            "outcome": "awaiting_approval",
+            "reply_kind": "approval_request",
+            "operation_kind": "refund_order",
+            "operation_status": "awaiting_approval",
+            "tools": [
+              "refund_order"
+            ]
+          }
+        },
+        {
+          "action": "decide",
+          "decision": "approve",
+          "expect": {
+            "outcome": "completed",
+            "reply_kind": "approval_result",
+            "operation_status": "committed"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "refund_recorded",
+        "order_id": "ORD-1001"
+      },
+      "context": [
+        "orders:ORD-1001",
+        "policies:refund"
+      ]
+    }
+  ]
+}

@@ -40,3 +40,9 @@ updates:
         patterns: ["fastapi", "uvicorn", "starlette", "pydantic*"]
       dev-tools:
         dependency-type: development
+  - package-ecosystem: uv
+    # Evaluation tooling (L29): its own manifest, never the backend's.
+    directory: /evaluations/python
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2

@@ -81,7 +81,11 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
     /// <summary>Turns one streamed update into stream events: a tool call becomes a progress step, text becomes a delta.</summary>
     internal static async ValueTask ForwardAsync(AgentResponseUpdate update, Func<WorkflowEvent, CancellationToken, ValueTask> raise, CancellationToken cancellationToken)
     {
-        foreach (var call in update.Contents.OfType<FunctionCallContent>())
+        // A write tool the model asks for arrives wrapped in an approval request (it has not run yet). It is still a tool
+        // call, as in Python's stream, so it is reported too (found by the L29 evaluation datasets).
+        var calls = update.Contents.OfType<FunctionCallContent>()
+            .Concat(update.Contents.OfType<ToolApprovalRequestContent>().Select(request => request.ToolCall).OfType<FunctionCallContent>());
+        foreach (var call in calls)
         {
             await raise(new SupportProgressEvent(new TurnProgress(TurnStage.ToolCall, Tool: call.Name)), cancellationToken).ConfigureAwait(false);
         }

@@ -2,6 +2,11 @@
   <Folder Name="/apphost/">
     <Project Path="apphost/Support.AppHost.csproj" />
   </Folder>
+  <Folder Name="/evaluations/" />
+  <Folder Name="/evaluations/dotnet/">
+    <Project Path="evaluations/dotnet/Support.Evaluations.Tests/Support.Evaluations.Tests.csproj" />
+    <Project Path="evaluations/dotnet/Support.Evaluations/Support.Evaluations.csproj" />
+  </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/dotnet/">
     <Project Path="src/dotnet/Support.Api.Tests/Support.Api.Tests.csproj" />
