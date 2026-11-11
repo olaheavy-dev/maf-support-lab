@@ -163,3 +163,57 @@ def test_context_references_resolve_against_the_real_fixtures() -> None:
     assert "ORD-1002" in ids["orders"]
     assert "PAY-7101" in ids["payments"]
     assert "refund" in ids["policies"]
+
+
+# ---- Schema 1.1 (L16): restart, get_operation, cancel_after_start, operation_result ---------------------------------
+
+
+def with_steps(steps: list[dict[str, Any]], **case: Any) -> dict[str, Any]:
+    document = copy.deepcopy(VALID_DATASET)
+    document["schema_version"] = "1.1"
+    document["cases"][0].update(case, steps=steps)
+    return document
+
+
+SEND = {"action": "send", "message": "Please cancel order ORD-1003.", "expect": {"outcome": "awaiting_approval"}}
+
+
+def test_a_restart_and_a_state_check_are_valid_in_an_isolated_write_case() -> None:
+    document = with_steps(
+        [
+            SEND,
+            {"action": "restart"},
+            {"action": "decide", "decision": "approve", "expect": {"operation_status": "committed"}},
+            {"action": "get_operation", "expect": {"operation_result": {"order_status": "cancelled"}}},
+        ],
+        writes=True,
+        reset="fresh_store",
+    )
+    assert dataset_problems(document) == []
+
+
+@pytest.mark.parametrize(
+    ("steps", "case"),
+    [
+        (
+            [SEND, {"action": "restart"}],
+            {"writes": False, "reset": "fresh_conversation"},
+        ),  # restarts need their own store
+        ([SEND, {"action": "restart", "expect": {"outcome": "completed"}}], {"writes": True, "reset": "fresh_store"}),
+        ([{"action": "get_operation"}], {}),  # every step but a restart expects something
+        (
+            [{**SEND, "action": "decide", "decision": "approve", "cancel_after_start": True}],
+            {},
+        ),  # cancel only on a send
+    ],
+    ids=["restart-on-shared-store", "restart-with-expectation", "step-without-expectation", "cancel-on-decide"],
+)
+def test_misused_1_1_steps_are_rejected(steps: list[dict[str, Any]], case: dict[str, Any]) -> None:
+    assert dataset_problems(with_steps(steps, **case))
+
+
+def test_run_documents_of_both_versions_are_accepted() -> None:
+    newer = copy.deepcopy(VALID_RUN)
+    newer["schema_version"] = "1.1"
+    assert run_problems(newer) == []
+    assert run_problems(VALID_RUN) == []

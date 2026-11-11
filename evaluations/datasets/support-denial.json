@@ -1,14 +1,14 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "dataset_id": "support-denial",
-  "dataset_version": "1.0.0",
+  "dataset_version": "1.1.0",
   "category": "denial",
   "description": "Requests the system must refuse or answer as not found: unknown and foreign records, ineligible writes, a rejection, another customer's decision.",
   "fixture_version": "1.0",
   "live_run": {
     "eligible": true,
-    "max_cases": 6,
-    "max_model_calls_per_case": 6,
+    "max_cases": 8,
+    "max_model_calls_per_case": 8,
     "repetitions": 1
   },
   "cases": [
@@ -185,6 +185,90 @@
             "problem_code": "not_found"
           },
           "as_principal": "CUST-1002"
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "refund-twice",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "An order refunded once can't be refunded again: the second request is not eligible, so nothing is paid twice",
+      "source": "new",
+      "writes": true,
+      "reset": "fresh_store",
+      "context": [
+        "orders:ORD-1001",
+        "policies:refund"
+      ],
+      "steps": [
+        {
+          "action": "send",
+          "message": "I want a refund for ORD-1001, the headphones crackle.",
+          "expect": {
+            "outcome": "awaiting_approval",
+            "operation_kind": "refund_order"
+          }
+        },
+        {
+          "action": "decide",
+          "decision": "approve",
+          "expect": {
+            "outcome": "completed",
+            "operation_status": "committed"
+          }
+        },
+        {
+          "action": "send",
+          "message": "Please refund ORD-1001 again.",
+          "expect": {
+            "outcome": "completed",
+            "reply_kind": "not_eligible"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "refund_recorded",
+        "order_id": "ORD-1001"
+      }
+    },
+    {
+      "case_id": "ticket-rejected",
+      "split": "heldout",
+      "principal": "CUST-1001",
+      "purpose": "A rejected ticket is recorded as rejected and nothing is created",
+      "source": "new",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Please open a support ticket: my printer shows error P-12.",
+          "expect": {
+            "outcome": "awaiting_approval",
+            "operation_kind": "create_ticket",
+            "tools": [
+              "create_ticket"
+            ]
+          }
+        },
+        {
+          "action": "decide",
+          "decision": "reject",
+          "expect": {
+            "outcome": "completed",
+            "reply_kind": "approval_result",
+            "operation_status": "rejected"
+          }
+        },
+        {
+          "action": "get_operation",
+          "expect": {
+            "http_status": 200,
+            "operation_status": "rejected"
+          }
         }
       ],
       "expected_state_change": {

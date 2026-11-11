@@ -43,6 +43,15 @@ public sealed partial class FakeChatClient : IChatClient
     /// <summary>Messages containing this marker get triage output naming a target the contract does not allow (fake mode only).</summary>
     public const string UnknownRouteTrigger = "[fake:triage-unknown-route]";
 
+    /// <summary>
+    /// Messages containing this marker keep the specialist's model call busy (cancellably), so a running turn can be
+    /// cancelled from outside, as the L16 evaluation does. Fake mode only.
+    /// </summary>
+    public const string SlowTrigger = "[fake:slow-model]";
+
+    /// <summary>How long a slow specialist call takes: far longer than a cancel needs, far shorter than the turn deadline.</summary>
+    public static readonly TimeSpan SlowDelay = TimeSpan.FromSeconds(8);
+
     private readonly Func<IReadOnlyList<ChatMessage>, ChatOptions?, ChatResponse> script;
     private readonly Func<string, string> triage;
 
@@ -79,8 +88,14 @@ public sealed partial class FakeChatClient : IChatClient
         ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        IReadOnlyList<ChatMessage> history = [.. messages];
+        if (options?.ResponseFormat is not ChatResponseFormatJson && LastUserText(history).Contains(SlowTrigger, StringComparison.Ordinal))
+        {
+            await Task.Delay(SlowDelay, cancellationToken).ConfigureAwait(false);
+        }
+
         // Text comes out word by word, like a real model's tokens (L12), so streaming has several deltas to show.
-        var response = await GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+        var response = await GetResponseAsync(history, options, cancellationToken).ConfigureAwait(false);
         foreach (var update in response.ToChatResponseUpdates())
         {
             if (update.Contents is [TextContent { Text: { Length: > 0 } text }])

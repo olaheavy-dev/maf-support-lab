@@ -8,6 +8,7 @@ customer's text force failure paths for tests: see FAILURE_TRIGGER and the triag
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections.abc import AsyncGenerator, Awaitable, Callable, Mapping, Sequence
@@ -31,6 +32,10 @@ from support_agent import tools as names
 FAILURE_TRIGGER = "[fake:model-error]"
 MALFORMED_TRIAGE_TRIGGER = "[fake:triage-malformed]"
 UNKNOWN_ROUTE_TRIGGER = "[fake:triage-unknown-route]"
+# Keeps the specialist's model call busy (cancellably), so a running turn can be cancelled from outside (L16). The
+# same marker and delay as the .NET fake.
+SLOW_TRIGGER = "[fake:slow-model]"
+SLOW_SECONDS = 8.0
 
 ORDER_ID = re.compile(r"ORD-[0-9]{4}", re.IGNORECASE)
 INVOICE_ID = re.compile(r"INV-[0-9]{4}", re.IGNORECASE)
@@ -275,6 +280,8 @@ class ScriptedChatClient(BaseChatClient[Any]):
         check_tool_pairing(messages)
         if self.before_call is not None:
             await self.before_call()
+        if options.get("response_format") is None and SLOW_TRIGGER in last_user_text(messages):
+            await asyncio.sleep(SLOW_SECONDS)
         response = (
             text(self.triage(last_user_text(messages)))
             if options.get("response_format") is not None

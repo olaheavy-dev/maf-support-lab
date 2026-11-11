@@ -8,7 +8,7 @@ namespace Support.Evaluations.Tests;
 /// <summary>
 /// The data-to-result flow over a fake backend (L29): cases pass on matching facts, fail naming the fact that differed,
 /// are skipped when they can't run safely, and every run document matches its schema. The real backends are covered by
-/// evaluations/tools/run_against_backends.py.
+/// launch mode in CI (cross-backend job): every dataset on both backends.
 /// </summary>
 public sealed class RunnerTests
 {
@@ -67,14 +67,101 @@ public sealed class RunnerTests
         var backend = new FakeBackend(Answer("approval_request", "orders", ["cancel_order"], "Approve?", outcome: "awaiting_approval"));
         var allowed = await RunAsync(backend, item, allowWrites: true);
         Assert.Equal("passed", allowed["results"]![0]!["status"]!.GetValue<string>());
-        Assert.True(allowed["run"]!["configuration"]!["allow_writes"]!.GetValue<bool>());
+        Assert.Equal("true", allowed["run"]!["configuration"]!["isolated_writes"]!.GetValue<string>());
     }
 
     [Fact]
     public async Task A_case_needing_a_customer_without_a_backend_process_is_skipped()
     {
         var run = await RunAsync(new FakeBackend(), Case(principal: "CUST-1002", expect: """{"outcome": "completed"}"""));
-        Assert.Contains("CUST-1002", run["results"]![0]!["skip_reason"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.Equal("skipped", run["results"]![0]!["status"]!.GetValue<string>());
+        Assert.Equal("no backend process for CUST-1002", run["results"]![0]!["skip_reason"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task A_restart_case_is_skipped_when_the_runner_does_not_own_the_processes()
+    {
+        var item = Case(writes: true, expect: """{"outcome": "awaiting_approval"}""");
+        item = item with { Steps = [.. item.Steps, new CaseStep("restart", null, null, null, null, null)] };
+        var run = await RunAsync(new FakeBackend(), item, allowWrites: true);
+        Assert.Contains("--launch", run["results"]![0]!["skip_reason"]!.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_restart_step_restarts_the_session_and_later_steps_use_its_new_address()
+    {
+        var restarting = new RestartingBackends();
+        var backend = new FakeBackend(
+            Answer("approval_request", "orders", ["cancel_order"], "Approve?", outcome: "awaiting_approval"),
+            Answer("approval_result", "orders", [], "Done.", operationStatus: "committed"));
+        var item = Case(writes: true, expect: """{"outcome": "awaiting_approval"}""");
+        item = item with
+        {
+            Steps =
+            [
+                .. item.Steps,
+                new CaseStep("restart", null, null, null, null, null),
+                new CaseStep("decide", null, "approve", null, null, Expect("""{"operation_status": "committed"}""")),
+            ],
+        };
+        var run = await RunAsync(backend, item, backends: restarting);
+
+        Assert.Equal("passed", run["results"]![0]!["status"]!.GetValue<string>());
+        Assert.Equal(1, restarting.Restarts);
+        Assert.Equal("restart", run["results"]![0]!["steps"]![1]!["action"]!.GetValue<string>());
+        Assert.Equal("true", run["run"]!["configuration"]!["isolated_writes"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task The_operation_record_is_checked_with_a_result_subset()
+    {
+        var backend = new FakeBackend(
+            Answer("approval_request", "orders", ["cancel_order"], "Approve?", outcome: "awaiting_approval"),
+            Answer("approval_result", "orders", [], "Done.", operationStatus: "committed"),
+            () => "JSON" + """{"operation_id": "op_0123456789abcdef", "kind": "cancel_order", "status": "committed", "result": {"order_id": "ORD-1003", "order_status": "cancelled"}}""");
+        var item = Case(writes: true, expect: """{"outcome": "awaiting_approval"}""");
+        item = item with
+        {
+            Steps =
+            [
+                .. item.Steps,
+                new CaseStep("decide", null, "approve", null, null, Expect("""{"operation_status": "committed"}""")),
+                new CaseStep("get_operation", null, null, null, null, Expect("""{"http_status": 200, "operation_status": "committed", "operation_result": {"order_status": "cancelled"}}""")),
+            ],
+        };
+        var passed = await RunAsync(backend, item, allowWrites: true);
+        Assert.Equal("passed", passed["results"]![0]!["status"]!.GetValue<string>());
+        Assert.EndsWith("/api/v1/operations/op_0123456789abcdef", backend.Paths[^1], StringComparison.Ordinal);
+
+        var wrong = item with { Steps = [.. item.Steps.Take(2), new CaseStep("get_operation", null, null, null, null, Expect("""{"operation_result": {"order_status": "processing"}}"""))] };
+        var failed = await RunAsync(new FakeBackend(
+            Answer("approval_request", "orders", ["cancel_order"], "Approve?", outcome: "awaiting_approval"),
+            Answer("approval_result", "orders", [], "Done.", operationStatus: "committed"),
+            () => "JSON" + """{"operation_id": "op_0123456789abcdef", "status": "committed", "result": {"order_status": "cancelled"}}"""), wrong, allowWrites: true);
+        Assert.Equal("failed", failed["results"]![0]!["status"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task A_step_that_depends_on_a_failed_step_fails_the_case_instead_of_erroring()
+    {
+        var backend = new FakeBackend(Answer("answer", "orders", [], "Shipped."));
+        var item = Case(writes: true, expect: """{"outcome": "awaiting_approval"}""");
+        item = item with { Steps = [.. item.Steps, new CaseStep("decide", null, "approve", null, null, Expect("""{"operation_status": "committed"}"""))] };
+        var run = await RunAsync(backend, item, allowWrites: true);
+        Assert.Equal("failed", run["results"]![0]!["status"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Cancel_after_start_posts_a_cancel_for_the_turn_the_stream_named()
+    {
+        var backend = new FakeBackend(Answer("answer", "orders", [], "", outcome: "cancelled"));
+        var item = Case(expect: """{"outcome": "cancelled"}""");
+        item = item with { Steps = [item.Steps[0] with { CancelAfterStart = true }] };
+        var run = await RunAsync(backend, item);
+
+        Assert.Equal("passed", run["results"]![0]!["status"]!.GetValue<string>());
+        Assert.Contains(backend.Paths, path => path.EndsWith("/turns/turn_started0000000/cancel", StringComparison.Ordinal));
+        Assert.True(run["results"]![0]!["steps"]![0]!["observed"]!["cancelled"]!.GetValue<bool>());
     }
 
     [Fact]
@@ -83,6 +170,20 @@ public sealed class RunnerTests
         var run = await RunAsync(new FakeBackend(), Case(split: "heldout", expect: """{"outcome": "completed"}"""));
         Assert.Equal("skipped", run["results"]![0]!["status"]!.GetValue<string>());
         Assert.Equal(["development"], run["run"]!["dataset"]!["splits"]!.AsArray().Select(s => s!.GetValue<string>()));
+    }
+
+    [Fact]
+    public async Task A_backend_that_stalls_mid_stream_becomes_an_error_within_the_step_deadline()
+    {
+        // Codex review on PR #103: headers arrive, then nothing. The step deadline must cover the stream reads.
+        var backend = new FakeBackend { Stall = true };
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var run = await RunAsync(backend, Case(expect: """{"outcome": "completed"}"""), stepTimeout: TimeSpan.FromMilliseconds(300));
+
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(10), $"took {clock.Elapsed}");
+        var result = run["results"]![0]!;
+        Assert.Equal("error", result["status"]!.GetValue<string>());
+        Assert.Contains("took longer than 0.3 s", result["error"]!.GetValue<string>(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -113,13 +214,17 @@ public sealed class RunnerTests
         Assert.EndsWith("/approvals/appr_0123456789abcdef", backend.Paths[^1], StringComparison.Ordinal);
     }
 
-    private static async Task<JsonObject> RunAsync(FakeBackend backend, EvaluationCase item, bool allowWrites = false)
+    private static async Task<JsonObject> RunAsync(FakeBackend backend, EvaluationCase item, bool allowWrites = false, IBackends? backends = null, TimeSpan? stepTimeout = null)
     {
         using var client = new HttpClient(backend) { BaseAddress = Owner };
-        var options = new RunOptions("dotnet", new Dictionary<string, Uri> { ["CUST-1001"] = Owner }, new HashSet<string> { "development" }, allowWrites);
-        var dataset = new Dataset("1.0", "example", "1.0.0", "success", "An example.", "1.0", new LiveRun(false, 0, 1, 1), [item]);
-        return await EvaluationRun.RunAsync(dataset, new CaseRunner(_ => client, options), options, new RunIdentity("unknown", "fake", null), TimeProvider.System, CancellationToken.None);
+        var options = new RunOptions("dotnet", new HashSet<string> { "development" }, stepTimeout);
+        backends ??= new FixedBackends(new Dictionary<string, Uri> { ["CUST-1001"] = Owner }, allowWrites);
+        var dataset = new Dataset("1.1", "example", "1.1.0", "success", "An example.", "1.0", new LiveRun(false, 0, 1, 1), [item]);
+        var configuration = new Dictionary<string, string> { ["mode"] = "endpoint", ["isolated_writes"] = backends.IsolatesWrites ? "true" : "false" };
+        return await EvaluationRun.RunAsync(dataset, new CaseRunner(_ => client, backends, options), options, new RunIdentity("unknown", "fake", null), configuration, TimeProvider.System, CancellationToken.None);
     }
+
+    private static Expectation Expect(string json) => JsonSerializer.Deserialize<Expectation>(json, EvaluationJson.Options)!;
 
     private static EvaluationCase Case(string expect, string action = "send", bool writes = false, string principal = "CUST-1001", string split = "development")
     {
@@ -153,7 +258,7 @@ public sealed class RunnerTests
         }
 
         StringBuilder stream = new();
-        stream.Append("event: turn.started\ndata: {\"type\":\"turn.started\",\"sequence\":1}\n\n: keepalive\n\n");
+        stream.Append("event: turn.started\ndata: {\"type\":\"turn.started\",\"sequence\":1,\"turn_id\":\"turn_started0000000\"}\n\n: keepalive\n\n");
         foreach (var tool in tools)
         {
             stream.Append(CultureInvariant($"event: turn.progress\ndata: {{\"type\":\"turn.progress\",\"data\":{{\"stage\":\"tool_call\",\"tool\":\"{tool}\"}}}}\n\n"));
@@ -167,12 +272,79 @@ public sealed class RunnerTests
 
     private static string CultureInvariant(FormattableString text) => FormattableString.Invariant(text);
 
+    /// <summary>A response body that sends one event and then waits until the reader gives up.</summary>
+    private sealed class StallingStream : Stream
+    {
+        private readonly byte[] first = Encoding.UTF8.GetBytes("event: turn.started\ndata: {\"type\":\"turn.started\",\"turn_id\":\"turn_stalled0000000\"}\n\n");
+        private bool sent;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (!sent)
+            {
+                sent = true;
+                first.CopyTo(buffer);
+                return first.Length;
+            }
+
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return 0;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    /// <summary>A launched-style provider over the fake backend: writes are isolated, and restarts are counted.</summary>
+    private sealed class RestartingBackends : IBackends, IBackendSession
+    {
+        public int Restarts { get; private set; }
+
+        public bool IsolatesWrites => true;
+
+        public bool CanRestart => true;
+
+        public IReadOnlyDictionary<string, Uri> Principals => new Dictionary<string, Uri> { ["CUST-1001"] = Owner };
+
+        public Task<IBackendSession> SessionForAsync(EvaluationCase item, CancellationToken cancellationToken) => Task.FromResult<IBackendSession>(this);
+
+        public Task RestartAsync(CancellationToken cancellationToken)
+        {
+            Restarts++;
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
     /// <summary>Answers conversation creation, then each turn or decision with the next scripted response.</summary>
     private sealed class FakeBackend(params Func<string>[] responses) : HttpMessageHandler
     {
         private int next;
 
         public bool Unreachable { get; init; }
+
+        /// <summary>Send the stream's headers and first event, then never anything else.</summary>
+        public bool Stall { get; init; }
 
         public List<string> Paths { get; } = [];
 
@@ -190,10 +362,27 @@ public sealed class RunnerTests
                 return Task.FromResult(Respond(HttpStatusCode.Created, "application/json", """{"conversation_id":"conv_0123456789abcdef"}"""));
             }
 
+            if (path.EndsWith("/cancel", StringComparison.Ordinal))
+            {
+                return Task.FromResult(Respond(HttpStatusCode.Accepted, "application/json", """{"cancel_requested":true}"""));
+            }
+
+            if (Stall)
+            {
+                var stalled = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new StallingStream()) };
+                stalled.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
+                return Task.FromResult(stalled);
+            }
+
             var body = responses.Length == 0 ? Answer("answer", "orders", [], "ok")() : responses[Math.Min(next++, responses.Length - 1)]();
             if (body.StartsWith("SSE", StringComparison.Ordinal))
             {
                 return Task.FromResult(Respond(HttpStatusCode.OK, "text/event-stream", body[3..]));
+            }
+
+            if (body.StartsWith("JSON", StringComparison.Ordinal))
+            {
+                return Task.FromResult(Respond(HttpStatusCode.OK, "application/json", body[4..]));
             }
 
             var status = int.Parse(body.AsSpan(7, 3), System.Globalization.CultureInfo.InvariantCulture);

@@ -1,18 +1,17 @@
 # Evaluations
 
-Evaluation of the two support backends, kept apart from the application: nothing here is referenced by `src/`, and no backend manifest gains an evaluation dependency. It started in L29 (datasets, result contracts, project shells, and the data-to-result flow). L16 grows the runner, L30/L31 add Microsoft's native .NET and Python evaluators, L32 adds budgeted model-based scoring, and L33 adds reports.
+Evaluation of the two support backends, kept apart from the application: nothing here is referenced by `src/`, and no backend manifest gains an evaluation dependency. It started in L29 (datasets, result contracts, project shells, and the data-to-result flow). L16 made the runner launch the backends itself, so every case runs (fresh stores, restarts, cancellation), and added the baseline. L30/L31 add Microsoft's native .NET and Python evaluators, L32 adds budgeted model-based scoring, and L33 adds reports.
 
 | Path | What it holds |
 | --- | --- |
 | `schemas/evaluation-dataset.schema.json` | What a dataset is: versioned cases with steps and expected **observable facts**. |
 | `schemas/evaluation-run.schema.json` | What a run produces: run, backend, configuration, dataset, scorer and runner identity, plus per-case step evidence, checks, latency and usage availability. |
-| `datasets/*.json` | Five versioned datasets (27 cases): `support-success`, `support-ambiguity`, `support-denial`, `support-failure`, `support-adversarial`. |
+| `datasets/*.json` | Five versioned datasets (31 cases, schema 1.1): `support-success`, `support-ambiguity`, `support-denial`, `support-failure`, `support-adversarial`. |
 | `tools/build_datasets.py` | Generates the datasets from `fixtures/scenarios` plus evaluation-only cases. Rerun it after changing either, then commit the output. |
-| `dotnet/Support.Evaluations/` | The runner (.NET console app): `validate`, and `run` against any backend URL. |
+| `dotnet/Support.Evaluations/` | The runner (.NET console app): `validate`; `run`, either launching the backends itself (`--launch`) or against URLs you give it (`--principal`); and `compare`, which writes the baseline. |
 | `dotnet/Support.Evaluations.Tests/` | Dataset and result contract tests, and the runner over a fake backend. |
 | `python/` | The Python evaluation package (its own locked uv project): the same contract checks; native evaluations from L31. |
-| `tools/run_against_backends.py` | The end-to-end flow against both real backends in fake mode (CI's `cross-backend` job). |
-| `results/` | Generated run documents. Git ignores them; CI uploads them as the `evaluation-results` artifact. |
+| `results/` | Generated run documents. Git ignores them; CI uploads them as the `evaluation-results` artifact. The curated baseline is [docs/evaluations/baseline.md](../docs/evaluations/baseline.md). |
 
 ## Business fixtures, datasets, scorers, results
 
@@ -43,8 +42,17 @@ dataset (validated) ──▶ runner ──HTTP──▶ backend (fake mode)
                  checks (contract facts) ──▶ run document (validated) ──▶ evaluations/results/<backend>-<dataset>.json
 ```
 
-- **Customers:** a backend process serves one development customer, so cases that act as another customer need that customer's process too, on the same store. `--principal CUST-1002=URL` provides it. A case whose customer has no process is skipped, with the reason.
-- **Writes are never replayed on a shared store.** Write cases run only with `--allow-writes`, which promises a fresh, isolated store. Otherwise they are skipped with "needs an isolated store". L16 adds a fresh store per write case.
+- **Launch mode** (`--launch`, L16): the runner starts the backend itself, in fake mode, with one process per customer (a backend serves one development customer per process) on one SQLite file.
+  - Read-only cases share one store.
+  - **Every write case gets a fresh store and fresh processes**, so a write never repeats on shared state.
+  - A `restart` step kills the processes and starts them again on the same file (a realistic crash).
+  - Process trees are killed whole, because `dotnet run` and `uv run` start children.
+- **Endpoint mode** (`--principal CUST-1001=URL`): backends you started yourself.
+  - Write cases run only with `--allow-writes`, which promises a fresh, isolated store; otherwise they are skipped with the reason.
+  - Restart cases are skipped, because the runner doesn't own the processes.
+  - A case whose customer has no process is skipped.
+- **Steps:** `send` (optionally `cancel_after_start`: the runner cancels as soon as the stream names the turn), `resend_previous`, `decide`, `send_raw`, `restart`, and `get_operation`. `get_operation` reads the operation record: the authoritative state, checked with an `operation_result` subset. A step that builds on a failed step makes the case *failed*, not a runner error.
+- **Latency** is API time: the sum of a case's request steps. Process startup and restarts don't count.
 - **Usage** is recorded as unknown (`available: false`): the contract doesn't expose token counts, and unknown is never reported as zero.
 - **To reproduce a result** you need `run`: backend, source commit, model mode and id, dataset id and version, splits, scorer and runner versions, and configuration (writes allowed, customers, fixture version).
 
@@ -52,12 +60,16 @@ dataset (validated) ──▶ runner ──HTTP──▶ backend (fake mode)
 # Validate the datasets
 dotnet run --project evaluations/dotnet/Support.Evaluations -- validate
 
-# Run against backends you started yourself (fake mode)
+# Every dataset on a backend the runner starts itself (build the API in Release first), as CI does
+dotnet build src/dotnet/Support.Api -c Release
+dotnet run --project evaluations/dotnet/Support.Evaluations -- run --backend dotnet --launch --split development,heldout
+
+# Or against backends you started yourself (fake mode)
 dotnet run --project evaluations/dotnet/Support.Evaluations -- run --backend python \
   --principal CUST-1001=http://127.0.0.1:5280 --split development,heldout
 
-# Or the whole flow against both backends, as CI does (needs contracts/requirements.txt, the .NET SDK and uv)
-python evaluations/tools/run_against_backends.py --dotnet-build
+# The baseline and comparison from the run documents
+dotnet run --project evaluations/dotnet/Support.Evaluations -- compare --results evaluations/results --out docs/evaluations/baseline.md
 ```
 
 The runner's exit code is 0 when every selected case passed, 1 if any failed or errored, and 2 for invalid input.
