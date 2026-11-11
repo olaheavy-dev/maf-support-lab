@@ -4,6 +4,7 @@ Curated, sanitized evaluation summaries. Raw run documents are never committed: 
 
 | Summary | What it shows |
 | --- | --- |
+| Native .NET evaluation (L30) | `native evaluate` scores `evaluations/recordings` with MAF's local evaluator in CI (`cross-backend`); its run documents are in the `evaluation-results` artifact. |
 | [baseline.md](baseline.md) | The deterministic behaviour baseline (L16): every dataset on both backends in fake mode, with each run's identity, each case side by side, agreement, and latency. |
 
 ## Regenerating the baseline

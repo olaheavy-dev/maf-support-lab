@@ -13,10 +13,11 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "description": "1.1 (L16): the restart and get_operation steps and operation_result evidence; 1.0 documents stay valid.",
+      "description": "1.1 (L16): restart and get_operation evidence; 1.2 (L30): an evidence link per case. Older documents stay valid.",
       "enum": [
         "1.0",
-        "1.1"
+        "1.1",
+        "1.2"
       ]
     },
     "run": {
@@ -284,6 +285,15 @@
               ]
             }
           }
+        },
+        "evidence": {
+          "description": "L30: where the evaluated evidence lives (for example a recorded conversation), repository-relative.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_./-]{1,200}$"
+        },
+        "checks": {
+          "description": "L30: case-level checks from a native evaluator (no HTTP steps), same shape as step checks.",
+          "$ref": "#/$defs/step_result/properties/checks"
         }
       },
       "allOf": [

@@ -48,6 +48,8 @@ They may differ in the wording of human-readable text, and in how they get there
 | Rate-limit hint | A `DelegatingHandler` captures `retry-after`, because the SDK's exception lacks it | Read from `RateLimitError.response` | None (`retry_after_seconds` in both). |
 | Validation messages | Its own wording; one `errors[]` entry for the first problem | jsonschema's wording; possibly several entries | **Wording only.** Both always list errors with JSON pointers, and `""` is the whole body (aligned in L21). |
 | Fake models | `FakeChatClient` | `fake_model.py`, a port | Reply **wording** differs; routes, kinds, facts and ids match. |
+| Tool argument names | C# parameter names (`orderId`, `relatedOrderId`): MEAI's `AIFunctionFactory` keeps them | snake_case (`order_id`) | None for clients (arguments never cross the API). Evaluation datasets store canonical snake_case, and each native adapter maps it (L30). |
+| Approval-required calls in native evaluation | A paused write arrives as a `ToolApprovalRequestContent`. MAF 1.28.0's `EvalChecks.ToolCallArgsMatch` counts only `FunctionCallContent`, so in a live `EvaluateAsync(queries, …)` run it reports the write as "not called". | (L31) | None for clients. Captures keep the call as `approval_request`, and the recorded evaluation gives it to the checks as the model's call (L30). |
 
 ## Compatibility evidence (L21)
 

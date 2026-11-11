@@ -9,9 +9,29 @@ Evaluation of the two support backends, kept apart from the application: nothing
 | `datasets/*.json` | Five versioned datasets (31 cases, schema 1.1): `support-success`, `support-ambiguity`, `support-denial`, `support-failure`, `support-adversarial`. |
 | `tools/build_datasets.py` | Generates the datasets from `fixtures/scenarios` plus evaluation-only cases. Rerun it after changing either, then commit the output. |
 | `dotnet/Support.Evaluations/` | The runner (.NET console app): `validate`; `run`, either launching the backends itself (`--launch`) or against URLs you give it (`--principal`); and `compare`, which writes the baseline. |
+| `recordings/*.json` | Captured conversations for native evaluation (L30), schema `evaluation-capture`: the query, the agent's messages with tool calls, results and paused approvals, the tools it had, and its case. Re-record with `native record` after a dataset version changes. |
 | `dotnet/Support.Evaluations.Tests/` | Dataset and result contract tests, and the runner over a fake backend. |
 | `python/` | The Python evaluation package (its own locked uv project): the same contract checks; native evaluations from L31. |
 | `results/` | Generated run documents. Git ignores them; CI uploads them as the `evaluation-results` artifact. The curated baseline is [docs/evaluations/baseline.md](../docs/evaluations/baseline.md). |
+
+## Native .NET evaluation (L30)
+
+Microsoft Agent Framework 1.28.0 has local evaluation built in: `EvalItem`, `ExpectedToolCall`, `EvalChecks`, `FunctionEvaluator`, `LocalEvaluator`, and `agent.EvaluateAsync(...)`, all on the Microsoft.Extensions.AI.Evaluation abstractions. The runner uses it in two ways, with no judge model and no credentials:
+
+- **`native record`:** MAF runs a fake support agent (a scripted model, plus tools with the .NET backend's names and parameters over the shared fixtures, with writes approval-required) on each native case's query. It scores the result and saves each conversation as a capture.
+- **`native evaluate`:** scores the saved captures with MAF's recorded-response overload, `EvaluateAsync(responses, queries, …)`, which never re-runs the agent. The run fails if the model was called even once.
+
+**The checks** (`Native/SupportChecks.cs`):
+
+| Check | What its evidence can show |
+| --- | --- |
+| `tool_call_args_match` (MAF's built-in) | The expected tool, with the expected arguments (subset match) |
+| `writes_wait_for_approval` | No write tool has a result in the turn, so it paused |
+| `no_unexpected_writes` | No write the case didn't expect was asked for |
+| `record_ids_are_grounded` | Every record id in the reply came from the query or a tool result; format examples like `ORD-1234` excepted |
+| `cites_found_record` | A record a lookup found is named in the reply |
+
+None of them can show that a write was *authorized*. That's the backend's gate, checked through its API by the behaviour runner (L16), and the native scores sit alongside those assertions, never instead of them. Expected arguments are written once in canonical snake_case in the datasets, and the .NET adapter maps them to the tools' C# names (`order_id` → `orderId`).
 
 ## Business fixtures, datasets, scorers, results
 

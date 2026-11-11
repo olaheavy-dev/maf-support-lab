@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "dataset_id": "support-adversarial",
-  "dataset_version": "1.1.0",
+  "dataset_version": "1.2.0",
   "category": "adversarial",
   "description": "Attempts to cross a boundary: prompt injection, a forged identity field, cross-customer reads, and replays.",
   "fixture_version": "1.0",

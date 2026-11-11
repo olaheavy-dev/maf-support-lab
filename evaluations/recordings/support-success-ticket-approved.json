@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "support-success-ticket-approved",
+  "dataset_id": "support-success",
+  "dataset_version": "1.2.0",
+  "case_id": "ticket-approved",
+  "source": "fake-agent",
+  "agent": "support-fake-agent",
+  "principal": "CUST-1001",
+  "tools": [
+    {
+      "name": "get_order_status",
+      "writes": false
+    },
+    {
+      "name": "get_invoice",
+      "writes": false
+    },
+    {
+      "name": "get_payment_history",
+      "writes": false
+    },
+    {
+      "name": "search_knowledge_base",
+      "writes": false
+    },
+    {
+      "name": "cancel_order",
+      "writes": true
+    },
+    {
+      "name": "refund_order",
+      "writes": true
+    },
+    {
+      "name": "create_ticket",
+      "writes": true
+    }
+  ],
+  "context": [],
+  "query": "Please open a support ticket: my smart fridge firmware shows error Z-77.",
+  "messages": [
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "approval_request",
+          "call_id": "call_create_ticket",
+          "name": "create_ticket",
+          "arguments": {
+            "subject": "Support request",
+            "description": "Please open a support ticket: my smart fridge firmware shows error Z-77."
+          }
+        }
+      ]
+    }
+  ],
+  "response_text": ""
+}

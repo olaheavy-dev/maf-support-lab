@@ -15,6 +15,9 @@ using Support.Evaluations;
 //       --source-commit SHA          the backend's commit (default: unknown)
 //       --model-mode fake|recorded|live, --model-id ID
 //   compare --results DIR --out FILE  a Markdown baseline and cross-backend comparison of the run documents in DIR
+//   native record|evaluate [--recordings DIR] [--out DIR]
+//                                    native MAF evaluation (L30): record the fake agent's conversations, or score the
+//                                    saved recordings without re-running the agent
 //
 // Exit codes: 0 everything selected passed, 1 a case failed or errored, 2 invalid input.
 return await Cli.MainAsync(args).ConfigureAwait(false);
@@ -30,6 +33,7 @@ internal static class Cli
                 "validate" => Validate(),
                 "run" => await RunAsync(Options.Parse(args[1..])).ConfigureAwait(false),
                 "compare" => await Comparison.WriteAsync(args[1..]).ConfigureAwait(false),
+                "native" => await Support.Evaluations.Native.NativeEvaluation.MainAsync(args[1..]).ConfigureAwait(false),
                 _ => Usage(),
             };
         }

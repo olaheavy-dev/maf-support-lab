@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "support-success-order-status",
+  "dataset_id": "support-success",
+  "dataset_version": "1.2.0",
+  "case_id": "order-status",
+  "source": "fake-agent",
+  "agent": "support-fake-agent",
+  "principal": "CUST-1001",
+  "tools": [
+    {
+      "name": "get_order_status",
+      "writes": false
+    },
+    {
+      "name": "get_invoice",
+      "writes": false
+    },
+    {
+      "name": "get_payment_history",
+      "writes": false
+    },
+    {
+      "name": "search_knowledge_base",
+      "writes": false
+    },
+    {
+      "name": "cancel_order",
+      "writes": true
+    },
+    {
+      "name": "refund_order",
+      "writes": true
+    },
+    {
+      "name": "create_ticket",
+      "writes": true
+    }
+  ],
+  "context": [
+    "orders:ORD-1002"
+  ],
+  "query": "Where is my order ORD-1002?",
+  "messages": [
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "function_call",
+          "call_id": "call_get_order_status",
+          "name": "get_order_status",
+          "arguments": {
+            "orderId": "ORD-1002"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "contents": [
+        {
+          "type": "function_result",
+          "call_id": "call_get_order_status",
+          "result": "{\u0022lookup\u0022:\u0022found\u0022,\u0022order_id\u0022:\u0022ORD-1002\u0022,\u0022order_status\u0022:\u0022shipped\u0022}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "text",
+          "text": "Order ORD-1002 is shipped."
+        }
+      ]
+    }
+  ],
+  "response_text": "Order ORD-1002 is shipped."
+}

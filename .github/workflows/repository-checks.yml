@@ -142,6 +142,9 @@ jobs:
       - name: Evaluate the Python backend (all datasets)
         if: always()
         run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- run --backend python --launch --split development,heldout --source-commit "$GITHUB_SHA"
+      - name: Native .NET evaluation of the recorded conversations (L30, no model calls)
+        if: always()
+        run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- native evaluate
       - name: Compare the backends
         if: always()
         run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- compare --results evaluations/results --out evaluations/results/comparison.md
