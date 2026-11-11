@@ -1,6 +1,6 @@
-# Observability (.NET backend)
+# Observability
 
-What the .NET support API sends to Aspire, where each signal comes from, and how to read it. Introduced in L06. The Python backend adds its own in L40.
+What each support backend sends to Aspire, where each signal comes from, and how to read it. The .NET API was introduced in L06; the Python backend's own telemetry, in L40 (see "The Python backend" below).
 
 ## Run it and look
 
@@ -179,6 +179,105 @@ A turn that runs and fails is a result, not an HTTP error: `200` with `outcome: 
 Invalid triage output is not a failure: the turn completes `unrouted` with a clarification (L07).
 
 All limits live in configuration (`Resilience` section, `ResilienceOptions`).
+
+## The Python backend (L40)
+
+The Python processes send their own telemetry to the same dashboard, under their own service names. Nothing is inherited from .NET: Aspire only tells Python where to send. **Instrumentation** creates spans and measurements, **providers** collect them, **exporters** send them over **OTLP**, and the **dashboard** receives them. The Python code owns the first three.
+
+### Run it and look
+
+```bash
+aspire start --apphost apphost/Support.AppHost.csproj   # prints the dashboard login link
+```
+
+Send turns to `support-api-python` (its URL is on the resource in the dashboard), in the same way as the .NET examples above: a normal question, and one with `[fake:model-error]`. Then:
+
+- **Traces:** Traces → `support-api-python`, or `aspire otel spans support-api-python --trace-id <trace_id from the turn result>`.
+- **Structured logs:** `aspire otel logs support-api-python --trace-id <id>`.
+- **Metrics:** Metrics → `support-api-python` → meters `support_agent`, `agent_framework`, `fastapi` (the CLI can't export metrics; use the dashboard).
+
+### One turn, as a trace
+
+```text
+POST /api/v1/conversations/{conversation_id}/turns   fastapi           HTTP server span (FastAPI's built-in telemetry)
+├─ fastapi.dependencies, fastapi.endpoint             fastapi           request handling (the endpoint waits for the turn)
+└─ support.turn                                       support_agent     conversation, turn and client turn ids; outcome; agent; reply kind
+   ├─ workflow.build                                  agent_framework   the routing workflow is built per turn
+   └─ invoke_workflow support-routing                 agent_framework
+      ├─ executor.process triage → invoke_agent triage → chat fake-model
+      ├─ edge_group.process …, message.send           agent_framework   how the switch delivered the triage result
+      ├─ executor.process <selected executor>         agent_framework   orders-/billing-/technical-specialist, ask-for-order-id, or unrouted
+      │  └─ invoke_agent <specialist>                 agent_framework
+      │     ├─ chat <model>                           agent_framework   one per model call, with that call's token usage
+      │     ├─ execute_tool <tool>                    agent_framework
+      │     └─ chat <model>
+      └─ executor.process reply
+```
+
+- The turn runs as its own task (L12/L20), and it inherits the request's trace when it is started, so everything above is **one trace**.
+- The contract's `trace_id`, in turn results and problem responses, is that trace's id.
+- `/health` and `/alive` are not traced.
+- A failed turn: `support.turn` has error status and `error.type`, and a "Turn failed" log record sits on the same trace with its traceback.
+
+### Who owns which signal
+
+| Scope | Set up by | Emits |
+| --- | --- | --- |
+| providers and OTLP exporters | `support_agent/telemetry.py`, **once per process** | one tracer, meter and logger provider; gRPC OTLP exporters when `OTEL_EXPORTER_OTLP_ENDPOINT` is set |
+| `fastapi` | FastAPI 0.162's **built-in** telemetry, on our providers (`FastAPI(telemetry={"exclude": …})`) | HTTP server spans, `http.server.request.duration`, `http.server.active_requests` |
+| `agent_framework` | MAF Python 1.25, turned on in `telemetry.py` (`enable_instrumentation`, with message capture set explicitly) | workflow, executor, edge, `invoke_agent`, `chat` and `execute_tool` spans; `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`, `agent_framework.function.invocation.duration` |
+| `support_agent` | our code (`api.py`, `tools.py`, `operations.py`, `workflow.py`, `streaming.py`) | the `support.turn` span, the `support.*` metrics, and structured logs |
+| Logs | `telemetry.TraceLogHandler`, the only handler, on the root logger | every log record above INFO, stamped with the active trace and span ids |
+
+**Nothing is duplicated** (tested):
+- **HTTP:** `opentelemetry-instrumentation-fastapi` is *not* installed. FastAPI already instruments itself, and both would give two server spans per request.
+- **Tokens:** MAF Python records token usage once, per model call. It does *not* repeat it at the agent layer, unlike MAF .NET (see "Token usage is counted once" above), so no View is needed. A test checks 3 calls give exactly 3 × 100 input tokens.
+- **DevUI:** its executor calls MAF's `configure_otel_providers()` on start-up, which would add a second set of exporters and a hard-coded `agent-framework-server` service name. `telemetry.py` builds our providers first and marks MAF's one-time setup as done, so DevUI's call does nothing. A test makes a DevUI request and checks that the providers, span processors and log handlers are unchanged.
+  - That flag (`OBSERVABILITY_SETTINGS._executed_setup`) is private to MAF, and the test fails loudly if a release renames it.
+  - DevUI's own `instrumentation_enabled` switch stays off, because it turns sensitive capture on unconditionally.
+
+### Configuration and lifecycle
+
+| Setting | Source | Notes |
+| --- | --- | --- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`, `_HEADERS`, `_CERTIFICATE` | the AppHost (`WithOtlpExporter(OtlpProtocol.Grpc)` on both Python resources) | The headers carry the dashboard's API key. They live only in the process environment, and are never committed, printed or logged. |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | the AppHost (`grpc`) | Anything else, with an endpoint set, **fails at startup** (`TelemetryConfigurationError`). A gRPC exporter would otherwise send into the void. |
+| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | the AppHost (`support-api-python`, `support-devui-python`, instance id) | Defaults to the same names when run alone. `service.version` comes from the package; `deployment.environment.name` from `APP_ENVIRONMENT`. |
+| `OTEL_METRIC_EXPORT_INTERVAL` | the AppHost | read by the SDK's periodic metric reader |
+| `TELEMETRY__CAPTURE_SENSITIVE_DATA` | our settings (default `false`) | the only way to turn on message capture (see below) |
+
+- **Running on its own** (`uv run python -m support_agent`): with no endpoint, nothing is exported. To send to a collector anyway, set `OTEL_EXPORTER_OTLP_ENDPOINT` (and `_HEADERS` if it needs a key) in your shell. Never commit them.
+- **Shutdown:** each host flushes at lifespan end, within 2 s and off the event loop.
+- **At process exit,** our hook flushes and closes the providers within **5 s**. The SDK's own exit hooks are turned off (`shutdown_on_exit=False`) because they have no time limit: with an unreachable collector, the retrying gRPC exporters held the process for over a minute (found by a test; now about 5 s).
+
+### Metrics and their labels (Python)
+
+Same names and labels as .NET, wherever the concept is shared:
+
+| Metric | Labels (all bounded) |
+| --- | --- |
+| `support.turns` | `support.agent` (target, `unrouted`, `unknown`), `support.turn.outcome` (`completed`, `awaiting_approval`, `failed`, `cancelled`), `support.reply_kind` |
+| `support.turn.duration` (s) | `support.agent`, `support.turn.outcome` |
+| `support.tool.calls` | `support.tool.name` (the four read tools), `support.tool.outcome` (`found`, `not_found`, `invalid_input`, `no_match`) |
+| `support.operations` | `support.operation.kind`, `support.operation.outcome` (`awaiting_approval`, `committed`, `failed`, `not_eligible`, `not_found`, `invalid_arguments`) |
+| `support.triage.decisions` | `support.triage.outcome`, `support.triage.target`, `support.triage.unrouted_reason` |
+| `support.stream.first_delta` (s) | none: time from turn start to the first streamed reply text (L20's latency, now measured continuously) |
+
+Ids are never labels; a test scans every metric data point for id-shaped values. **Usage a provider didn't report is recorded as nothing, not zero:** with usage off, a turn adds no `gen_ai.client.token.usage` samples and no usage attributes on its `chat` spans.
+
+### Checked live under Aspire (2026-11-11, fake mode)
+
+- **Success:** the turn's `trace_id` from the API is the dashboard's trace. It holds 20 spans under `support-api-python`, from `POST …/turns` through `support.turn`, the workflow, triage, the orders specialist, three `chat fake-model` calls and `execute_tool get_order_status`.
+- **Failure** (`[fake:model-error]`): `support.turn` and the chain down to the failing model call have error status, while the HTTP span stays OK, since a failed turn is a 200 by contract. Two log records sit on that trace: the exception and "Turn failed".
+- **Metrics** (dashboard): meters `agent_framework`, `fastapi`, `support_agent`; `support.turns` showed exactly the 2 turns sent.
+- **DevUI:** a chat traced as `support-devui-python` (`POST /v1/responses` → `invoke_agent orders` → `chat`, `execute_tool`, `chat`, each once). No `agent-framework-server` resource exists.
+- **No content:** the success trace's exported JSON had no message phrase, customer id or tool result, although Aspire also sets `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`.
+
+### Sensitive data (Python)
+
+Off by default: no prompts, replies, tool arguments or results, customer ids, or message text in spans or logs. A test sends a message with a unique phrase and checks that neither it, the customer id, nor the tool's result appears anywhere in that trace's spans or logs.
+- **Opting in** takes `TELEMETRY__CAPTURE_SENSITIVE_DATA=true` (local debugging only).
+- MAF's own `ENABLE_SENSITIVE_DATA=true` can't switch it on: `telemetry.py` always passes the setting explicitly (tested in a fresh process).
 
 ## Not yet covered
 

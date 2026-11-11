@@ -22,6 +22,7 @@ from agent_framework import (
     FunctionInvocationLayer,
     Message,
     ResponseStream,
+    UsageDetails,
 )
 from agent_framework.observability import ChatTelemetryLayer
 
@@ -244,6 +245,10 @@ def check_tool_pairing(messages: Sequence[Message]) -> None:
             raise FakeModelError(f"A tool result answers no tool call in the previous assistant message: {missing}")
 
 
+FAKE_MODEL = "fake-model"
+INPUT_TOKENS, OUTPUT_TOKENS = 100, 20  # per call, like the .NET fake
+
+
 def _words(text: str) -> list[str]:
     """Splits text into word-sized pieces that concatenate back to exactly the text."""
     return re.findall(r"\S+\s*|\s+", text)
@@ -261,15 +266,24 @@ class ScriptedChatClient(BaseChatClient[Any]):
         self.before_call: Callable[[], Awaitable[None]] | None = None
         # Tests may hold a stream between its updates (L20), to see text arrive before the turn ends.
         self.between_updates: Callable[[], Awaitable[None]] | None = None
+        # Like a real provider, every response reports token usage (L40), so token metrics have real samples. A test may
+        # turn it off to see that usage a provider didn't report is recorded as nothing, never as zero.
+        self.report_usage = True
 
     async def _respond(self, messages: Sequence[Message], options: Mapping[str, Any]) -> ChatResponse:
         self.calls += 1
         check_tool_pairing(messages)
         if self.before_call is not None:
             await self.before_call()
-        if options.get("response_format") is not None:
-            return text(self.triage(last_user_text(messages)))
-        return self.script(messages, options)
+        response = (
+            text(self.triage(last_user_text(messages)))
+            if options.get("response_format") is not None
+            else self.script(messages, options)
+        )
+        response.model = response.model or FAKE_MODEL
+        if self.report_usage:
+            response.usage_details = UsageDetails(input_token_count=INPUT_TOKENS, output_token_count=OUTPUT_TOKENS)
+        return response
 
     def _inner_get_response(
         self, *, messages: Sequence[Message], stream: bool, options: Mapping[str, Any], **kwargs: Any
@@ -285,12 +299,19 @@ class ScriptedChatClient(BaseChatClient[Any]):
                 others = [content for content in message.contents if content.type != "text"]
                 for piece in _words(message.text):
                     yield ChatResponseUpdate(
-                        role="assistant", contents=[Content.from_text(piece)], message_id=message_id
+                        role="assistant", contents=[Content.from_text(piece)], message_id=message_id, model=FAKE_MODEL
                     )
                     if self.between_updates is not None:
                         await self.between_updates()
                 if others:
-                    yield ChatResponseUpdate(role="assistant", contents=others, message_id=message_id)
+                    yield ChatResponseUpdate(role="assistant", contents=others, message_id=message_id, model=FAKE_MODEL)
+            if response.usage_details is not None:
+                yield ChatResponseUpdate(
+                    role="assistant",
+                    contents=[Content.from_usage(response.usage_details)],
+                    message_id=message_id,
+                    model=FAKE_MODEL,
+                )
 
         return ResponseStream(updates(), finalizer=ChatResponse.from_updates)
 

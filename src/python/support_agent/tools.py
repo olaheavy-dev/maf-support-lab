@@ -15,6 +15,7 @@ from pydantic import Field
 from support_agent.activity import ToolOutcome, current_activity
 from support_agent.identity import current_principal
 from support_agent.services import InvalidReferenceError, Services, normalize
+from support_agent.telemetry import tool_calls
 
 ORDER_STATUS = "get_order_status"
 INVOICE = "get_invoice"
@@ -22,7 +23,9 @@ PAYMENT_HISTORY = "get_payment_history"
 KNOWLEDGE_SEARCH = "search_knowledge_base"
 
 
-def _record(outcome: ToolOutcome, verified_order_id: str | None = None) -> None:
+def _record(tool_name: str, outcome: ToolOutcome, verified_order_id: str | None = None) -> None:
+    """Records the outcome for the turn (it decides the reply kind) and in ``support.tool.calls`` (L40)."""
+    tool_calls.add(1, {"support.tool.name": tool_name, "support.tool.outcome": str(outcome)})
     activity = current_activity()
     if activity is not None:
         activity.record(outcome, verified_order_id)
@@ -39,12 +42,12 @@ def order_tools(services: Services) -> list[FunctionTool]:
         try:
             order = services.orders.order_status(current_principal(), order_id)
         except InvalidReferenceError:
-            _record(ToolOutcome.INVALID_INPUT)
+            _record(ORDER_STATUS, ToolOutcome.INVALID_INPUT)
             return {"lookup": "invalid_order_id"}
         if order is None:
-            _record(ToolOutcome.NOT_FOUND)
+            _record(ORDER_STATUS, ToolOutcome.NOT_FOUND)
             return {"lookup": "not_found", "order_id": normalize(order_id)}
-        _record(ToolOutcome.FOUND, order.order_id)
+        _record(ORDER_STATUS, ToolOutcome.FOUND, order.order_id)
         return {
             "lookup": "found",
             "order_id": order.order_id,
@@ -69,12 +72,12 @@ def billing_tools(services: Services) -> list[FunctionTool]:
         try:
             invoice = services.billing.invoice(current_principal(), reference)
         except InvalidReferenceError:
-            _record(ToolOutcome.INVALID_INPUT)
+            _record(INVOICE, ToolOutcome.INVALID_INPUT)
             return {"lookup": "invalid_reference"}
         if invoice is None:
-            _record(ToolOutcome.NOT_FOUND)
+            _record(INVOICE, ToolOutcome.NOT_FOUND)
             return {"lookup": "not_found", "reference": normalize(reference)}
-        _record(ToolOutcome.FOUND, invoice.order_id)
+        _record(INVOICE, ToolOutcome.FOUND, invoice.order_id)
         return {
             "lookup": "found",
             "invoice_id": invoice.invoice_id,
@@ -88,7 +91,7 @@ def billing_tools(services: Services) -> list[FunctionTool]:
     @tool(name=PAYMENT_HISTORY, description="List the current customer's payments and refunds, newest first.")
     def get_payment_history() -> dict[str, Any]:
         payments = services.billing.payment_history(current_principal())
-        _record(ToolOutcome.FOUND)
+        _record(PAYMENT_HISTORY, ToolOutcome.FOUND)
         return {
             "payments": [
                 {
@@ -117,7 +120,7 @@ def technical_tools(services: Services) -> list[FunctionTool]:
             articles = services.knowledge.search(query)
         except InvalidReferenceError:
             return {"search": "invalid_query", "articles": []}
-        _record(ToolOutcome.FOUND if articles else ToolOutcome.NO_MATCH)
+        _record(KNOWLEDGE_SEARCH, ToolOutcome.FOUND if articles else ToolOutcome.NO_MATCH)
         return {
             "search": "found" if articles else "no_match",
             "articles": [{"article_id": a.article_id, "title": a.title, "steps": list(a.steps)} for a in articles],

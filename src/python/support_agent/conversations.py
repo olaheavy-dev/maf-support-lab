@@ -22,6 +22,7 @@ from support_agent.identity import Principal
 from support_agent.operations import OperationStore, Status
 from support_agent.routing import TurnRoute, UnroutedReason
 from support_agent.sessions import ConversationContext, ConversationSessions
+from support_agent.telemetry import current_trace_id
 from support_agent.turn_control import TurnControl
 
 
@@ -200,7 +201,7 @@ class Conversation:
             if client_turn_id.startswith("approval:")
             else client_turn_id,  # a decision's turn has no client_turn_id
             now(),
-            secrets.token_hex(16),
+            current_trace_id() or secrets.token_hex(16),  # the request's trace (L40); random outside any trace
             client_turn_id.lower(),
         )
         self.claims[client_turn_id.lower()] = claim

@@ -29,6 +29,7 @@ from support_agent.domain import Order, Payment
 from support_agent.identity import Principal
 from support_agent.policy import Policy
 from support_agent.state import SimulatedState, Ticket
+from support_agent.telemetry import operations as operation_metrics
 from support_agent.turn_control import raise_if_cancelled
 
 ORDER_ID = re.compile(r"^ORD-[0-9]{4}$")
@@ -428,8 +429,12 @@ class OperationService:
             kind = Kind(tool)
         except ValueError:
             raise WriteError("invalid_arguments", "Unknown write tool.") from None
-        mapped = map_arguments(kind, arguments, self.policy.ticket_priorities)
-        summary = self.handlers.check(principal, kind, mapped)
+        try:
+            mapped = map_arguments(kind, arguments, self.policy.ticket_priorities)
+            summary = self.handlers.check(principal, kind, mapped)
+        except WriteError as refused:
+            operation_metrics.add(1, {"support.operation.kind": str(kind), "support.operation.outcome": refused.code})
+            raise
         at = now()
         operation = Operation(
             "op_" + secrets.token_hex(8),
@@ -446,6 +451,9 @@ class OperationService:
             at,
         )
         self.store.add(operation, native_request, batch)
+        operation_metrics.add(
+            1, {"support.operation.kind": str(kind), "support.operation.outcome": "awaiting_approval"}
+        )
         return operation
 
     async def execute_approved(self, principal: Principal, kind: Kind, arguments: Mapping[str, Any]) -> dict[str, Any]:
@@ -497,6 +505,8 @@ class OperationService:
             if operation.status is Status.COMMITTED and operation.result is not None:
                 return operation.result
             raise WriteError("not_approved", "This action is not awaiting execution.") from None
+        outcome = "failed" if failure is not None else "committed"
+        operation_metrics.add(1, {"support.operation.kind": str(kind), "support.operation.outcome": outcome})
         if failure is not None:
             raise failure
         assert operation.result is not None

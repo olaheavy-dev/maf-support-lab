@@ -34,6 +34,7 @@ from support_agent.approval_gate import gate
 from support_agent.operations import OperationService
 from support_agent.routing import TriageDecision, TriageOutcome, TurnRoute, UnroutedReason, parse, route
 from support_agent.sessions import ConversationContext, ConversationSessions, context_note
+from support_agent.telemetry import triage_decisions
 from support_agent.turn_control import Delta, Progress
 
 WORKFLOW_NAME = "support-routing"
@@ -98,6 +99,14 @@ class TriageExecutor(Executor):
             request.context,
             request.sessions,
             request.turn_id,
+        )
+        triage_decisions.add(
+            1,
+            {
+                "support.triage.outcome": "routed" if outcome.route.target else "unrouted",
+                "support.triage.target": outcome.route.target or "none",
+                "support.triage.unrouted_reason": str(outcome.route.unrouted_reason or "none"),
+            },
         )
         await ctx.add_event(progress("routed", route=outcome.route.to_contract()))
         await ctx.send_message(outcome)

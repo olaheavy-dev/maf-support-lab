@@ -19,6 +19,7 @@ from support_agent.model_provider import create_client
 from support_agent.operations import build_operations
 from support_agent.services import Services
 from support_agent.settings import Environment, Settings
+from support_agent.telemetry import configure as configure_telemetry
 from support_agent.workflow import build_workflow
 
 
@@ -39,8 +40,19 @@ def main() -> None:
     from agent_framework.devui import serve
 
     port = int(os.environ.get("PORT", "5290"))
+    settings = Settings()
+    # Our own providers, under this process's own service name (L40). DevUI's instrumentation switch stays off: it
+    # would turn on sensitive capture unconditionally, and its own provider setup is marked done by configure().
+    configure_telemetry(settings, default_service_name="support-devui-python")
     # Loopback only, so DevUI's own bearer-token auth may stay off (it refuses that on other hosts).
-    serve(entities=entities(Settings()), host="127.0.0.1", port=port, auth_enabled=False, auto_open=False)
+    serve(
+        entities=entities(settings),
+        host="127.0.0.1",
+        port=port,
+        auth_enabled=False,
+        auto_open=False,
+        instrumentation_enabled=False,
+    )
 
 
 if __name__ == "__main__":

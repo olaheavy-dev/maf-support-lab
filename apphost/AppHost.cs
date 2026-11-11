@@ -15,6 +15,9 @@ var pythonApi = builder.AddUvicornApp("support-api-python", "../src/python", "su
     .WithUv(args: ["sync", "--locked"])
     .WithEnvironment("APP_ENVIRONMENT", "development")
     .WithEnvironment("IDENTITY__DEVELOPMENT_CUSTOMER_ID", "CUST-1001")
+    // Telemetry (L40): OTLP over gRPC to the dashboard, with its endpoint, API key header, and certificate. The Python
+    // code owns its providers (support_agent/telemetry.py); Aspire only says where to send.
+    .WithOtlpExporter(OtlpProtocol.Grpc)
     .WithHttpHealthCheck("/health");
 
 // Python DevUI (L18): development only, its own loopback process over the same agents and guarded services. It reuses
@@ -24,6 +27,7 @@ builder.AddPythonModule("support-devui-python", "../src/python", "support_agent.
     .WithHttpEndpoint(env: "PORT")
     .WithEnvironment("APP_ENVIRONMENT", "development")
     .WithEnvironment("IDENTITY__DEVELOPMENT_CUSTOMER_ID", "CUST-1001")
+    .WithOtlpExporter(OtlpProtocol.Grpc)
     .WithHttpHealthCheck("/health")
     .WaitFor(pythonApi);
 

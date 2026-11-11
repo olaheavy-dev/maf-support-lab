@@ -15,13 +15,16 @@ import asyncio
 import json
 import logging
 import secrets
-from collections.abc import Coroutine
+import time
+from collections.abc import Callable, Coroutine, Generator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 
 from agent_framework import AgentResponse, Message, SupportsAgentRun
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
+from opentelemetry.trace import StatusCode
 
 from support_agent import contract, streaming
 from support_agent.agents import SupportAgents
@@ -31,6 +34,7 @@ from support_agent.dependencies import Caller
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Operation, OperationService, Status, approval_scope
 from support_agent.routing import TurnRoute
+from support_agent.telemetry import current_trace_id, tracer, turn_duration, turns
 from support_agent.turn_control import Delta, Progress, TurnControl, controlling, emit, raise_if_cancelled
 from support_agent.workflow import FALLBACK, RoutingRequest, SupportReply, build_workflow
 
@@ -61,8 +65,8 @@ SHUTDOWN_GRACE_SECONDS = 5.0
 
 
 def trace_id() -> str:
-    """A trace id (32 hex). Python OpenTelemetry arrives later (L40); until then it is generated here."""
-    return secrets.token_hex(16)
+    """The current request's trace id (32 hex), so a problem response can be found in Aspire; random outside a trace."""
+    return current_trace_id() or secrets.token_hex(16)
 
 
 def problem(code: str, detail: str, errors: list[contract.SchemaError] | None = None) -> JSONResponse:
@@ -289,6 +293,45 @@ def create_router(
     return router
 
 
+@contextmanager
+def observed_turn(
+    conversation: Conversation, claim: Claim, resumed_from: str | None = None
+) -> Generator[Callable[[Turn], None]]:
+    """The ``support.turn`` span around one turn's run (a child of its request's span, which the detached task
+    inherits), plus the turn metrics and one structured log line. Ids go on the span and the log, never on metrics;
+    no message text goes anywhere."""
+    attributes: dict[str, Any] = {
+        "support.conversation.id": conversation.conversation_id,
+        "support.turn.id": claim.turn_id,
+        "support.turn.resumed": resumed_from is not None,
+    }
+    if claim.client_turn_id is not None:
+        attributes["support.client_turn.id"] = claim.client_turn_id
+    clock = time.monotonic()
+    with tracer.start_as_current_span("support.turn", attributes=attributes) as span:
+
+        def observe(turn: Turn) -> None:
+            agent = turn.route.target if turn.route and turn.route.target else ("unrouted" if turn.route else "unknown")
+            labels = {"support.agent": agent, "support.turn.outcome": turn.outcome}
+            span.set_attributes({**labels, "support.reply_kind": turn.reply_kind or "none"})
+            turns.add(1, {**labels, "support.reply_kind": turn.reply_kind or "none"})
+            turn_duration.record(time.monotonic() - clock, labels)
+            if turn.outcome == "failed":
+                span.set_status(StatusCode.ERROR, turn.error.code if turn.error else "failed")
+                span.set_attribute("error.type", turn.error.code if turn.error else "internal_error")
+                log.error(
+                    "Turn failed",
+                    extra={"support.turn.id": turn.turn_id, "support.conversation.id": turn.conversation_id, **labels},
+                )
+            else:
+                log.info(
+                    "Turn finished",
+                    extra={"support.turn.id": turn.turn_id, "support.conversation.id": turn.conversation_id, **labels},
+                )
+
+        yield observe
+
+
 def acknowledge_cancellation() -> None:
     """The turn handled its cancellation (it stores a cancelled or factual result), so its task carries on normally."""
     if (task := asyncio.current_task()) is not None and task.cancelling():
@@ -304,6 +347,19 @@ async def complete_turn(
     principal: Principal,
 ) -> None:
     """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once."""
+    with observed_turn(conversation, claim) as observe:
+        await _complete_turn(agents, operations, conversation, claim, message, principal, observe)
+
+
+async def _complete_turn(
+    agents: SupportAgents,
+    operations: OperationService,
+    conversation: Conversation,
+    claim: Claim,
+    message: str,
+    principal: Principal,
+    observe: Callable[[Turn], None],
+) -> None:
     try:
         with controlling(claim.control):
             claim.control.started = True
@@ -311,12 +367,12 @@ async def complete_turn(
             turn, verified_order_id = await run_turn(agents, operations, conversation, claim, message, principal)
     except asyncio.CancelledError:
         acknowledge_cancellation()
-        conversation.complete(claim, cancelled_turn(conversation, claim, claim.started_at), operations.store)
+        observe(conversation.complete(claim, cancelled_turn(conversation, claim, claim.started_at), operations.store))
         return
     except BaseException:
-        conversation.complete(claim, failed_turn(conversation, claim, claim.started_at), operations.store)
+        observe(conversation.complete(claim, failed_turn(conversation, claim, claim.started_at), operations.store))
         raise
-    conversation.complete(claim, turn, operations.store, verified_order_id)
+    observe(conversation.complete(claim, turn, operations.store, verified_order_id))
 
 
 def failed_turn(conversation: Conversation, claim: Claim, started: datetime, resumed_from: str | None = None) -> Turn:
@@ -438,6 +494,19 @@ async def complete_decision(
 
     Cancelled before the write commits: the turn is cancelled, and an approved operation fails with code ``cancelled``.
     Cancelled after it committed: the committed result stands, and the turn completes from the record."""
+    with observed_turn(conversation, claim, resumed_from=operation.source_turn_id) as observe:
+        await _complete_decision(agents, operations, conversation, claim, operation, principal, observe)
+
+
+async def _complete_decision(
+    agents: SupportAgents,
+    operations: OperationService,
+    conversation: Conversation,
+    claim: Claim,
+    operation: Operation,
+    principal: Principal,
+    observe: Callable[[Turn], None],
+) -> None:
     started = now()
     route = TurnRoute(target=operation.specialist)
     try:
@@ -452,7 +521,7 @@ async def complete_decision(
             turn = cancelled_turn(
                 conversation, claim, started, operation.source_turn_id, (operation.operation_id,), route
             )
-            conversation.complete(claim, turn, operations.store)
+            observe(conversation.complete(claim, turn, operations.store))
             return
         text = factual(operation)
     except BaseException as error:
@@ -476,7 +545,7 @@ async def complete_decision(
         (operation.operation_id,),
         operation.source_turn_id,
     )
-    conversation.complete(claim, turn, operations.store)
+    observe(conversation.complete(claim, turn, operations.store))
 
 
 async def streamed_run(agent: SupportsAgentRun, messages: list[Message], session: Any) -> AgentResponse[Any]:

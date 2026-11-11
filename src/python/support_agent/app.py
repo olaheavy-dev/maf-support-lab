@@ -6,9 +6,10 @@ Uvicorn as ``support_agent.app:app``. Agents and the contract API arrive in late
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Awaitable, Callable
+import asyncio
+from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
 from contextlib import asynccontextmanager
-from typing import Annotated, cast
+from typing import Annotated, Any, cast
 
 from fastapi import Depends, FastAPI
 from fastapi.responses import PlainTextResponse
@@ -25,6 +26,10 @@ from support_agent.operations import build_operations
 from support_agent.resources import Resources
 from support_agent.services import Services
 from support_agent.settings import Environment, Settings
+from support_agent.telemetry import Telemetry
+from support_agent.telemetry import configure as configure_telemetry
+
+PROBES = ("/health", "/alive")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -41,8 +46,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await turns.shutdown()
         await resources.close_all()
 
+    # Telemetry (L40): this process's providers, set up once; FastAPI's built-in telemetry creates the HTTP spans and
+    # metrics on them. Health probes are not traced.
+    telemetry = configure_telemetry(settings)
     app = FastAPI(
-        title="VoltCart support API (Python)", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None
+        title="VoltCart support API (Python)",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        telemetry={"exclude": _is_probe},
     )
     app.state.settings = settings
     app.state.principal_source = principal_source_for(settings)
@@ -51,6 +64,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # One model client per process, owned by the lifespan; the agents and the guarded services are built once.
     client = create_client(settings)
     resources.own("model client", _closer(client))
+    app.state.telemetry = telemetry
+    resources.own("telemetry", _flushing(telemetry))
     # One SQLite file per backend and run (L38), opened at startup and closed (checkpointed) at shutdown.
     database = Database(settings.storage.path)
     resources.own("database", _closing(database))
@@ -90,6 +105,19 @@ def _closer(client: object) -> Callable[[], Awaitable[None]]:
                 await cast(Awaitable[None], outcome)
 
     return close
+
+
+def _is_probe(scope: MutableMapping[str, Any]) -> bool:
+    return scope.get("path") in PROBES
+
+
+def _flushing(telemetry: Telemetry) -> Callable[[], Awaitable[None]]:
+    """At shutdown the host flushes what it recorded. The providers belong to the process and shut down at exit."""
+
+    async def flush() -> None:
+        await asyncio.to_thread(telemetry.flush)  # bounded (FLUSH_TIMEOUT_MILLIS), off the event loop
+
+    return flush
 
 
 def _closing(database: Database) -> Callable[[], Awaitable[None]]:
