@@ -18,6 +18,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from support_agent.api import complete_decision, complete_turn
 from support_agent.conversations import Claim
 from support_agent.fake_model import ScriptedChatClient
 from support_agent.identity import Principal, pinned
@@ -295,3 +296,51 @@ def test_a_claim_has_its_own_control() -> None:
     first = Claim("turn_a", "x", asyncio.Future(loop=asyncio.new_event_loop()))
     second = Claim("turn_b", "x", asyncio.Future(loop=asyncio.new_event_loop()))
     assert first.control is not second.control
+
+
+@pytest.mark.anyio
+async def test_a_turn_cancelled_before_its_task_first_runs_is_still_stored_as_cancelled() -> None:
+    # Codex review on PR #92: shutdown right after detach(), before the task ever ran. The task must still reach its
+    # handler, store a cancelled turn, and answer its waiters.
+    app, _ = host()
+    async with client_for(app) as client:
+        conversation_id = await new_conversation(client)
+    conversation = app.state.conversations._conversations[conversation_id]
+    claim, _ = conversation.reserve(str(uuid.uuid4()), "Where is my order ORD-1002?")
+    assert claim is not None
+    work = complete_turn(
+        app.state.agents, app.state.operations, conversation, claim, claim.message, Principal("CUST-1001")
+    )
+    app.state.turns.detach(work, claim.control)
+    await app.state.turns.shutdown()  # no await in between: the task has not started
+
+    turn = await asyncio.wait_for(asyncio.shield(claim.done), 5)
+    assert turn.outcome == "cancelled"
+    assert claim.turn_id in conversation.turns
+    assert conversation.active_turn_id is None
+    assert model(app).calls == 0  # nothing ran
+
+
+@pytest.mark.anyio
+async def test_an_approval_cancelled_before_its_task_first_runs_fails_as_cancelled_and_changes_nothing() -> None:
+    app, _ = host()
+    async with client_for(app) as client:
+        conversation_id = await new_conversation(client)
+        pending = await ask_for_approval(client, conversation_id, TICKET)
+    conversation = app.state.conversations._conversations[conversation_id]
+    store = app.state.operations.store
+    operation = store.find(pending["operation_id"])
+    assert store.decide(operation, Decision.APPROVE, None, datetime.now(UTC))
+    claim, _ = conversation.reserve(f"approval:{operation.approval_id}", "approve")
+    assert claim is not None
+    work = complete_decision(
+        app.state.agents, app.state.operations, conversation, claim, operation, Principal("CUST-1001")
+    )
+    app.state.turns.detach(work, claim.control)
+    await app.state.turns.shutdown()
+
+    turn = await asyncio.wait_for(asyncio.shield(claim.done), 5)
+    assert turn.outcome == "cancelled"
+    stored = store.find(pending["operation_id"])
+    assert (stored.status, stored.failure[0]) == (Status.FAILED, "cancelled")
+    assert state_of(app, "create_ticket") == BEFORE["create_ticket"]

@@ -47,10 +47,15 @@ class TurnControl:
     cancel_requested: asyncio.Event = field(default_factory=asyncio.Event)
     task: asyncio.Task[None] | None = None
     observer: asyncio.Queue[Progress | Delta] | None = None
+    # Set by the turn as its first step, inside its own cancellation handler (Codex review on PR #92).
+    started: bool = False
 
     def request_cancel(self) -> None:
+        """Sets the flag and interrupts the task, but only once it has started: cancelling a task that has not run yet
+        would skip its body, and with it the handler that stores the cancelled outcome. A turn that has not started
+        sees the flag at its first boundary instead."""
         self.cancel_requested.set()
-        if self.task is not None and not self.task.done():
+        if self.started and self.task is not None and not self.task.done():
             self.task.cancel()
 
     @property

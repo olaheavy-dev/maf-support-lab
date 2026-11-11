@@ -31,7 +31,7 @@ from support_agent.dependencies import Caller
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Operation, OperationService, Status, approval_scope
 from support_agent.routing import TurnRoute
-from support_agent.turn_control import Delta, Progress, TurnControl, controlling, emit
+from support_agent.turn_control import Delta, Progress, TurnControl, controlling, emit, raise_if_cancelled
 from support_agent.workflow import FALLBACK, RoutingRequest, SupportReply, build_workflow
 
 log = logging.getLogger(__name__)
@@ -306,6 +306,8 @@ async def complete_turn(
     """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once."""
     try:
         with controlling(claim.control):
+            claim.control.started = True
+            raise_if_cancelled()  # cancelled before this task first ran: stored as cancelled below
             turn, verified_order_id = await run_turn(agents, operations, conversation, claim, message, principal)
     except asyncio.CancelledError:
         acknowledge_cancellation()
@@ -440,6 +442,8 @@ async def complete_decision(
     route = TurnRoute(target=operation.specialist)
     try:
         with controlling(claim.control):
+            claim.control.started = True
+            raise_if_cancelled()
             text = await resume(agents, operations, conversation, operation, principal)
     except asyncio.CancelledError:
         acknowledge_cancellation()
