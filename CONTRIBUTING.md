@@ -31,6 +31,6 @@ Offline checks must not need model API credentials. Live-model evaluations are o
 
 ## Source usage
 
-Link to course files at the recorded commit. Mark whether a source teaches the feature or is only a comparison point. Never imply the course implements Aspire, CI, authentication, durable storage, or the planned frontend when it does not.
+Link to course files at the recorded commit. Mark whether a source teaches the feature or is only a comparison point. Never imply the course implements Aspire, CI, authentication, or durable storage when it does not.
 
 Planning changes are made in docs/learning/backlog.json and docs/sources.json, then rendered with python3 scripts/render_learning.py. Follow docs/learning/alignment.md and synchronize the existing GitHub issues without discarding learner evidence or progress.

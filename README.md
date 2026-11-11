@@ -1,6 +1,6 @@
 # MAF Support Lab
 
-A learning project: build the same customer-support system with Microsoft Agent Framework in C# and Python, orchestrate local development with Aspire, and add one frontend after the backend contracts work.
+A learning project: build the same customer-support system with Microsoft Agent Framework in C# and Python, orchestrate local development with Aspire, and verify both backends against one shared contract.
 
 ## Current state
 
@@ -22,7 +22,6 @@ Repository governance and the learning roadmap are prepared. Application impleme
     contracts/                    Shared request, streaming, approval, and error schemas
     fixtures/                     Synthetic customer/order/policy data
     evaluations/                  Shared behavioral scenarios
-    frontend/                     Added after backend parity
     docs/                         Decisions, sources, learning evidence
 
 The two backends implement the same use case independently. They share contracts and synthetic fixtures; conversations and mutable state remain isolated per backend. Each service will explicitly configure its own OpenTelemetry instrumentation and export.
@@ -48,6 +47,6 @@ Ticket scope and parity requirements are defined in the [alignment contract](doc
 
 [Project board](https://github.com/orgs/olaheavy-dev/projects/4) · [First ticket: L01](https://github.com/olaheavy-dev/maf-support-lab/issues/8) · [All issues](https://github.com/olaheavy-dev/maf-support-lab/issues)
 
-The board contains 42 learning tickets and nine parent epics linked through native sub-issues. Follow the execution Order field and blocking links; stable ticket IDs do not change when a task moves. L01 is Ready; later tickets are blocked by their execution predecessor.
+The board contains 38 active learning tickets and eight parent epics linked through native sub-issues; five retired tickets and one retired epic stay closed for history (see the roadmap). Follow the execution Order field and blocking links; stable ticket IDs never change or get reused. The first unblocked ticket is Ready; later tickets are blocked by their execution predecessor.
 
-Build the .NET API, Python API, and shared frontend first. E08 then introduces six formal evaluation tasks, and E09 introduces three documentation tasks: canonical plain Markdown, Gatsby static HTML generation, and packaging/serving the copied output. The complete Gatsby public folder is the portable deliverable; the documentation requires no running support backend or model service.
+Build and verify the .NET and Python APIs first (through L21). E08 then introduces six formal evaluation tasks, and E09 one documentation task: canonical plain Markdown that GitHub renders, with a documentation index and a CI link check. The project closes once the backends are solid; a frontend and a generated documentation site were dropped on 2026-11-11 (see the roadmap's retired tickets).

@@ -20,9 +20,6 @@ __pycache__/
 .ruff_cache/
 .coverage
 htmlcov/
-# Frontend
-node_modules/
-dist/
 # Local agent state and telemetry
 .data/
 checkpoints/
@@ -36,6 +33,3 @@ telemetry/
 .DS_Store
 # Keep dependency lockfiles tracked.
 
-# Browser probes (L22): Playwright output
-frontend/probes/test-results/
-frontend/probes/playwright-report/

@@ -18,6 +18,6 @@ Use official guidance for the design, release notes for migrations, and source/s
 
 Record: checked date, runtime/SDK, direct package versions, transitive lockfile, provider/model configuration, preview rationale, docs/source links, and verification result.
 
-Pin Aspire SDK/integrations and all application dependencies to compatible versions established during the scaffold ticket. Commit global.json, NuGet locks/central versions, Python pyproject.toml/uv.lock, and the frontend lockfile when introduced.
+Pin Aspire SDK/integrations and all application dependencies to compatible versions established during the scaffold ticket. Commit global.json, NuGet locks/central versions, and Python pyproject.toml/uv.lock.
 
 Package refreshes are separate reviewed changes. Reading newer docs does not silently change an existing locked baseline.

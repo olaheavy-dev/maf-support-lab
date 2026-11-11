@@ -97,7 +97,7 @@ def generated_documents(backlog: dict, registry: dict, mapping: dict) -> dict[st
         phase_ids.append(epic["id"])
     lines.append("    " + " --> ".join(phase_ids))
     lines += ["```", "",
-        "The table below is the text alternative and includes the exact prerequisites. Formal evaluations start after L24; Gatsby documentation starts after L33. Final portfolio work refreshes the static documentation after the fault and security reviews.",
+        "The table below is the text alternative and includes the exact prerequisites. Formal evaluations start after L21, once both backends are built and verified. Markdown documentation follows the evaluation reports, and final portfolio work refreshes it after the fault and security reviews.",
         "", "## Ticket execution order", "",
         "| Order | Ticket ID | Epic | Learning ticket | Stack | Depends on |",
         "| --- | --- | --- | --- | --- | --- |"]
@@ -108,6 +108,14 @@ def generated_documents(backlog: dict, registry: dict, mapping: dict) -> dict[st
     for epic in backlog["epics"]:
         lines += [f"### [{epic['id']}: {epic['title']}](epics/{epic['id']}.md)", "",
             epic["outcome"], "", f"Exit: {epic['exit_criteria']}", ""]
+    retired = backlog.get("retired_tickets", []) + backlog.get("retired_epics", [])
+    if retired:
+        lines += ["## Retired tickets and epics", "",
+            "Removed from the plan by the owner. Their IDs are never reused; the GitHub issues stay closed for history.",
+            "", "| ID | Title | Reason |", "| --- | --- | --- |"]
+        for item in retired:
+            lines.append(f"| {issue_link(item['id'], mapping)} | {item['title']} | {item['reason']} |")
+        lines.append("")
     docs["docs/learning/roadmap.md"] = "\n".join(lines).rstrip() + "\n"
     owners = {cap: t["id"] for t in tickets for cap in t["provides_capabilities"]}
     lines = ["# Capability ownership", "",

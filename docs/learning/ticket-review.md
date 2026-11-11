@@ -1,5 +1,7 @@
 # Ticket alignment review - updated 2026-11-09
 
+> **Superseded in part (2026-11-11):** this review describes the original plan. The owner has since dropped the frontend (E06: L22–L24) and the Gatsby site (L35/L36); documentation is GitHub-rendered Markdown (L34), and the project closes once the backends are solid. See the [roadmap](roadmap.md)'s retired tickets.
+
 The current plan contains nine epics and 42 learning tickets. This report supersedes the original seven-epic, 28-ticket review and the later 36-ticket expansion. No application work or learner understanding is marked complete.
 
 ## Current review corrections

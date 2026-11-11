@@ -164,10 +164,6 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s fixtures/tests
 ```
 
-### Browser probes (L22)
-
-The contract works from a browser unchanged. `frontend/probes` checks it in real Chromium against either backend, through a proxy, using only relative URLs (`/api/{alias}/v1/...`). The checks cover streamed chat, approve and reject, rediscovering a pending approval after a refresh, recovering from a dropped stream, safe error rendering, and keeping each conversation on its backend. Browser-side rules (stream reading, recovery, rendering): [0006-browser-integration](../docs/decisions/0006-browser-integration.md).
-
 ### Cross-backend probes (L21)
 
 `probes/run_probes.py` starts the real .NET and Python servers in fake mode (no credentials), two processes each (one per customer) on one SQLite file. It sends both the same requests, validates every response against these schemas, normalizes ids, timestamps and wording, and requires the two backends to agree. It imports neither backend. It needs the .NET SDK, uv, and the tools below:

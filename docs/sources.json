@@ -271,13 +271,6 @@
       "checked_on": "2026-11-09",
       "note": "Live documentation: recheck against the selected release before implementation."
     },
-    "aspire-samples": {
-      "title": "Aspire samples, including frontend/Python",
-      "url": "https://aspire.dev/reference/samples/",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Live documentation: recheck against the selected release before implementation."
-    },
     "gh-rules": {
       "title": "GitHub rulesets",
       "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets",
@@ -397,51 +390,9 @@
       "checked_on": "2026-11-09",
       "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
     },
-    "gatsby-filesystem": {
-      "title": "Gatsby filesystem sourcing",
-      "url": "https://www.gatsbyjs.com/docs/how-to/sourcing-data/sourcing-from-the-filesystem/",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
-    },
-    "gatsby-markdown": {
-      "title": "Gatsby Markdown-to-HTML pages",
-      "url": "https://www.gatsbyjs.com/docs/how-to/routing/adding-markdown-pages/",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
-    },
-    "gatsby-cli": {
-      "title": "Gatsby build and serve commands",
-      "url": "https://www.gatsbyjs.com/docs/reference/gatsby-cli/",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
-    },
-    "gatsby-prefix": {
-      "title": "Gatsby path-prefix builds and static links",
-      "url": "https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/path-prefix/",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
-    },
     "ms-markdown": {
       "title": "Microsoft Learn Markdown reference",
       "url": "https://learn.microsoft.com/en-us/contribute/content/markdown-reference",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
-    },
-    "ms-gatsby": {
-      "title": "Microsoft guide to Gatsby static output/hosting",
-      "url": "https://learn.microsoft.com/en-us/azure/static-web-apps/publish-gatsby",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
-    },
-    "ms-static-hosting": {
-      "title": "Microsoft static website hosting concepts",
-      "url": "https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-static-website",
       "kind": "official-doc",
       "checked_on": "2026-11-09",
       "note": "Recheck against the selected release before implementation; examples do not imply optional cloud setup is mandatory."
@@ -473,20 +424,6 @@
       "kind": "official-doc",
       "checked_on": "2026-11-09",
       "note": "Official Python language/runtime guidance. Select the Python version established in L01/L17; cancellation is cooperative and does not roll back committed operations."
-    },
-    "gatsby-releases": {
-      "title": "Official Gatsby releases and maintenance activity",
-      "url": "https://github.com/gatsbyjs/gatsby/releases",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Recheck when L35 starts; a release history or engines declaration alone does not prove the selected Gatsby/Node/plugin set builds."
-    },
-    "node-support": {
-      "title": "Official Node.js release and support lifecycle",
-      "url": "https://nodejs.org/en/about/previous-releases",
-      "kind": "official-doc",
-      "checked_on": "2026-11-09",
-      "note": "Recheck when L35 starts; a release history or engines declaration alone does not prove the selected Gatsby/Node/plugin set builds."
     },
     "ms-clean-architecture": {
       "title": "Common web application architectures (Clean Architecture)",

@@ -30,7 +30,7 @@ class LearningValidationTests(unittest.TestCase):
 
     def test_current_plan_is_valid(self) -> None:
         epics, tickets, _ = validate(self.root)
-        self.assertEqual((epics, tickets), (9, 43))
+        self.assertEqual((epics, tickets), (8, 38))  # 5 tickets and 1 epic retired on 2026-11-11
 
     def test_prebuild_evaluation_deliverable_is_rejected(self) -> None:
         self.edit_json("docs/learning/backlog.json",
@@ -40,8 +40,8 @@ class LearningValidationTests(unittest.TestCase):
 
     def test_unnumbered_decision_record_is_rejected(self) -> None:
         self.edit_json("docs/learning/backlog.json",
-            lambda b: next(t for t in b["tickets"] if t["id"] == "L35").update(deliverables=["docs/decisions/gatsby-build-feasibility.md"]))
-        with self.assertRaisesRegex(SystemExit, "Decision record must have a numbered ADR filename: L35"):
+            lambda b: next(t for t in b["tickets"] if t["id"] == "L34").update(deliverables=["docs/decisions/documentation-index.md"]))
+        with self.assertRaisesRegex(SystemExit, "Decision record must have a numbered ADR filename: L34"):
             validate(self.root)
 
     def test_numbered_adr_authoring_order_is_enforced(self) -> None:
@@ -105,7 +105,7 @@ class LearningValidationTests(unittest.TestCase):
             tickets = backlog["tickets"]
             moved = next(t for t in tickets if t["id"] == "L29")
             tickets.remove(moved)
-            tickets.insert(next(i for i,t in enumerate(tickets) if t["id"] == "L24"), moved)
+            tickets.insert(next(i for i,t in enumerate(tickets) if t["id"] == "L21"), moved)
             for i,t in enumerate(tickets,1):
                 t["order"] = i
                 t["depends_on"] = [] if i == 1 else [tickets[i-2]["id"]]
@@ -118,12 +118,35 @@ class LearningValidationTests(unittest.TestCase):
             tickets = backlog["tickets"]
             moved = next(t for t in tickets if t["id"] == "L34")
             tickets.remove(moved)
-            tickets.insert(next(i for i,t in enumerate(tickets) if t["id"] == "L24"), moved)
+            tickets.insert(next(i for i,t in enumerate(tickets) if t["id"] == "L21"), moved)
             for i,t in enumerate(tickets,1):
                 t["order"] = i
                 t["depends_on"] = [] if i == 1 else [tickets[i-2]["id"]]
         self.edit_json("docs/learning/backlog.json", move_early)
         with self.assertRaisesRegex(SystemExit, "Post-build phase before application completion: L34"):
+            validate(self.root)
+
+    def test_a_retired_id_cannot_be_reused(self) -> None:
+        def reuse(backlog):
+            backlog["retired_tickets"][0]["id"] = "L21"  # also a live ticket
+        self.edit_json("docs/learning/backlog.json", reuse)
+        with self.assertRaisesRegex(SystemExit, "A ticket is both live and retired|Duplicate"):
+            validate(self.root)
+
+    def test_a_live_ticket_cannot_depend_on_a_retired_one(self) -> None:
+        self.edit_json("docs/learning/backlog.json",
+            lambda b: next(t for t in b["tickets"] if t["id"] == "L29")["depends_on"].append("L24"))
+        with self.assertRaisesRegex(SystemExit, "Unknown/future dependency: L29"):
+            validate(self.root)
+
+    def test_a_retired_ticket_needs_a_reason(self) -> None:
+        self.edit_json("docs/learning/backlog.json", lambda b: b["retired_tickets"][1].update(reason=""))
+        with self.assertRaisesRegex(SystemExit, "Retired item needs a title and reason: L23"):
+            validate(self.root)
+
+    def test_dropping_a_retired_id_breaks_the_stable_sequence(self) -> None:
+        self.edit_json("docs/learning/backlog.json", lambda b: b["retired_tickets"].pop())
+        with self.assertRaisesRegex(SystemExit, "Stable ticket IDs must remain unique and complete"):
             validate(self.root)
 
 
