@@ -168,10 +168,77 @@ public sealed class NativeTests
         }
 
         var (dataset, item) = NativeEvaluation.Suite()[0];
-        var run = NativeEvaluation.Run(dataset, "recorded", [(item, new Microsoft.Extensions.AI.Evaluation.EvaluationResult())]);
+        var run = NativeEvaluation.Run(dataset, "recorded", [(item, new Microsoft.Extensions.AI.Evaluation.EvaluationResult(), RecordingPath(dataset.DatasetId, item.CaseId))]);
         Assert.Equal($"evaluations/recordings/{dataset.DatasetId}-{item.CaseId}.json", run["results"]![0]!["evidence"]!.GetValue<string>());
         Assert.Equal(SupportChecks.ScorerName, run["run"]!["scorer"]!["name"]!.GetValue<string>());
         Assert.Equal(dataset.DatasetVersion, run["run"]!["dataset"]!["dataset_version"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task An_empty_or_incomplete_recordings_folder_is_refused_not_passed()
+    {
+        var directory = Directory.CreateTempSubdirectory("partial-recordings-");
+        try
+        {
+            var empty = await Assert.ThrowsAsync<InvalidDataException>(() => NativeEvaluation.EvaluateRecordedAsync(directory.FullName, directory.FullName, None));
+            Assert.Contains("Missing:", empty.Message, StringComparison.Ordinal);
+
+            var one = Captures.Load(RecordingPath("support-success", "order-status"));
+            await File.WriteAllTextAsync(Path.Combine(directory.FullName, "a.json"), one.ToJsonString(), None);
+            var partial = await Assert.ThrowsAsync<InvalidDataException>(() => NativeEvaluation.EvaluateRecordedAsync(directory.FullName, directory.FullName, None));
+            Assert.Contains("support-success/invoice", partial.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("support-success/order-status", partial.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_case_recorded_twice_is_refused()
+    {
+        var directory = Directory.CreateTempSubdirectory("duplicate-recordings-");
+        try
+        {
+            foreach (var file in Directory.GetFiles(Captures.Directory, "*.json"))
+            {
+                File.Copy(file, Path.Combine(directory.FullName, Path.GetFileName(file)));
+            }
+
+            File.Copy(RecordingPath("support-success", "order-status"), Path.Combine(directory.FullName, "copy.json"));
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => NativeEvaluation.EvaluateRecordedAsync(directory.FullName, directory.FullName, None));
+            Assert.Contains("Recorded more than once: support-success/order-status", error.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Results_link_to_the_recording_that_was_actually_scored()
+    {
+        var directory = Directory.CreateTempSubdirectory("custom-recordings-");
+        try
+        {
+            foreach (var file in Directory.GetFiles(Captures.Directory, "*.json"))
+            {
+                File.Copy(file, Path.Combine(directory.FullName, "renamed-" + Path.GetFileName(file)));
+            }
+
+            Assert.Equal(0, await NativeEvaluation.EvaluateRecordedAsync(directory.FullName, directory.FullName, None));
+            var links = directory.GetFiles("native-recorded-*.json")
+                .SelectMany(f => JsonNode.Parse(File.ReadAllText(f.FullName))!["results"]!.AsArray())
+                .Select(r => r!["evidence"]!.GetValue<string>())
+                .ToList();
+            Assert.NotEmpty(links);
+            Assert.All(links, link => Assert.Contains("/renamed-", link, StringComparison.Ordinal));
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
     }
 
     /// <summary>Scores one capture with the native checks; returns the names of the checks that failed.</summary>

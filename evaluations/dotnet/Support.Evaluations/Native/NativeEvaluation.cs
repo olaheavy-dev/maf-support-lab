@@ -64,15 +64,18 @@ internal static class NativeEvaluation
                 evalName: "native-record",
                 expectedToolCalls: entries.Select(e => Captures.ExpectedToolCalls(e.Case)),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
+            List<string> written = [];
             for (var i = 0; i < entries.Count; i++)
             {
                 var item = results.InputItems![i];
                 var (_, responseMessages) = item.Split();
                 var capture = Captures.FromConversation(entries[i].Dataset, entries[i].Case, item.Query, responseMessages, fake.Tools);
-                await File.WriteAllTextAsync(Path.Combine(recordings, $"{capture["capture_id"]}.json"), capture.ToJsonString(EvaluationJson.Options) + "\n", cancellationToken).ConfigureAwait(false);
+                var path = Path.Combine(recordings, $"{capture["capture_id"]}.json");
+                await File.WriteAllTextAsync(path, capture.ToJsonString(EvaluationJson.Options) + "\n", cancellationToken).ConfigureAwait(false);
+                written.Add(path);
             }
 
-            await WriteRunsAsync(entries, results, "fake", output, cancellationToken).ConfigureAwait(false);
+            await WriteRunsAsync(entries, written, results, "fake", output, cancellationToken).ConfigureAwait(false);
         }
 
         // Informational scores only: in a live run MAF returns an approval-required write as a ToolApprovalRequestContent,
@@ -85,9 +88,9 @@ internal static class NativeEvaluation
     {
         Directory.CreateDirectory(output);
         var suite = Suite();
-        var captures = Directory.GetFiles(recordings, "*.json").Order(StringComparer.Ordinal).Select(Captures.Load).ToList();
-        List<((Dataset Dataset, EvaluationCase Case) Entry, JsonObject Capture)> paired = [];
-        foreach (var capture in captures)
+        var captures = Directory.GetFiles(recordings, "*.json").Order(StringComparer.Ordinal).Select(path => (Path: path, Capture: Captures.Load(path))).ToList();
+        List<((Dataset Dataset, EvaluationCase Case) Entry, JsonObject Capture, string Path)> paired = [];
+        foreach (var (path, capture) in captures)
         {
             var entry = suite.FirstOrDefault(e => e.Dataset.DatasetId == capture["dataset_id"]!.GetValue<string>() && e.Case.CaseId == capture["case_id"]!.GetValue<string>());
             if (entry.Case is null)
@@ -101,7 +104,21 @@ internal static class NativeEvaluation
                 throw new InvalidDataException($"{capture["capture_id"]} was recorded for {entry.Dataset.DatasetId} {capture["dataset_version"]}, not {entry.Dataset.DatasetVersion}: run native record.");
             }
 
-            paired.Add((entry, capture));
+            paired.Add((entry, capture, path));
+        }
+
+        // Every native case is scored exactly once: an empty or incomplete folder must not look like a pass, and two
+        // recordings of one case would make the result ambiguous (Codex review on PR #104).
+        var duplicates = paired.GroupBy(p => $"{p.Entry.Dataset.DatasetId}/{p.Entry.Case.CaseId}", StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        var missing = suite.Where(e => !paired.Any(p => p.Entry.Dataset.DatasetId == e.Dataset.DatasetId && p.Entry.Case.CaseId == e.Case.CaseId))
+            .Select(e => $"{e.Dataset.DatasetId}/{e.Case.CaseId}").ToList();
+        if (duplicates.Count > 0 || missing.Count > 0)
+        {
+            throw new InvalidDataException(
+                $"{recordings} doesn't hold exactly one recording per native case." +
+                (missing.Count > 0 ? $" Missing: {string.Join(", ", missing)}." : "") +
+                (duplicates.Count > 0 ? $" Recorded more than once: {string.Join(", ", duplicates)}." : "") +
+                " Run native record.");
         }
 
         var failed = false;
@@ -124,21 +141,33 @@ internal static class NativeEvaluation
             }
 
             failed |= !results.AllPassed;
-            await WriteRunsAsync([.. items.Select(p => p.Entry)], results, "recorded", output, cancellationToken).ConfigureAwait(false);
+            await WriteRunsAsync([.. items.Select(p => p.Entry)], [.. items.Select(p => p.Path)], results, "recorded", output, cancellationToken).ConfigureAwait(false);
         }
 
         return failed ? 1 : 0;
     }
 
+    /// <summary>
+    /// The file that was actually recorded or scored (Codex review on PR #104): repository-relative when it is inside the
+    /// repository, otherwise its full path (forward slashes).
+    /// </summary>
+    internal static string EvidenceLink(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var relative = Path.GetRelativePath(RepositoryRoot.Find(), full);
+        var link = (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative) ? full : relative).Replace('\\', '/');
+        return System.Text.RegularExpressions.Regex.IsMatch(link, "^[A-Za-z0-9_./-]{1,200}$") ? link : Path.GetFileName(full);
+    }
+
     internal static string Query(EvaluationCase item) => item.Steps.First(step => step.Action == "send").Message!;
 
     /// <summary>One run document per dataset, in the shared result schema, with checks per case and its evidence.</summary>
-    private static async Task WriteRunsAsync(IReadOnlyList<(Dataset Dataset, EvaluationCase Case)> entries, AgentEvaluationResults results, string mode, string output, CancellationToken cancellationToken)
+    private static async Task WriteRunsAsync(IReadOnlyList<(Dataset Dataset, EvaluationCase Case)> entries, List<string> evidence, AgentEvaluationResults results, string mode, string output, CancellationToken cancellationToken)
     {
         foreach (var dataset in entries.Select((e, i) => (e, i)).GroupBy(x => x.e.Dataset.DatasetId, StringComparer.Ordinal))
         {
             var file = Path.Combine(output, $"native-{mode}-{dataset.Key}-{dataset.First().e.Case.Principal.ToLowerInvariant()}.json");
-            var run = Run(dataset.First().e.Dataset, mode, dataset.Select(x => (x.e.Case, results.Items[x.i])));
+            var run = Run(dataset.First().e.Dataset, mode, dataset.Select(x => (x.e.Case, results.Items[x.i], evidence[x.i])));
             await File.WriteAllTextAsync(file, run.ToJsonString(EvaluationJson.Options), cancellationToken).ConfigureAwait(false);
             var summary = run["summary"]!;
             Console.WriteLine($"native {mode} {dataset.Key}: {summary["passed"]} passed, {summary["failed"]} failed -> {file}");
@@ -150,10 +179,10 @@ internal static class NativeEvaluation
         }
     }
 
-    internal static JsonObject Run(Dataset dataset, string mode, IEnumerable<(EvaluationCase Case, EvaluationResult Result)> scored)
+    internal static JsonObject Run(Dataset dataset, string mode, IEnumerable<(EvaluationCase Case, EvaluationResult Result, string Evidence)> scored)
     {
         JsonArray cases = [];
-        foreach (var (item, result) in scored)
+        foreach (var (item, result, evidencePath) in scored)
         {
             var checks = new JsonArray([.. result.Metrics.Values.OrderBy(m => m.Name, StringComparer.Ordinal).Select(metric => (JsonNode?)new JsonObject
             {
@@ -169,7 +198,7 @@ internal static class NativeEvaluation
                 ["latency_ms"] = 0,
                 ["steps"] = new JsonArray(),
                 ["checks"] = checks,
-                ["evidence"] = $"evaluations/recordings/{dataset.DatasetId}-{item.CaseId}.json",
+                ["evidence"] = EvidenceLink(evidencePath),
                 ["usage"] = new JsonObject { ["available"] = false },
             });
         }
