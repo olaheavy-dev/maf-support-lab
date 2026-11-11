@@ -840,7 +840,7 @@
       "support.api": {
         "type": "Project",
         "dependencies": {
-          "Anthropic": "[13.7.0, )",
+          "Anthropic": "[13.8.0, )",
           "Microsoft.Agents.AI": "[1.28.0, )",
           "Microsoft.Agents.AI.DevUI": "[1.28.0-preview.261106.1, )",
           "Microsoft.Agents.AI.Hosting": "[1.28.0-preview.261106.1, )",
@@ -865,9 +865,9 @@
       },
       "Anthropic": {
         "type": "CentralTransitive",
-        "requested": "[13.7.0, )",
-        "resolved": "13.7.0",
-        "contentHash": "GIYN2Nvl8ovNTHMSVrHf8HnmLU7EfG8ZFX6855HQfwVoxgIf6GrQjgbgte0NT8zTparLMur5+07R2MfVNw2p1g==",
+        "requested": "[13.8.0, )",
+        "resolved": "13.8.0",
+        "contentHash": "N1+grCB2HdfsFsuRVVjBgN0evlxtdvSBw26P7rvaVGHrqgnr00Llw8sPuOP8w8akKzcN5tOd+3I75iEeERJbEQ==",
         "dependencies": {
           "Microsoft.Extensions.AI.Abstractions": "10.5.1"
         }

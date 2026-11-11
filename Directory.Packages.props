@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup Label="Model provider and agent framework">
-    <PackageVersion Include="Anthropic" Version="13.7.0" />
+    <PackageVersion Include="Anthropic" Version="13.8.0" />
     <PackageVersion Include="Microsoft.Agents.AI" Version="1.28.0" />
     <PackageVersion Include="Microsoft.Agents.AI.Anthropic" Version="1.28.0" />
     <PackageVersion Include="Microsoft.Agents.AI.Workflows" Version="1.28.0" />
