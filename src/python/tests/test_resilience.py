@@ -310,9 +310,13 @@ def test_a_tool_that_hangs_ends_the_turn_within_its_time_limit(monkeypatch: pyte
     assert model(app).calls == 2  # triage + the call that asked for the tool; the model never got to retry it
 
 
-def test_a_failing_tool_ends_the_turn_instead_of_letting_the_model_retry_it(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("fault", [RuntimeError, TypeError, ValueError, KeyError])
+def test_a_failing_tool_ends_the_turn_instead_of_letting_the_model_retry_it(
+    monkeypatch: pytest.MonkeyPatch, fault: type[Exception]
+) -> None:
+    # TypeError included (Codex review on PR #95): only MAF's own argument validation goes back to the model.
     def broken(self: OrderService, *_args: Any) -> Any:
-        raise RuntimeError("the order database is down: internal detail")
+        raise fault("the order database is down: internal detail")
 
     monkeypatch.setattr(OrderService, "order_status", broken)
     app, _ = host()

@@ -34,6 +34,10 @@ from agent_framework import (
     MiddlewareFailure,
 )
 
+# MAF's own argument-validation error (raised before a tool body starts). It has no public name in 1.25.0, so it is
+# imported explicitly: if a release renames it, this import fails at startup instead of silently widening the exemption.
+from agent_framework._tools import _FunctionArgumentValidationError  # pyright: ignore[reportPrivateUsage]
+
 
 @dataclass(frozen=True, slots=True)
 class FailureCode:
@@ -115,8 +119,8 @@ class ToolLimits(FunctionMiddleware):
                 await call_next()
         except TimeoutError as error:
             raise ToolUnavailableError(f"The tool {name} did not finish within {self.timeout_seconds:g} s.") from error
-        except MiddlewareFailure, TypeError:
-            raise  # already fail-closed, or an argument validation error (MAF's own TypeError) for the model
+        except MiddlewareFailure, _FunctionArgumentValidationError:
+            raise  # already fail-closed, or MAF's argument validation (for the model to correct); nothing else
         except Exception as error:
             raise ToolUnavailableError(f"The tool {name} failed.") from error
 
