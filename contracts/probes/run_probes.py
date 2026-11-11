@@ -228,7 +228,7 @@ RUNTIME_ID = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
 )
 TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
-FIXTURE_PAYMENTS = {"PAY-5001", "PAY-5002", "PAY-5003", "PAY-5004", "PAY-5005", "PAY-5006", "PAY-5007"}
+FIXTURE_PAYMENTS = {"PAY-7001", "PAY-7002", "PAY-7003", "PAY-7004", "PAY-7005", "PAY-7006", "PAY-7101"}  # fixtures/data/payments.json
 # Wording: the two fake models are separate ports and phrase replies differently, and a problem's or a failure's
 # ``detail`` is human text. What a reply must contain is asserted per probe (``mentions``); the contract governs the
 # shape, the codes and the facts, not the words.

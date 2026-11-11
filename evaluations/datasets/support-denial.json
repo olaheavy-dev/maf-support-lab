@@ -1,0 +1,195 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "support-denial",
+  "dataset_version": "1.0.0",
+  "category": "denial",
+  "description": "Requests the system must refuse or answer as not found: unknown and foreign records, ineligible writes, a rejection, another customer's decision.",
+  "fixture_version": "1.0",
+  "live_run": {
+    "eligible": true,
+    "max_cases": 6,
+    "max_model_calls_per_case": 6,
+    "repetitions": 1
+  },
+  "cases": [
+    {
+      "case_id": "unknown-order",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Unknown order id",
+      "source": "S03-unknown-order",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "What's the status of ORD-9999?",
+          "expect": {
+            "route_target": "orders",
+            "outcome": "completed",
+            "reply_kind": "not_found",
+            "tools": [
+              "get_order_status"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "other-customer-order",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Another customer's order is treated exactly like an unknown order",
+      "source": "S04-other-customer-order",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "What's the status of ORD-2001?",
+          "expect": {
+            "route_target": "orders",
+            "outcome": "completed",
+            "reply_kind": "not_found",
+            "must_not_mention": [
+              "Mechanical Keyboard",
+              "Ben",
+              "CUST-1002"
+            ],
+            "tools": [
+              "get_order_status"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "cancel-ineligible",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Shipped/delivered orders cannot be cancelled; no approval is requested",
+      "source": "S11-cancel-ineligible",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Cancel order ORD-1001.",
+          "expect": {
+            "route_target": "orders",
+            "outcome": "completed",
+            "reply_kind": "not_eligible"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      },
+      "context": [
+        "orders:ORD-1001",
+        "policies:cancellation"
+      ]
+    },
+    {
+      "case_id": "refund-rejected",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Rejected approval changes nothing",
+      "source": "S12-refund-rejected",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "I want a refund for ORD-1001, the headphones crackle.",
+          "expect": {
+            "route_target": "billing",
+            "outcome": "awaiting_approval",
+            "reply_kind": "approval_request",
+            "operation_kind": "refund_order",
+            "operation_status": "awaiting_approval",
+            "tools": [
+              "refund_order"
+            ]
+          }
+        },
+        {
+          "action": "decide",
+          "decision": "reject",
+          "expect": {
+            "outcome": "completed",
+            "reply_kind": "approval_result",
+            "operation_status": "rejected"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "refund-outside-window",
+      "split": "heldout",
+      "principal": "CUST-1002",
+      "purpose": "Refund outside the 30-day window is not eligible",
+      "source": "S13-refund-outside-window",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Refund my keyboard order ORD-2001 please.",
+          "expect": {
+            "route_target": "billing",
+            "outcome": "completed",
+            "reply_kind": "not_eligible"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      },
+      "context": [
+        "orders:ORD-2001",
+        "policies:refund"
+      ]
+    },
+    {
+      "case_id": "approval-wrong-principal",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Another principal cannot decide a pending approval",
+      "source": "S18-approval-wrong-principal",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Please cancel order ORD-1003.",
+          "expect": {
+            "outcome": "awaiting_approval",
+            "operation_kind": "cancel_order"
+          }
+        },
+        {
+          "action": "decide",
+          "decision": "approve",
+          "expect": {
+            "http_status": 404,
+            "problem_code": "not_found"
+          },
+          "as_principal": "CUST-1002"
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    }
+  ]
+}

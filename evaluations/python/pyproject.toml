@@ -1,0 +1,44 @@
+[project]
+name = "support-evaluations"
+version = "0.1.0"
+description = "Evaluation tooling for the VoltCart support backends (L29+): dataset and result contracts, and native Python evaluations later (L31). Kept out of the backend's manifest."
+readme = "README.md"
+requires-python = ">=3.15"
+dependencies = [
+    # The same validator as the backend and contract tests; evaluation-only packages (L31+) are added here, never to
+    # src/python/pyproject.toml.
+    "jsonschema==4.26.0",
+]
+
+[dependency-groups]
+dev = [
+    "pyright==1.1.414",
+    "pytest==9.2.0",
+    "ruff==0.17.4",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[tool.ruff]
+line-length = 120
+target-version = "py315"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "S", "PT", "RUF", "SIM"]
+ignore = ["S101", "E501"]
+
+[tool.pyright]
+include = ["support_evaluations", "tests"]
+pythonVersion = "3.15"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"

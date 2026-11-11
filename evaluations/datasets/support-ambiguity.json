@@ -1,0 +1,117 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "support-ambiguity",
+  "dataset_version": "1.0.0",
+  "category": "ambiguity",
+  "description": "Requests the system must not guess at: missing ids, unknown problems, unroutable text.",
+  "fixture_version": "1.0",
+  "live_run": {
+    "eligible": true,
+    "max_cases": 4,
+    "max_model_calls_per_case": 4,
+    "repetitions": 1
+  },
+  "cases": [
+    {
+      "case_id": "missing-order-id",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Order question without an id asks for clarification",
+      "source": "S02-missing-order-id",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Where is my order?",
+          "expect": {
+            "route_target": "orders",
+            "outcome": "completed",
+            "reply_kind": "clarification"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "unresolved-technical",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Unknown technical issue offers escalation without creating a ticket",
+      "source": "S08-unresolved-technical",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "My smart fridge firmware shows error Z-77.",
+          "expect": {
+            "route_target": "technical",
+            "outcome": "completed",
+            "reply_kind": "escalation_offer",
+            "tools": [
+              "search_knowledge_base"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "unroutable",
+      "split": "development",
+      "principal": "CUST-1001",
+      "purpose": "Unroutable input reaches the controlled fallback",
+      "source": "S09-unroutable",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "asdf qwer zxcv",
+          "expect": {
+            "route_status": "unrouted",
+            "outcome": "completed",
+            "reply_kind": "clarification"
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    },
+    {
+      "case_id": "vague-request",
+      "split": "heldout",
+      "principal": "CUST-1001",
+      "purpose": "A request with no domain words is not routed by guessing",
+      "source": "new",
+      "writes": false,
+      "reset": "fresh_conversation",
+      "steps": [
+        {
+          "action": "send",
+          "message": "Can you help me with something?",
+          "expect": {
+            "route_status": "unrouted",
+            "outcome": "completed",
+            "reply_kind": "clarification",
+            "tools_absent": [
+              "get_order_status",
+              "get_invoice",
+              "get_payment_history",
+              "search_knowledge_base"
+            ]
+          }
+        }
+      ],
+      "expected_state_change": {
+        "type": "none"
+      }
+    }
+  ]
+}

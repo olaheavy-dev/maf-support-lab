@@ -30,7 +30,7 @@ class NormalizerTests(unittest.TestCase):
 
     def test_fixture_ids_and_business_values_are_kept(self) -> None:
         normalize = Normalizer()
-        body = {"order_id": "ORD-1003", "order_status": "cancelled", "payment_id": "PAY-5001", "code": "not_found"}
+        body = {"order_id": "ORD-1003", "order_status": "cancelled", "payment_id": "PAY-7101", "code": "not_found"}
         self.assertEqual(normalize(body), body)
 
     def test_wording_times_and_trace_ids_are_masked_but_errors_must_exist(self) -> None:

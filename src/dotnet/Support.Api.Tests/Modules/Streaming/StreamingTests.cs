@@ -64,6 +64,31 @@ public sealed class StreamingTests
         Assert.Equal("processing", Order(factory, "ORD-1003"));
     }
 
+    /// <summary>
+    /// A write tool the model asks for pauses for approval before it runs, but it is still a tool call, and the stream
+    /// says so, as Python's does (found by the L29 evaluation datasets: .NET used to show no tool_call here).
+    /// </summary>
+    [Fact]
+    public async Task A_write_the_model_asks_for_shows_as_a_tool_call_before_the_pause()
+    {
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
+        var api = new ApiClient(factory.CreateClient());
+        var conversation = await api.CreateConversationAsync();
+
+        var (_, _, events, _) = await SseClient.PostAsync(
+            api.Http,
+            $"/api/v1/conversations/{conversation}/turns",
+            new { client_turn_id = Guid.NewGuid().ToString(), message = "Please cancel order ORD-1003." });
+
+        var progress = events.Where(e => e.GetProperty("type").GetString() == "turn.progress").Select(e => e.GetProperty("data")).ToList();
+        var toolCall = progress.FindIndex(p => p.GetProperty("stage").GetString() == "tool_call" && p.GetProperty("tool").GetString() == "cancel_order");
+        var paused = progress.FindIndex(p => p.GetProperty("stage").GetString() == "awaiting_approval");
+        Assert.True(toolCall >= 0, "the stream shows the cancel_order tool call");
+        Assert.True(paused > toolCall, "the tool call comes before the pause");
+        Assert.Equal("awaiting_approval", SseClient.Final(events).GetProperty("outcome").GetString());
+        Assert.Equal("processing", Order(factory, "ORD-1003")); // asked for, not run
+    }
+
     [Fact]
     public async Task A_streamed_approval_shows_the_operation_running_and_ends_with_the_committed_result()
     {
