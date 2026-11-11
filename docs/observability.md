@@ -279,6 +279,29 @@ Off by default: no prompts, replies, tool arguments or results, customer ids, or
 - **Opting in** takes `TELEMETRY__CAPTURE_SENSITIVE_DATA=true` (local debugging only).
 - MAF's own `ENABLE_SENSITIVE_DATA=true` can't switch it on: `telemetry.py` always passes the setting explicitly (tested in a fresh process).
 
+### Failures, retries and budgets (Python, L42)
+
+The same rules, limits and error codes as .NET's L15 above, in `support_agent/resilience.py`. The limits are `RESILIENCE__*` settings, with the same defaults, and are validated at startup. The `support.turn` span carries `support.turn.model_calls`, `support.turn.model_attempts` and, for a failed turn, `support.turn.error_code`.
+
+**One retry owner per layer:**
+
+| Layer | Retries? | Owner and bound |
+| --- | --- | --- |
+| HTTP to Anthropic | **Yes, the only place** | The Anthropic SDK client, which `model_provider.py` builds itself (not MAF): `max_retries` = `RESILIENCE__MODEL_MAX_RETRIES` (2, so 3 attempts), with a timeout of `MODEL_ATTEMPT_TIMEOUT_SECONDS` (30 s) per attempt. It honours `retry-after-ms` / `retry-after`. It retries 408/409/429/5xx and connection errors, never 400/401/403/404/422. An SDK middleware (`count_attempts`) counts every attempt for the turn and retries nothing. |
+| HTTP transport | No | The SDK's own httpx client; its transport's `retries` is httpx's default of 0. There's no `IHttpClientFactory`-style handler in Python to stack a second layer. A test pins attempts at exactly `retries + 1` for 0, 1, 2 and 4. |
+| MAF's Anthropic client | No | It wraps errors (`ChatClientException`) and never retries. |
+| Model calls in a turn | No retries; a budget | `ModelCallBudget`, a chat middleware on every agent: the 11th call is refused **before** it reaches the provider → `budget_exhausted`. |
+| Tool loop (MAF function invocation) | No retries | `max_iterations` = `MAX_TOOL_ITERATIONS` (4; MAF's default is 40), then one final answer without tools. `ToolLimits`, a function middleware, sets `TOOL_TIMEOUT_SECONDS` (10 s) per call and turns any tool fault into MAF's fail-closed `MiddlewareFailure` → `tool_unavailable`, so the model never retries a broken tool. Argument validation errors still go back to the model to correct, bounded by the loop and the budget. |
+| The turn | **No** | `asyncio.timeout(TURN_TIMEOUT_SECONDS)` (90 s) around every turn and every resumed decision → `timeout`. |
+| Writes | **Never** retried blindly | Only the L37/L38 operation state machine resumes a write. A deadline before the commit fails the operation with code `timeout`, and nothing changed. After the commit, the committed result stands: a timeout never rolls a write back. |
+
+**Python-specific details:**
+- **Sync tools run in a worker thread** (MAF uses `asyncio.to_thread`). A tool timeout stops the turn from waiting, but the thread finishes on its own. All such tools are read-only lookups, so that's harmless. The write tools are async, so a deadline stops them at an await, and the pre-commit boundary refuses to start a transaction.
+- **The rate-limit hint** is read from the SDK's `RateLimitError` response, which carries its headers, so no transport hook is needed (in .NET the exception lacks it). It is stored with the turn, so a replay returns it.
+- **Cancel and shutdown:** the SDK's backoff is an `anyio.sleep`, so `POST …/cancel` and host shutdown both stop it with no new attempt (tested). The lifespan closes the SDK client after running turns are stored.
+
+**Worst case per turn:** 10 model calls × 3 attempts = 30 HTTP attempts, and never longer than 90 s.
+
 ## Not yet covered
 
 - Per-customer rate limiting and a circuit breaker for a provider outage (repeated failures still each spend up to 3 attempts).

@@ -12,8 +12,10 @@ from typing import Any
 from agent_framework import Agent, SupportsChatGetResponse
 
 from support_agent.operations import OperationService
+from support_agent.resilience import ModelCallBudget, ToolLimits
 from support_agent.services import Services
 from support_agent.sessions import BoundedHistory
+from support_agent.settings import ResilienceSettings
 from support_agent.tools import billing_tools, order_tools, technical_tools
 from support_agent.write_tools import cancel_tool, refund_tool, ticket_tool
 
@@ -76,10 +78,31 @@ class SupportAgents:
         return [self.triage, *self.specialists.values()]
 
 
+def bound_tool_loop(client: SupportsChatGetResponse[Any], limits: ResilienceSettings) -> None:
+    """MAF's tool loop allows 40 iterations by default: far too many for a support turn (L42). After the limit it asks
+    the model for one final answer without tools. Tool faults never reach this loop's error count: ToolLimits ends
+    the turn instead."""
+    configuration: Any = getattr(client, "function_invocation_configuration", None)
+    if isinstance(configuration, dict):
+        configuration["max_iterations"] = limits.max_tool_iterations
+
+
 def create_agents(
-    client: SupportsChatGetResponse[Any], services: Services, operations: OperationService
+    client: SupportsChatGetResponse[Any],
+    services: Services,
+    operations: OperationService,
+    limits: ResilienceSettings | None = None,
 ) -> SupportAgents:
-    """One client shared by all agents; each specialist gets only its own read tools and its one approval-gated write."""
+    """One client shared by all agents; each specialist gets only its own read tools and its one approval-gated write.
+
+    Every agent is bounded the same way (L42): each model call counts against the running turn's budget, each tool
+    call has a time limit, and each call's output is capped."""
+    limits = limits or ResilienceSettings()
+    bound_tool_loop(client, limits)
+    bounded: dict[str, Any] = {
+        "middleware": [ModelCallBudget(), ToolLimits(limits.tool_timeout_seconds)],
+        "default_options": {"max_tokens": limits.max_output_tokens},
+    }
     return SupportAgents(
         triage=Agent(
             client,
@@ -87,6 +110,7 @@ def create_agents(
             id=TRIAGE,
             name=TRIAGE,
             description="Classifies a support message into a route and action. Does not answer the customer.",
+            **bounded,
         ),
         specialists={
             ORDERS: Agent(
@@ -95,6 +119,7 @@ def create_agents(
                 id=ORDERS,
                 name=ORDERS,
                 description="Answers order-status questions for the current customer.",
+                **bounded,
                 tools=[*order_tools(services), cancel_tool(operations)],
                 context_providers=[BoundedHistory()],
             ),
@@ -104,6 +129,7 @@ def create_agents(
                 id=BILLING,
                 name=BILLING,
                 description="Answers invoice and payment-history questions (read-only).",
+                **bounded,
                 tools=[*billing_tools(services), refund_tool(operations)],
                 context_providers=[BoundedHistory()],
             ),
@@ -113,6 +139,7 @@ def create_agents(
                 id=TECHNICAL,
                 name=TECHNICAL,
                 description="Answers troubleshooting questions from the knowledge base (read-only).",
+                **bounded,
                 tools=[*technical_tools(services), ticket_tool(operations)],
                 context_providers=[BoundedHistory()],
             ),

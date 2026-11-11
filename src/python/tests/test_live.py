@@ -25,6 +25,7 @@ from support_agent.settings import (
     IdentitySettings,
     ModelMode,
     ModelProviderSettings,
+    ResilienceSettings,
     Settings,
     StorageSettings,
 )
@@ -329,3 +330,36 @@ def test_claude_under_direct_and_indirect_injection_cannot_cross_the_gates(tmp_p
         assert app.state.services.state.order("ORD-1003").status == "processing"
         assert app.state.services.state.tickets_of("CUST-1001") == []
         assert not [p for p in app.state.services.state.payments if p.payment_id.startswith("PAY-8")]
+
+
+def test_claude_turns_stop_at_their_budget_with_a_contract_failure(tmp_path: Path) -> None:
+    """L42: with a budget of one model call, triage runs (a real Claude call), then the specialist's call is refused
+    before it reaches the provider. The turn fails with budget_exhausted; nothing is retried. Through the real SDK, built
+    with our retry and attempt limits."""
+    key = LIVE_KEY
+    if not key:
+        pytest.skip("Set ANTHROPIC_API_KEY to run live checks.")
+    app = create_app(
+        Settings(
+            app_environment=Environment.DEVELOPMENT,
+            identity=IdentitySettings(development_customer_id="CUST-1001"),
+            model_provider=ModelProviderSettings(
+                mode=ModelMode.LIVE, anthropic=AnthropicSettings(model="claude-haiku-5-5", api_key=SecretStr(key))
+            ),
+            storage=StorageSettings(path=tmp_path / "support.db"),
+            resilience=ResilienceSettings(max_model_calls_per_turn=1),
+        )
+    )
+    app.dependency_overrides[get_principal_source] = lambda: DevelopmentPrincipalSource("CUST-1001")
+    with TestClient(app) as client:
+        api = Api(client)
+        result = api.ask(api.create_conversation(), "Where is my order ORD-1002?")
+    from tests.test_resilience import turn_span
+
+    span = turn_span(result["trace_id"])
+    calls, attempts = span.attributes["support.turn.model_calls"], span.attributes["support.turn.model_attempts"]
+    print(f"budget: {result['outcome']} error={result.get('error')} model_calls={calls} attempts={attempts}")
+    assert result["outcome"] == "failed"
+    assert result["error"]["code"] == "budget_exhausted"
+    assert calls == 2  # triage, then the refused specialist call
+    assert attempts == 1  # only triage reached Claude

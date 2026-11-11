@@ -2,7 +2,7 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L40): the host, agents, per-conversation sessions, approval-gated writes, durable state, a tested cross-customer access matrix, streaming with cooperative cancellation, and its own telemetry in Aspire.
+Status (L42): the host, agents, per-conversation sessions, approval-gated writes, durable state, a tested cross-customer access matrix, streaming with cooperative cancellation, its own telemetry in Aspire, and bounded retries, timeouts and budgets. It now matches the .NET backend's behaviour.
 - **Read-only agents:** triage plus the orders, billing and technical specialists.
 - **The routing workflow:** `support-routing`.
 - **The version-1 contract API** for conversations and turns (JSON).
@@ -26,6 +26,7 @@ Each specialist has one write tool (cancel, refund, ticket) that needs the custo
 | `devui.py` | Development-only DevUI process over the same agents and services |
 | `operations.py`, `write_tools.py`, `approval_gate.py`, `policy.py`, `state.py` | Bound approvals: operations, the approval-required write tools, the gate that turns a native approval request into an operation (or declines it), the eligibility rules, and the simulated state the writes change |
 | `telemetry.py` | This process's OpenTelemetry providers and OTLP/gRPC exporters, the `support.*` metrics, and the log handler (L40) |
+| `resilience.py`, `model_provider.py` | Bounded turns (L42): the per-turn model-call budget, tool time limits, the SDK attempt counter, and failure classification; the Anthropic SDK client built with our retry and timeout limits |
 | `streaming.py`, `turn_control.py` | Server-Sent Events for a turn; per-turn cooperative cancellation and live events (L20) |
 | `database.py` | The local SQLite store (L38): one file per backend and run, `atomically()` transactions |
 | `sessions.py` | Per-conversation native `AgentSession`s (stored after each run), `BoundedHistory` (12 plain messages; no tool traffic or notes), and the verified `ConversationContext` |
@@ -83,6 +84,16 @@ Under the AppHost, both Python processes send traces, logs and metrics to the As
 - **Exit is bounded:** exit never waits more than about 5 s for an unreachable collector.
 
 Ownership, names, labels and the live check are in `docs/observability.md` ("The Python backend").
+
+## Retries, timeouts and budgets (L42)
+
+Every turn is bounded, with the same limits and error codes as .NET (L15). The full retry inventory is in `docs/observability.md` ("Failures, retries and budgets (Python, L42)").
+
+- **One retry owner:** the Anthropic SDK, which we build with `max_retries` (2) and a 30 s limit per attempt. Nothing else retries a model call, a tool, a turn or a write.
+- **Budgets per turn:** at most 10 model calls (refused before reaching the provider), 4 tool rounds per agent run, 10 s per tool call, and 1024 output tokens per call. A turn or resumed decision has a 90 s deadline.
+- **Failures are results:** `failed` with `model_unavailable`, `rate_limited` (with `retry_after_seconds`), `timeout`, `tool_unavailable`, `budget_exhausted`, or `internal_error`. The detail is fixed, safe text; the error itself goes to the log and the trace.
+- **Writes:** a deadline before the commit fails the operation (`timeout`) and nothing changes. After the commit, the result stands. Retrying the decision replays the stored turn.
+- **Tested without a network:** `tests/fake_anthropic.py` is a fake Anthropic HTTP API under the real SDK, so its real retries, backoff, `retry-after` handling and attempt timeouts run in the tests.
 
 ## Streaming and cancellation (L20)
 
@@ -155,6 +166,7 @@ Read from the environment, validated before serving (`support_agent/settings.py`
 | `OTEL_*` | Set by the AppHost (endpoint, gRPC, headers with the dashboard key, service name). Never commit them. |
 | `ANTHROPIC_API_KEY` | Required in live mode. Secret: environment or Aspire parameter only; never committed, logged, or returned. |
 | `STORAGE__PATH` | The SQLite file (default `.data/python/support.db`). Give each run or evaluation its own file. |
+| `RESILIENCE__*` | Turn limits (L42), validated at startup: `TURN_TIMEOUT_SECONDS` (90), `MAX_MODEL_CALLS_PER_TURN` (10), `MAX_TOOL_ITERATIONS` (4), `TOOL_TIMEOUT_SECONDS` (10), `MODEL_MAX_RETRIES` (2), `MODEL_ATTEMPT_TIMEOUT_SECONDS` (30), `MAX_OUTPUT_TOKENS` (1024). |
 
 ## Identity
 
