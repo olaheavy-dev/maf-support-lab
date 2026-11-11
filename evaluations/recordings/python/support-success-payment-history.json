@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "support-success-payment-history",
+  "dataset_id": "support-success",
+  "dataset_version": "1.2.0",
+  "case_id": "payment-history",
+  "source": "fake-agent",
+  "agent": "support-fake-agent-python",
+  "principal": "CUST-1002",
+  "tools": [
+    {
+      "name": "get_order_status",
+      "writes": false
+    },
+    {
+      "name": "get_invoice",
+      "writes": false
+    },
+    {
+      "name": "get_payment_history",
+      "writes": false
+    },
+    {
+      "name": "search_knowledge_base",
+      "writes": false
+    },
+    {
+      "name": "cancel_order",
+      "writes": true
+    },
+    {
+      "name": "refund_order",
+      "writes": true
+    },
+    {
+      "name": "create_ticket",
+      "writes": true
+    }
+  ],
+  "context": [
+    "payments:PAY-7101"
+  ],
+  "query": "Show my payment history.",
+  "messages": [
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "function_call",
+          "call_id": "call_get_payment_history",
+          "name": "get_payment_history",
+          "arguments": {}
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "contents": [
+        {
+          "type": "function_result",
+          "call_id": "call_get_payment_history",
+          "result": "{\"payments\": [{\"payment_id\": \"PAY-7004\", \"order_id\": \"ORD-2001\", \"kind\": \"charge\"}, {\"payment_id\": \"PAY-7005\", \"order_id\": \"ORD-2002\", \"kind\": \"charge\"}, {\"payment_id\": \"PAY-7006\", \"order_id\": \"ORD-2003\", \"kind\": \"charge\"}, {\"payment_id\": \"PAY-7101\", \"order_id\": \"ORD-2003\", \"kind\": \"refund\"}]}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "text",
+          "text": "Your payments: PAY-7004 charge for ORD-2001; PAY-7005 charge for ORD-2002; PAY-7006 charge for ORD-2003; PAY-7101 refund for ORD-2003."
+        }
+      ]
+    }
+  ],
+  "response_text": "Your payments: PAY-7004 charge for ORD-2001; PAY-7005 charge for ORD-2002; PAY-7006 charge for ORD-2003; PAY-7101 refund for ORD-2003."
+}

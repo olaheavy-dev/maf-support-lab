@@ -190,6 +190,10 @@ jobs:
         run: uv run pytest
       - name: Validate every dataset
         run: uv run python -m support_evaluations validate
+      - name: Native Python evaluation of the recorded conversations (L31, no model calls)
+        run: uv run python -m support_evaluations native evaluate
+      - name: Native Python workflow evaluation (L31, the scripted agent)
+        run: uv run python -m support_evaluations native workflow
 
   # The single required status check. It always reports, and it passes only when every
   # language job succeeded: a failed, cancelled, or skipped job turns it red.

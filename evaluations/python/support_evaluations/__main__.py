@@ -1,4 +1,4 @@
-"""python -m support_evaluations validate [RESULTS_DIR]: checks every dataset, and any run results in RESULTS_DIR."""
+"""python -m support_evaluations validate [RESULTS_DIR] | native record|evaluate|workflow (L31)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,10 @@ from support_evaluations.contracts import dataset_paths, dataset_problems, load,
 
 
 def main(argv: list[str]) -> int:
+    if argv[:1] == ["native"]:
+        from support_evaluations import native
+
+        return native.main(argv[1:])
     if not argv or argv[0] != "validate":
         print("Usage: python -m support_evaluations validate [RESULTS_DIR]", file=sys.stderr)
         return 2
