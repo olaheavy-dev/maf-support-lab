@@ -35,3 +35,7 @@ telemetry/
 .idea/
 .DS_Store
 # Keep dependency lockfiles tracked.
+
+# Browser probes (L22): Playwright output
+frontend/probes/test-results/
+frontend/probes/playwright-report/
