@@ -9,7 +9,7 @@ Evaluation of the two support backends, kept apart from the application: nothing
 | `datasets/*.json` | Five versioned datasets (31 cases, schema 1.1): `support-success`, `support-ambiguity`, `support-denial`, `support-failure`, `support-adversarial`. |
 | `tools/build_datasets.py` | Generates the datasets from `fixtures/scenarios` plus evaluation-only cases. Rerun it after changing either, then commit the output. |
 | `dotnet/Support.Evaluations/` | The runner (.NET console app): `validate`; `run`, either launching the backends itself (`--launch`) or against URLs you give it (`--principal`); and `compare`, which writes the baseline. |
-| `recordings/*.json` | Captured conversations for native evaluation (L30), schema `evaluation-capture`: the query, the agent's messages with tool calls, results and paused approvals, the tools it had, and its case. Re-record with `native record` after a dataset version changes. |
+| `recordings/*.json`, `recordings/python/*.json` | Captured conversations for native evaluation (L30 .NET, L31 Python), schema `evaluation-capture`: the query, the agent's messages with tool calls, results and paused approvals, the tools it had, and its case. Re-record with `native record` after a dataset version changes. |
 | `dotnet/Support.Evaluations.Tests/` | Dataset and result contract tests, and the runner over a fake backend. |
 | `python/` | The Python evaluation package (its own locked uv project): the same contract checks; native evaluations from L31. |
 | `results/` | Generated run documents. Git ignores them; CI uploads them as the `evaluation-results` artifact. The curated baseline is [docs/evaluations/baseline.md](../docs/evaluations/baseline.md). |
@@ -32,6 +32,15 @@ Microsoft Agent Framework 1.28.0 has local evaluation built in: `EvalItem`, `Exp
 | `cites_found_record` | A record a lookup found is named in the reply |
 
 None of them can show that a write was *authorized*. That's the backend's gate, checked through its API by the behaviour runner (L16), and the native scores sit alongside those assertions, never instead of them. Expected arguments are written once in canonical snake_case in the datasets, and the .NET adapter maps them to the tools' C# names (`order_id` → `orderId`).
+
+## Native Python evaluation (L31)
+
+The same evaluation with MAF Python 1.25.0 (`evaluations/python/support_evaluations/native.py`), run with `python -m support_evaluations native …`:
+- **`record`:** `evaluate_agent(agent=…, queries=…)` runs a fake support agent (a scripted model on MAF's real tool loop, with the Python backend's snake_case tools over the fixtures and approval-required writes). The conversations are saved to `recordings/python/`.
+- **`evaluate`:** `evaluate_agent(responses=…, queries=…)` skips running the agent. It fails on any model call, a stale capture, or a native case with no recording (or more than one), and writes run documents (`backend: python`, schema 1.2) with evidence links.
+- **`workflow`:** `evaluate_workflow` runs a one-agent workflow and scores the overall output and each agent.
+
+The checks are the same as .NET's: MAF's `tool_call_args_match`, plus the four domain checks written with `@evaluator`. Expected arguments need no mapping, because the canonical names are the Python tools' own.
 
 ## Business fixtures, datasets, scorers, results
 

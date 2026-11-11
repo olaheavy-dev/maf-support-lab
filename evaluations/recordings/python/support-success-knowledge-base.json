@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "support-success-knowledge-base",
+  "dataset_id": "support-success",
+  "dataset_version": "1.2.0",
+  "case_id": "knowledge-base",
+  "source": "fake-agent",
+  "agent": "support-fake-agent-python",
+  "principal": "CUST-1001",
+  "tools": [
+    {
+      "name": "get_order_status",
+      "writes": false
+    },
+    {
+      "name": "get_invoice",
+      "writes": false
+    },
+    {
+      "name": "get_payment_history",
+      "writes": false
+    },
+    {
+      "name": "search_knowledge_base",
+      "writes": false
+    },
+    {
+      "name": "cancel_order",
+      "writes": true
+    },
+    {
+      "name": "refund_order",
+      "writes": true
+    },
+    {
+      "name": "create_ticket",
+      "writes": true
+    }
+  ],
+  "context": [
+    "knowledge-base:KB-102"
+  ],
+  "query": "My wireless headphones keep crackling.",
+  "messages": [
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "function_call",
+          "call_id": "call_search_knowledge_base",
+          "name": "search_knowledge_base",
+          "arguments": {
+            "query": "My wireless headphones keep crackling."
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "contents": [
+        {
+          "type": "function_result",
+          "call_id": "call_search_knowledge_base",
+          "result": "{\"articles\": [{\"article_id\": \"KB-102\", \"title\": \"Headphones crackling or dropping audio\"}]}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "text",
+          "text": "See KB-102 (Headphones crackling or dropping audio)."
+        }
+      ]
+    }
+  ],
+  "response_text": "See KB-102 (Headphones crackling or dropping audio)."
+}

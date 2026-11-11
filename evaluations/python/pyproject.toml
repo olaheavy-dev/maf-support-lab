@@ -8,6 +8,9 @@ dependencies = [
     # The same validator as the backend and contract tests; evaluation-only packages (L31+) are added here, never to
     # src/python/pyproject.toml.
     "jsonschema==4.26.0",
+    # L31: Microsoft Agent Framework's local evaluation (EvalItem, LocalEvaluator, evaluate_agent, evaluate_workflow).
+    # Core only, the same release as the backend; no provider integration is needed (the evaluated agent is scripted).
+    "agent-framework-core==1.25.0",
 ]
 
 [dependency-groups]
@@ -42,3 +45,5 @@ venv = ".venv"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
+# MAF Python marks its evaluation API experimental in 1.25.0 (recorded in ADR 0004); the warning is expected here.
+filterwarnings = ["ignore:.*is experimental and may change:Warning"]

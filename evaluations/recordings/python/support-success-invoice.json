@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "support-success-invoice",
+  "dataset_id": "support-success",
+  "dataset_version": "1.2.0",
+  "case_id": "invoice",
+  "source": "fake-agent",
+  "agent": "support-fake-agent-python",
+  "principal": "CUST-1001",
+  "tools": [
+    {
+      "name": "get_order_status",
+      "writes": false
+    },
+    {
+      "name": "get_invoice",
+      "writes": false
+    },
+    {
+      "name": "get_payment_history",
+      "writes": false
+    },
+    {
+      "name": "search_knowledge_base",
+      "writes": false
+    },
+    {
+      "name": "cancel_order",
+      "writes": true
+    },
+    {
+      "name": "refund_order",
+      "writes": true
+    },
+    {
+      "name": "create_ticket",
+      "writes": true
+    }
+  ],
+  "context": [
+    "invoices:INV-5001"
+  ],
+  "query": "Can you send me the invoice for ORD-1001?",
+  "messages": [
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "function_call",
+          "call_id": "call_get_invoice",
+          "name": "get_invoice",
+          "arguments": {
+            "reference": "ORD-1001"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "contents": [
+        {
+          "type": "function_result",
+          "call_id": "call_get_invoice",
+          "result": "{\"lookup\": \"found\", \"invoice_id\": \"INV-5001\", \"order_id\": \"ORD-1001\"}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "text",
+          "text": "Invoice INV-5001 is for order ORD-1001."
+        }
+      ]
+    }
+  ],
+  "response_text": "Invoice INV-5001 is for order ORD-1001."
+}
