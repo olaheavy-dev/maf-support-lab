@@ -173,6 +173,20 @@ public sealed class RunnerTests
     }
 
     [Fact]
+    public async Task A_backend_that_stalls_mid_stream_becomes_an_error_within_the_step_deadline()
+    {
+        // Codex review on PR #103: headers arrive, then nothing. The step deadline must cover the stream reads.
+        var backend = new FakeBackend { Stall = true };
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var run = await RunAsync(backend, Case(expect: """{"outcome": "completed"}"""), stepTimeout: TimeSpan.FromMilliseconds(300));
+
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(10), $"took {clock.Elapsed}");
+        var result = run["results"]![0]!;
+        Assert.Equal("error", result["status"]!.GetValue<string>());
+        Assert.Contains("took longer than 0.3 s", result["error"]!.GetValue<string>(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task An_unreachable_backend_is_a_safe_error_not_a_crash()
     {
         var backend = new FakeBackend { Unreachable = true };
@@ -200,10 +214,10 @@ public sealed class RunnerTests
         Assert.EndsWith("/approvals/appr_0123456789abcdef", backend.Paths[^1], StringComparison.Ordinal);
     }
 
-    private static async Task<JsonObject> RunAsync(FakeBackend backend, EvaluationCase item, bool allowWrites = false, IBackends? backends = null)
+    private static async Task<JsonObject> RunAsync(FakeBackend backend, EvaluationCase item, bool allowWrites = false, IBackends? backends = null, TimeSpan? stepTimeout = null)
     {
         using var client = new HttpClient(backend) { BaseAddress = Owner };
-        var options = new RunOptions("dotnet", new HashSet<string> { "development" });
+        var options = new RunOptions("dotnet", new HashSet<string> { "development" }, stepTimeout);
         backends ??= new FixedBackends(new Dictionary<string, Uri> { ["CUST-1001"] = Owner }, allowWrites);
         var dataset = new Dataset("1.1", "example", "1.1.0", "success", "An example.", "1.0", new LiveRun(false, 0, 1, 1), [item]);
         var configuration = new Dictionary<string, string> { ["mode"] = "endpoint", ["isolated_writes"] = backends.IsolatesWrites ? "true" : "false" };
@@ -258,6 +272,48 @@ public sealed class RunnerTests
 
     private static string CultureInvariant(FormattableString text) => FormattableString.Invariant(text);
 
+    /// <summary>A response body that sends one event and then waits until the reader gives up.</summary>
+    private sealed class StallingStream : Stream
+    {
+        private readonly byte[] first = Encoding.UTF8.GetBytes("event: turn.started\ndata: {\"type\":\"turn.started\",\"turn_id\":\"turn_stalled0000000\"}\n\n");
+        private bool sent;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (!sent)
+            {
+                sent = true;
+                first.CopyTo(buffer);
+                return first.Length;
+            }
+
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return 0;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     /// <summary>A launched-style provider over the fake backend: writes are isolated, and restarts are counted.</summary>
     private sealed class RestartingBackends : IBackends, IBackendSession
     {
@@ -287,6 +343,9 @@ public sealed class RunnerTests
 
         public bool Unreachable { get; init; }
 
+        /// <summary>Send the stream's headers and first event, then never anything else.</summary>
+        public bool Stall { get; init; }
+
         public List<string> Paths { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -306,6 +365,13 @@ public sealed class RunnerTests
             if (path.EndsWith("/cancel", StringComparison.Ordinal))
             {
                 return Task.FromResult(Respond(HttpStatusCode.Accepted, "application/json", """{"cancel_requested":true}"""));
+            }
+
+            if (Stall)
+            {
+                var stalled = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new StallingStream()) };
+                stalled.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
+                return Task.FromResult(stalled);
             }
 
             var body = responses.Length == 0 ? Answer("answer", "orders", [], "ok")() : responses[Math.Min(next++, responses.Length - 1)]();

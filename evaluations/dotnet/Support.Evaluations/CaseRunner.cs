@@ -9,7 +9,15 @@ namespace Support.Evaluations;
 /// <summary>What one run selects and allows.</summary>
 /// <param name="Backend">dotnet or python: recorded in the run, and used to launch processes in launch mode.</param>
 /// <param name="Splits">Which dataset splits run; the rest are skipped with a reason.</param>
-internal sealed record RunOptions(string Backend, IReadOnlySet<string> Splits);
+/// <param name="StepTimeout">
+/// The deadline for one step, stream included (default 3 minutes; the backends' own turn deadline is 90 s). Streams are
+/// read as they arrive, so HttpClient.Timeout covers only the headers: without this, a backend that stalls mid-stream
+/// would hang the run (Codex review on PR #103). A step past it makes the case an error, and the run goes on.
+/// </param>
+internal sealed record RunOptions(string Backend, IReadOnlySet<string> Splits, TimeSpan? StepTimeout = null)
+{
+    public static readonly TimeSpan DefaultStepTimeout = TimeSpan.FromMinutes(3);
+}
 
 /// <summary>
 /// Runs one case through the public API (L29, extended in L16): a new conversation, each step streamed (so tool calls
@@ -65,13 +73,16 @@ internal sealed class CaseRunner(Func<Uri, HttpClient> clientFor, IBackends back
                 }
 
                 var client = As(step.AsPrincipal ?? item.Principal);
+                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                deadline.CancelAfter(options.StepTimeout ?? RunOptions.DefaultStepTimeout);
+                var stepToken = deadline.Token;
                 var (status, observed) = step.Action switch
                 {
-                    "send" => await StreamedAsync(client, $"api/v1/conversations/{conversation}/turns", lastTurnRequest = TurnRequest(step.Message!), step.CancelAfterStart == true, conversation, cancellationToken).ConfigureAwait(false),
-                    "resend_previous" => await StreamedAsync(client, $"api/v1/conversations/{conversation}/turns", lastTurnRequest ?? throw new InvalidDataException("resend_previous needs an earlier send."), false, conversation, cancellationToken).ConfigureAwait(false),
-                    "decide" => await DecideAsync(client, conversation, previous?.PendingApproval ?? throw new InvalidDataException("decide needs a pending approval from an earlier step."), step.Decision!, cancellationToken).ConfigureAwait(false),
-                    "send_raw" => await SendRawAsync(client, conversation, step.RawBody!.Value, cancellationToken).ConfigureAwait(false),
-                    "get_operation" => await GetOperationAsync(client, lastOperation ?? throw new InvalidDataException("get_operation needs an operation from an earlier step."), cancellationToken).ConfigureAwait(false),
+                    "send" => await StreamedAsync(client, $"api/v1/conversations/{conversation}/turns", lastTurnRequest = TurnRequest(step.Message!), step.CancelAfterStart == true, conversation, stepToken).ConfigureAwait(false),
+                    "resend_previous" => await StreamedAsync(client, $"api/v1/conversations/{conversation}/turns", lastTurnRequest ?? throw new InvalidDataException("resend_previous needs an earlier send."), false, conversation, stepToken).ConfigureAwait(false),
+                    "decide" => await DecideAsync(client, conversation, previous?.PendingApproval ?? throw new InvalidDataException("decide needs a pending approval from an earlier step."), step.Decision!, stepToken).ConfigureAwait(false),
+                    "send_raw" => await SendRawAsync(client, conversation, step.RawBody!.Value, stepToken).ConfigureAwait(false),
+                    "get_operation" => await GetOperationAsync(client, lastOperation ?? throw new InvalidDataException("get_operation needs an operation from an earlier step."), stepToken).ConfigureAwait(false),
                     _ => throw new InvalidDataException($"Unknown action {step.Action}."),
                 };
                 var checks = Checks.Compare(step.Expect!, status, observed, previous);
@@ -84,7 +95,11 @@ internal sealed class CaseRunner(Func<Uri, HttpClient> clientFor, IBackends back
             var passed = steps.All(step => step!["checks"]!.AsArray().All(check => check!["passed"]!.GetValue<bool>()));
             return CaseResult(item, passed ? "passed" : "failed", ApiTime(steps), steps);
         }
-        catch (Exception error) when (error is HttpRequestException or InvalidDataException or JsonException or TaskCanceledException or InvalidOperationException or IOException)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return CaseResult(item, "error", ApiTime(steps), steps, error: $"A step took longer than {(options.StepTimeout ?? RunOptions.DefaultStepTimeout).TotalSeconds:0.#} s and was stopped.");
+        }
+        catch (Exception error) when (error is HttpRequestException or InvalidDataException or JsonException or InvalidOperationException or IOException)
         {
             // A safe description only: never a response body or stack trace.
             return CaseResult(item, "error", ApiTime(steps), steps, error: $"{error.GetType().Name}: the case could not be run.");
