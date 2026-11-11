@@ -24,7 +24,7 @@ from support_agent.database import Database
 from support_agent.fake_model import ScriptedChatClient, default_script
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Kind, Operation, Status, approval_scope
-from tests.helpers import Api, assert_contract, host, let_expire, new_database_path
+from tests.helpers import Api, assert_contract, execute, host, let_expire, new_database_path
 from tests.test_approvals import AFTER, BEFORE, WRITES, decide, state_of
 
 CANCEL = "Please cancel order ORD-1003."
@@ -289,7 +289,7 @@ def test_a_stale_run_of_a_finished_operation_reports_the_stored_result_and_write
     stale.status, stale.result = Status.RUNNING, None  # a copy still believing it is running
 
     with pinned(Principal("CUST-1001")), approval_scope(stale):
-        got = app.state.operations.execute_approved(Principal("CUST-1001"), Kind.CREATE_TICKET, stale.arguments)
+        got = execute(app.state.operations, Principal("CUST-1001"), Kind.CREATE_TICKET, stale.arguments)
 
     assert got == result
     assert stale.status is Status.COMMITTED
@@ -316,7 +316,7 @@ def test_a_write_whose_guarded_commit_loses_is_rolled_back(monkeypatch: pytest.M
     stale = Operation.from_json(running.to_json())
 
     with pinned(Principal("CUST-1001")), approval_scope(stale):
-        got = app.state.operations.execute_approved(Principal("CUST-1001"), Kind.CREATE_TICKET, stale.arguments)
+        got = execute(app.state.operations, Principal("CUST-1001"), Kind.CREATE_TICKET, stale.arguments)
 
     monkeypatch.undo()
     assert got == result

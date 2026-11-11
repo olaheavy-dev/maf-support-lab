@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import tempfile
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -82,3 +84,49 @@ def let_expire(app: FastAPI, operation_id: str) -> None:
     assert operation is not None
     operation.expires_at = datetime.now(UTC) - timedelta(seconds=1)
     assert store.try_update(operation, operation.status)
+
+
+def execute(operations: Any, *arguments: Any) -> dict[str, Any]:
+    """Runs ``OperationService.execute_approved`` (async since L20) from synchronous test code."""
+    result: dict[str, Any] = asyncio.run(operations.execute_approved(*arguments))
+    return result
+
+
+SSE = {"Accept": "text/event-stream"}
+
+
+def parse_sse(text: str) -> list[dict[str, Any]]:
+    """Parses a whole SSE body. Every event must match the stream-event schema, carry SSE ``id`` = sequence and
+    ``event`` = type, and the sequence must start at 1 and rise by 1. Comment lines (keepalives) are skipped."""
+    events: list[dict[str, Any]] = []
+    for block in text.replace("\r\n", "\n").strip().split("\n\n"):
+        fields = dict(line.split(": ", 1) for line in block.splitlines() if line and not line.startswith(":"))
+        if not fields:
+            continue
+        event: dict[str, Any] = json.loads(fields["data"])
+        assert_contract("stream-event", event)
+        assert fields["event"] == event["type"]
+        assert fields["id"] == str(event["sequence"])
+        events.append(event)
+    assert [e["sequence"] for e in events] == list(range(1, len(events) + 1))
+    return events
+
+
+def final_of(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """The one terminal event's result; it must be the last event and the only final one."""
+    finals = [e for e in events if e["type"] == "turn.final"]
+    assert len(finals) == 1
+    assert events[-1] is finals[0]
+    assert events[0]["type"] == "turn.started"
+    result: dict[str, Any] = finals[0]["data"]["result"]
+    return result
+
+
+def streamed_text(events: list[dict[str, Any]]) -> str:
+    """The contract's text rule: the deltas after the last reset concatenate to the final reply text."""
+    last_reset = max((i for i, e in enumerate(events) if e["type"] == "reply.reset"), default=-1)
+    return "".join(e["data"]["text"] for e in events[last_reset + 1 :] if e["type"] == "reply.delta")
+
+
+def stages(events: list[dict[str, Any]]) -> list[str]:
+    return [e["data"]["stage"] for e in events if e["type"] == "turn.progress"]

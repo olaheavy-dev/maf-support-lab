@@ -34,6 +34,7 @@ from support_agent.approval_gate import gate
 from support_agent.operations import OperationService
 from support_agent.routing import TriageDecision, TriageOutcome, TurnRoute, UnroutedReason, parse, route
 from support_agent.sessions import ConversationContext, ConversationSessions, context_note
+from support_agent.turn_control import Delta, Progress
 
 WORKFLOW_NAME = "support-routing"
 ASK_FOR_ORDER_ID = "Which order do you mean? Please share the order id, for example ORD-1234."
@@ -60,16 +61,14 @@ class SupportReply:
     operation_ids: tuple[str, ...] = ()
 
 
-@dataclass(frozen=True, slots=True)
-class Progress:
-    """A progress step (a stage and maybe a route; never message content), carried by a workflow ``data`` event."""
-
-    stage: str
-    route: dict[str, Any] | None = None
+def progress(stage: str, route: dict[str, Any] | None = None, tool: str | None = None) -> WorkflowEvent[Progress]:
+    """A progress step as a native workflow ``data`` event (stage, route, tool name; never message content)."""
+    return WorkflowEvent("data", data=Progress(stage, route, tool))
 
 
-def progress(stage: str, route: dict[str, Any] | None = None) -> WorkflowEvent[Progress]:
-    return WorkflowEvent("data", data=Progress(stage, route))
+def delta(text: str) -> WorkflowEvent[Delta]:
+    """Reply text as it arrives, as a native workflow ``data`` event (L20). Display only."""
+    return WorkflowEvent("data", data=Delta(text))
 
 
 class TriageExecutor(Executor):
@@ -152,7 +151,16 @@ class SpecialistExecutor(Executor):
                 )
             )
         with begin_activity() as activity:
-            response = await agent.run(messages, session=session)
+            # Streamed (L20): the model's text goes out as it arrives; tool calls show as progress. The stream is
+            # closed deterministically, also when the turn is cancelled mid-stream.
+            async with agent.run(messages, session=session, stream=True) as stream:
+                async for update in stream:
+                    for content in update.contents:
+                        if content.type == "function_call" and content.name:
+                            await ctx.add_event(progress("tool_call", tool=content.name))
+                    if update.text:
+                        await ctx.add_event(delta(update.text))
+                response = await stream.get_final_response()
             # A write tool pauses natively for approval; the gate binds it to an operation or declines it (L37).
             gated = await gate(agent, session, response, outcome, self._target, self._operations)
         if outcome.sessions is not None:

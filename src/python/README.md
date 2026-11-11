@@ -2,7 +2,7 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L39): the host, agents, per-conversation sessions, approval-gated writes, durable state, and a tested cross-customer access matrix.
+Status (L20): the host, agents, per-conversation sessions, approval-gated writes, durable state, a tested cross-customer access matrix, and streaming with cooperative cancellation.
 - **Read-only agents:** triage plus the orders, billing and technical specialists.
 - **The routing workflow:** `support-routing`.
 - **The version-1 contract API** for conversations and turns (JSON).
@@ -25,6 +25,7 @@ Each specialist has one write tool (cancel, refund, ticket) that needs the custo
 | `fake_model.py`, `model_provider.py` | A deterministic fake model on MAF's real chat-client layers; Claude in live mode |
 | `devui.py` | Development-only DevUI process over the same agents and services |
 | `operations.py`, `write_tools.py`, `approval_gate.py`, `policy.py`, `state.py` | Bound approvals: operations, the approval-required write tools, the gate that turns a native approval request into an operation (or declines it), the eligibility rules, and the simulated state the writes change |
+| `streaming.py`, `turn_control.py` | Server-Sent Events for a turn; per-turn cooperative cancellation and live events (L20) |
 | `database.py` | The local SQLite store (L38): one file per backend and run, `atomically()` transactions |
 | `sessions.py` | Per-conversation native `AgentSession`s (stored after each run), `BoundedHistory` (12 plain messages; no tool traffic or notes), and the verified `ConversationContext` |
 
@@ -72,6 +73,29 @@ APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run p
 5. `GET /api/v1/operations/{id}` is the authoritative status.
 
 The tool call is re-sent before each native answer: stored history is plain text, and Anthropic rejects a tool result that doesn't follow its call. No note may sit between them. Both rules were found live; the fake model now enforces Anthropic's pairing rule.
+
+## Streaming and cancellation (L20)
+
+Send `Accept: text/event-stream` to `POST …/turns` or `POST …/approvals/{id}` to get the turn as Server-Sent Events (contract 1.1). Without that header the response is one JSON `turn-result`, as before.
+
+- **Events, in order:**
+  - `turn.started`;
+  - `turn.progress`: the stage (`triage`, `routed`, `specialist`, `tool_call`, `awaiting_approval`, `executing_operation`), plus a route or tool name, never message content;
+  - `reply.delta`: the model's words **as they arrive**;
+  - exactly one `turn.final`, carrying the stored turn.
+
+  If the reply the server settles on differs from what streamed (an approval request, a declined write, a failure or a cancellation), `reply.reset` comes first and then the real text.
+- **How it's built:**
+  - the specialists run `agent.run(stream=True)`, and the workflow's native `data` events carry progress and text;
+  - `run_turn` reads `workflow.run(stream=True)`;
+  - FastAPI's `EventSourceResponse` writes the events.
+- **Buffering is explicit:** nothing is buffered in the app, and responses send `Cache-Control: no-cache` and `X-Accel-Buffering: no`. A quiet stream gets a `: keepalive` comment every 15 seconds.
+- **Cancellation is cooperative:** `POST …/turns/{id}/cancel` returns `202`, or `409 turn_already_finished`, or `404`. It sets the turn's cancel flag and cancels its task, so an in-flight model call stops at its next await.
+  - The **pre-commit boundary** is in `OperationService.execute_approved`: once cancellation was requested, no write starts.
+  - Cancelled before the commit: the turn is `cancelled`, the operation `failed` with code `cancelled`, and nothing changed.
+  - Cancelled after the commit: the committed result stands, and the turn completes from the record.
+- **A disconnect is not a cancellation.** The stream detaches; the turn runs on and is stored. Recover with `GET …/turns/{id}` and `GET /api/v1/operations/{id}`. Deltas are not replayed.
+- **Shutdown** cancels running turns and waits for them to be stored before the database and clients close.
 
 ## Durable state (L38)
 

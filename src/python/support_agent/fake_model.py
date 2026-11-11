@@ -244,6 +244,11 @@ def check_tool_pairing(messages: Sequence[Message]) -> None:
             raise FakeModelError(f"A tool result answers no tool call in the previous assistant message: {missing}")
 
 
+def _words(text: str) -> list[str]:
+    """Splits text into word-sized pieces that concatenate back to exactly the text."""
+    return re.findall(r"\S+\s*|\s+", text)
+
+
 class ScriptedChatClient(BaseChatClient[Any]):
     """The provider-level fake: triage on structured-output calls, the script otherwise."""
 
@@ -254,6 +259,8 @@ class ScriptedChatClient(BaseChatClient[Any]):
         self.calls = 0
         # Tests may hold a call here (for example to observe a running turn); awaited before the script runs.
         self.before_call: Callable[[], Awaitable[None]] | None = None
+        # Tests may hold a stream between its updates (L20), to see text arrive before the turn ends.
+        self.between_updates: Callable[[], Awaitable[None]] | None = None
 
     async def _respond(self, messages: Sequence[Message], options: Mapping[str, Any]) -> ChatResponse:
         self.calls += 1
@@ -271,9 +278,19 @@ class ScriptedChatClient(BaseChatClient[Any]):
             return self._respond(messages, options)
 
         async def updates() -> AsyncGenerator[ChatResponseUpdate]:
+            # Like a real model: text arrives word by word, then any tool calls (L20).
             response = await self._respond(messages, options)
+            message_id = f"msg_{self.calls:04d}"  # like a real provider: every update of one response has its id
             for message in response.messages:
-                yield ChatResponseUpdate(role="assistant", contents=list(message.contents))
+                others = [content for content in message.contents if content.type != "text"]
+                for piece in _words(message.text):
+                    yield ChatResponseUpdate(
+                        role="assistant", contents=[Content.from_text(piece)], message_id=message_id
+                    )
+                    if self.between_updates is not None:
+                        await self.between_updates()
+                if others:
+                    yield ChatResponseUpdate(role="assistant", contents=others, message_id=message_id)
 
         return ResponseStream(updates(), finalizer=ChatResponse.from_updates)
 

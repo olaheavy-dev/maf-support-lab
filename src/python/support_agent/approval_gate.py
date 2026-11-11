@@ -38,14 +38,30 @@ def requests(response: AgentResponse[Any]) -> list[Content]:
     ]
 
 
-def answer(pending: list[Content], approved: bool) -> list[Message]:
-    """The native answer to paused requests, preceded by the tool calls they pause.
+def batch_of(response: AgentResponse[Any], pending: list[Content]) -> list[Content]:
+    """All tool calls the model made in the turn that paused, in the model's order (L20, found live).
 
-    Stored history keeps only plain text (L19), so the assistant message that made the call is not in the session, and
+    In a mixed batch (say get_order_status and cancel_order in one response) MAF pauses the approval-required call,
+    keeps the other calls in the session, and runs them when the batch is answered, sending their results too. So the
+    answer must re-send every call of that batch, or Anthropic rejects a result whose call is missing (HTTP 400)."""
+    paused = [request.function_call for request in pending if request.function_call is not None]
+    paused_ids = {call.call_id for call in paused}
+    for message in reversed(response.messages):
+        calls = [content for content in message.contents if content.type == "function_call"]
+        if any(call.call_id in paused_ids for call in calls):
+            present = {call.call_id for call in calls}
+            return calls + [call for call in paused if call.call_id not in present]
+    return paused
+
+
+def answer(pending: list[Content], approved: bool, batch: list[Content] | None = None) -> list[Message]:
+    """The native answer to paused requests, preceded by the tool calls of the batch they belong to.
+
+    Stored history keeps only plain text (L19), so the assistant message that made the calls is not in the session, and
     MAF does not re-add it. Anthropic rejects a tool result that does not directly follow its tool call (HTTP 400,
-    found live in L37), so the call is sent again, right before the decision that answers it.
-    """
-    calls = [request.function_call for request in pending if request.function_call is not None]
+    found live in L37), so the calls are sent again, right before the decision that answers them: all calls of the
+    batch, since MAF also answers the non-paused ones (found live in L20)."""
+    calls = batch or [request.function_call for request in pending if request.function_call is not None]
     return [
         Message(role="assistant", contents=calls),
         Message(
@@ -54,11 +70,13 @@ def answer(pending: list[Content], approved: bool) -> list[Message]:
     ]
 
 
-async def decline(agent: SupportsAgentRun, session: AgentSession | None, pending: list[Content]) -> AgentResponse[Any]:
+async def decline(
+    agent: SupportsAgentRun, session: AgentSession | None, pending: list[Content], batch: list[Content] | None = None
+) -> AgentResponse[Any]:
     """Answers native requests with "rejected": the tool never runs. No note is added: MAF places the rejection result
     after any other input, and a message between a tool call and its result is rejected by Anthropic (HTTP 400, found
     live in L37). The reply the customer sees states the factual reason, written by code (see the workflow)."""
-    response: AgentResponse[Any] = await agent.run(answer(pending, approved=False), session=session)
+    response: AgentResponse[Any] = await agent.run(answer(pending, approved=False, batch=batch), session=session)
     return response
 
 
@@ -92,11 +110,12 @@ async def gate(
                         call.name or "",
                         arguments,
                         pending[0],  # stored with the operation, in one transaction
+                        batch_of(response, pending),
                     )
                 except WriteError as error:
                     declined_code, reason = error.code, error.detail
                 else:
                     return GateResult(response, operation)
-        response = await decline(agent, session, pending)
+        response = await decline(agent, session, pending, batch_of(response, pending))
         declined_reason = reason
     return GateResult(response, None, declined_code, declined_reason)

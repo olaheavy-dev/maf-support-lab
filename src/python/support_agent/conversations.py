@@ -22,6 +22,7 @@ from support_agent.identity import Principal
 from support_agent.operations import OperationStore, Status
 from support_agent.routing import TurnRoute, UnroutedReason
 from support_agent.sessions import ConversationContext, ConversationSessions
+from support_agent.turn_control import TurnControl
 
 
 def new_id(prefix: str) -> str:
@@ -154,6 +155,7 @@ class Claim:
     started_at: datetime = field(default_factory=now)
     trace_id: str = ""
     key: str = ""  # the client_turn_id, or "approval:<id>" for a decision (lower case)
+    control: TurnControl = field(default_factory=TurnControl)  # cancellation and live events (L20)
 
     def running_contract(self, conversation_id: str, contract_version: str) -> dict[str, Any]:
         """A turn still running: what a status lookup can say before it finishes (no outcome yet)."""
@@ -237,14 +239,14 @@ class Conversation:
         return stored
 
     def _withdraw_unanswerable(self, turn: Turn, operations: OperationStore) -> None:
-        """Approvals the customer can never answer expire: those of a failed turn, and those whose turn was never
+        """Approvals the customer can never answer expire: those of a failed or cancelled turn, and those whose turn was never
         stored (the process stopped between proposing and storing the turn). Only one turn runs at a time, so any
         other unstored proposal is an orphan."""
         at = now()
         for operation in operations.for_conversation(self.conversation_id):
             if operation.status is not Status.AWAITING_APPROVAL or operation.source_turn_id in self.turns:
                 continue
-            if operation.source_turn_id != turn.turn_id or turn.outcome == "failed":
+            if operation.source_turn_id != turn.turn_id or turn.outcome in ("failed", "cancelled"):
                 operations.expire(operation, at)
 
     def _store(self, claim: Claim, turn: Turn, context: ConversationContext) -> tuple[Turn, ConversationContext]:

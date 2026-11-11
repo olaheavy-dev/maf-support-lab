@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import re
 import secrets
-from collections.abc import Generator, Mapping
+from collections.abc import Awaitable, Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
@@ -29,6 +29,7 @@ from support_agent.domain import Order, Payment
 from support_agent.identity import Principal
 from support_agent.policy import Policy
 from support_agent.state import SimulatedState, Ticket
+from support_agent.turn_control import raise_if_cancelled
 
 ORDER_ID = re.compile(r"^ORD-[0-9]{4}$")
 MAX_SUMMARY = 500
@@ -178,8 +179,9 @@ class OperationStore:
     def __init__(self, database: Database) -> None:
         self._database = database
 
-    def add(self, operation: Operation, native_request: Content) -> None:
-        """The operation and the paused native request it answers are stored together, or neither is."""
+    def add(self, operation: Operation, native_request: Content, batch: Sequence[Content] = ()) -> None:
+        """The operation and the paused native request it answers are stored together, or neither is. ``batch`` is
+        every tool call of the paused model turn, re-sent with the answer (see ``approval_gate.batch_of``)."""
         with self._database.atomically():
             self._database.execute(
                 "INSERT INTO operations(operation_id, approval_id, conversation_id, owner, status, json) VALUES (?, ?, ?, ?, ?, ?)",
@@ -194,7 +196,10 @@ class OperationStore:
             )
             self._database.execute(
                 "INSERT INTO native_approval_requests(operation_id, json) VALUES (?, ?)",
-                (operation.operation_id, json.dumps(native_request.to_dict())),
+                (
+                    operation.operation_id,
+                    json.dumps({"request": native_request.to_dict(), "batch": [call.to_dict() for call in batch]}),
+                ),
             )
 
     def _one(self, column: str, value: str) -> Operation | None:
@@ -241,15 +246,21 @@ class OperationStore:
         operation.decision_reason = reason
         return self.try_update(operation, Status.AWAITING_APPROVAL)
 
-    def fail(self, operation: Operation, detail: str, at: datetime) -> None:
+    def fail(self, operation: Operation, detail: str, at: datetime, code: str = "internal_error") -> None:
         """An approved write that could not be carried out. Only a still-running operation can fail."""
         if operation.status is Status.RUNNING:
-            operation.status, operation.failure, operation.updated_at = Status.FAILED, ("internal_error", detail), at
+            operation.status, operation.failure, operation.updated_at = Status.FAILED, (code, detail), at
             self.try_update(operation, Status.RUNNING)
 
-    def native_request(self, operation_id: str) -> Content | None:
+    def native_request(self, operation_id: str) -> tuple[Content, list[Content]] | None:
+        """The paused native request and the tool-call batch it belongs to."""
         rows = self._database.query("SELECT json FROM native_approval_requests WHERE operation_id = ?", (operation_id,))
-        return Content.from_dict(json.loads(rows[0][0])) if rows else None
+        if not rows:
+            return None
+        stored: dict[str, Any] = json.loads(rows[0][0])
+        if "request" not in stored:  # stored before L20: the request alone
+            return Content.from_dict(stored), []
+        return Content.from_dict(stored["request"]), [Content.from_dict(call) for call in stored["batch"]]
 
     def answered(self, operation_id: str) -> None:
         """The paused request was answered: a later retry reports from the record and never resumes it again."""
@@ -398,6 +409,8 @@ class OperationService:
     handlers: WriteHandlers
     policy: Policy
     database: Database
+    # Test hook (like the fake model's before_call): awaited just before the pre-commit boundary. Never set in the app.
+    before_commit: Callable[[], Awaitable[None]] | None = None
 
     def propose(
         self,
@@ -408,6 +421,7 @@ class OperationService:
         tool: str,
         arguments: Mapping[str, Any],
         native_request: Content,
+        batch: Sequence[Content] = (),
     ) -> Operation:
         """Validates the tool call and checks eligibility before asking; only then creates a bound operation."""
         try:
@@ -431,11 +445,14 @@ class OperationService:
             at + timedelta(minutes=self.policy.approval_expiry_minutes),
             at,
         )
-        self.store.add(operation, native_request)
+        self.store.add(operation, native_request, batch)
         return operation
 
-    def execute_approved(self, principal: Principal, kind: Kind, arguments: Mapping[str, Any]) -> dict[str, Any]:
-        """Runs a write only for the approved operation in scope: same customer, same kind, exactly the same arguments, once."""
+    async def execute_approved(self, principal: Principal, kind: Kind, arguments: Mapping[str, Any]) -> dict[str, Any]:
+        """Runs a write only for the approved operation in scope: same customer, same kind, exactly the same arguments, once.
+
+        The pre-commit boundary (L20): once the turn's cancellation was requested, no write starts. A write that already
+        committed stays committed; cancellation never rolls it back."""
         operation = _approved.get()
         mapped = map_arguments(kind, arguments, self.policy.ticket_priorities)
         if (
@@ -447,6 +464,9 @@ class OperationService:
             raise WriteError("not_approved", "This exact action has not been approved.")
         if operation.result is not None:
             return operation.result  # this run already committed it
+        if self.before_commit is not None:
+            await self.before_commit()
+        raise_if_cancelled()
         at = now()
         failure: WriteError | None = None
         try:
