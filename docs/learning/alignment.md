@@ -44,9 +44,9 @@ Use bounded metric dimensions such as route, tool, and outcome. Conversation/ope
 
 L15 inventories provider, HTTP, and application retries and bounds total attempts, tool/agent steps, output size, and turn duration. Python must port these controls in L42; they cannot be deferred beyond parity.
 
-The repository-checks job remains the stable required CI aggregate. Existing language checks must feed it as introduced. Python packaging/test gates join in L17; frontend gates join in L23/L24. No required offline job needs model credentials.
+The repository-checks job remains the stable required CI aggregate. Existing language checks must feed it as introduced. Python packaging/test gates join in L17, and the cross-backend contract probes in L21. No required offline job needs model credentials.
 
-L21 verifies the built backend projects using their existing integration/contract checks. L24 completes both APIs and the shared frontend and produces application_projects_built. Only then does E08 begin: L29 defines evaluation projects/datasets, L16 implements the shared deterministic runner for both targets, L30/L31 demonstrate native Microsoft .NET/Python evaluators, L32 adds budgeted quality scoring, and L33 generates reports and separate CI lanes. L25 later expands that existing runner for fault/load evidence.
+L21 verifies the built backend projects using their existing integration/contract checks and cross-backend probes, and produces application_projects_built: the two APIs are the application. Only then does E08 begin: L29 defines evaluation projects/datasets, L16 implements the shared deterministic runner for both targets, L30/L31 demonstrate native Microsoft .NET/Python evaluators, L32 adds budgeted quality scoring, and L33 generates reports and separate CI lanes. L25 later expands that existing runner for fault/load evidence.
 
 ## Python parity ownership
 
@@ -67,11 +67,7 @@ L21 verifies the built backend projects using their existing integration/contrac
 
 The Python sequence is L19 -> L37 -> L38 -> L39 -> L20 -> L40 -> L41 -> L42, with one focused learning issue per slice and a native blocking chain. Existing L19/L20 issue IDs remain stable; their other capabilities move to the named tickets. L21 cannot start until every Python parity capability is present.
 
-## Frontend and final review
-
-L23 uses relative frontend API calls through a server/development proxy configured from Aspire-provided URLs. The browser does not resolve internal Aspire service names. Backend selection is a server-controlled alias fixed for the conversation, never an arbitrary user-provided upstream URL.
-
-L24 builds approval/recovery controls over existing operation identities and adds browser-level checks for both backends. UI disabled states do not replace server authorization or idempotency.
+## Final review
 
 L02 starts the threat model, L13/L14 extend it, and L26 reviews it. L26 is a final review of existing protections, not the first dependency/security check. L27 distinguishes a self-check from another person's independent run.
 
@@ -79,14 +75,14 @@ L28's independent change is one read-only return-eligibility query in both imple
 
 Stretch exercises are optional and may not introduce a prerequisite from a future ticket. Learner explanations and evidence remain the learner's work.
 
-## Post-build evaluation and Gatsby documentation
+## Post-build evaluation and documentation
 
 Execution order is explicit in the roadmap and GitHub Project Order field. Stable IDs and issue numbers are preserved: L16 now runs after L29 and application completion, not before Python. New prerequisites are checked by capabilities and native blocking relationships.
 
-Unit/integration tests and learner notes remain alongside feature work. Formal evaluation projects, datasets, quality judges, reports, and the documentation-site project begin after both APIs and the frontend are built.
+Unit/integration tests and learner notes remain alongside feature work. Formal evaluation projects, datasets, quality judges, reports, and the final documentation begin after both APIs are built and verified (L21).
 
 Evaluation dependencies belong under evaluations/dotnet/Support.Evaluations and evaluations/python, outside production API manifests. The same captured evidence/dataset/result specification feeds both targets. Local evaluators can avoid judge calls while response generation can still call a model; fake or recorded responses keep the required lane credential-free. Quality scores never replace ownership/approval/idempotency assertions. Reporting adapters for native/custom results must be verified against actual supported APIs.
 
-E09 is explicitly Gatsby. L35 first records a dated maintenance/security, supported Node, and plugin compatibility check plus a clean-build feasibility result; an unsupported combination requires a scope decision rather than a silent framework substitution. L34 authors selected plain .md pages under docs/ and their publication manifest. L35 uses gatsby-source-filesystem and gatsby-transformer-remark to generate routes and static HTML in docs-site/public. There is no Docusaurus or MDX-only authoring requirement. The whole output folder includes HTML, CSS, JavaScript, and image assets; Node/Gatsby is a build-time requirement, not a hosting requirement.
+E09 is plain Markdown that GitHub renders directly: no site generator, hosted site, MDX, or duplicated copy. L34 authors selected .md pages under docs/, adds docs/README.md as the documentation index, and adds a dependency-free link checker for docs/ and the READMEs to the required CI aggregate. Documentation checks do not run agents, judges, or evaluations. L27 refreshes the Markdown and its index after final operational/security changes.
 
-L36 copies the complete output elsewhere, checks direct/deep links through an ordinary static HTTP server, verifies root and configured-subpath builds, and packages a downloadable artifact with copy/serve instructions. This does not promise arbitrary file:// support or a single self-contained HTML file, and requires no deployment or hosting account. Documentation builds do not run agents, judges, or evaluations. L27 refreshes that artifact after final operational/security changes.
+The frontend (E06: L22-L24) and the Gatsby site (L35/L36) were retired by the owner on 2026-11-11; the project closes once the backends are solid. Their IDs are never reused.

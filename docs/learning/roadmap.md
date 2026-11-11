@@ -15,14 +15,13 @@ flowchart TD
     E03["E03: Conversations, approvals, and streaming<br/>L09 → L10 → L11 → L12"]
     E04["E04: Safety and reliability<br/>L13 → L14 → L15"]
     E05["E05: Python implementation and application contract verification<br/>L17 → L18 → L19 → L37<br/>L38 → L39 → L20 → L40<br/>L41 → L42 → L21"]
-    E06["E06: One frontend for both implementations<br/>L22 → L23 → L24"]
     E08["E08: Post-build Microsoft evaluation and reporting<br/>L29 → L16 → L30 → L31<br/>L32 → L33"]
-    E09["E09: Markdown documentation and portable Gatsby HTML<br/>L34 → L35 → L36"]
+    E09["E09: Markdown documentation<br/>L34"]
     E07["E07: Engineering evidence and interview readiness<br/>L25 → L26 → L27 → L28"]
-    E01 --> E02 --> E03 --> E04 --> E05 --> E06 --> E08 --> E09 --> E07
+    E01 --> E02 --> E03 --> E04 --> E05 --> E08 --> E09 --> E07
 ```
 
-The table below is the text alternative and includes the exact prerequisites. Formal evaluations start after L24; Gatsby documentation starts after L33. Final portfolio work refreshes the static documentation after the fault and security reviews.
+The table below is the text alternative and includes the exact prerequisites. Formal evaluations start after L21, once both backends are built and verified. Markdown documentation follows the evaluation reports, and final portfolio work refreshes it after the fault and security reviews.
 
 ## Ticket execution order
 
@@ -55,22 +54,17 @@ The table below is the text alternative and includes the exact prerequisites. Fo
 | 25 | L41 | E05 | [Exercise Python prompt-injection and tool-validation boundaries](tickets/L41.md) | python | L40 |
 | 26 | L42 | E05 | [Bound Python retries, timeouts, and execution budgets](tickets/L42.md) | python | L41 |
 | 27 | L21 | E05 | [Verify cross-language application contracts and document SDK decisions](tickets/L21.md) | shared | L42 |
-| 28 | L22 | E06 | [Verify browser compatibility with the established API contract](tickets/L22.md) | frontend | L21 |
-| 29 | L23 | E06 | [Build shared chat UI with backend selection](tickets/L23.md) | frontend | L22 |
-| 30 | L24 | E06 | [Add approval UI, recovery states, and trace references](tickets/L24.md) | frontend | L23 |
-| 31 | L29 | E08 | [Set up post-build evaluation projects, datasets, and result contracts](tickets/L29.md) | shared | L24 |
-| 32 | L16 | E08 | [Build the shared deterministic behavior evaluation runner](tickets/L16.md) | shared | L29 |
-| 33 | L30 | E08 | [Integrate Microsoft .NET evaluation APIs with local checks](tickets/L30.md) | dotnet | L16 |
-| 34 | L31 | E08 | [Integrate native Python local agent and workflow evaluations](tickets/L31.md) | python | L30 |
-| 35 | L32 | E08 | [Add budgeted model-based quality evaluation for both backends](tickets/L32.md) | shared | L31 |
-| 36 | L33 | E08 | [Generate Microsoft evaluation reports and separate CI lanes](tickets/L33.md) | shared | L32 |
-| 37 | L34 | E09 | [Author canonical Markdown documentation for the completed system](tickets/L34.md) | docs | L33 |
-| 38 | L35 | E09 | [Build Gatsby Markdown-to-static-HTML documentation](tickets/L35.md) | docs | L34 |
-| 39 | L36 | E09 | [Validate and package copyable Gatsby static documentation](tickets/L36.md) | docs | L35 |
-| 40 | L25 | E07 | [Run fault, concurrency, and bounded load exercises](tickets/L25.md) | shared | L36 |
-| 41 | L26 | E07 | [Review dependencies, security checks, and operational limits](tickets/L26.md) | shared | L25 |
-| 42 | L27 | E07 | [Publish the architecture, runbook, and portfolio demonstration](tickets/L27.md) | shared | L26 |
-| 43 | L28 | E07 | [Complete a mock interview and independent change exercise](tickets/L28.md) | shared | L27 |
+| 28 | L29 | E08 | [Set up post-build evaluation projects, datasets, and result contracts](tickets/L29.md) | shared | L21 |
+| 29 | L16 | E08 | [Build the shared deterministic behavior evaluation runner](tickets/L16.md) | shared | L29 |
+| 30 | L30 | E08 | [Integrate Microsoft .NET evaluation APIs with local checks](tickets/L30.md) | dotnet | L16 |
+| 31 | L31 | E08 | [Integrate native Python local agent and workflow evaluations](tickets/L31.md) | python | L30 |
+| 32 | L32 | E08 | [Add budgeted model-based quality evaluation for both backends](tickets/L32.md) | shared | L31 |
+| 33 | L33 | E08 | [Generate Microsoft evaluation reports and separate CI lanes](tickets/L33.md) | shared | L32 |
+| 34 | L34 | E09 | [Author canonical Markdown documentation for the completed system](tickets/L34.md) | docs | L33 |
+| 35 | L25 | E07 | [Run fault, concurrency, and bounded load exercises](tickets/L25.md) | shared | L34 |
+| 36 | L26 | E07 | [Review dependencies, security checks, and operational limits](tickets/L26.md) | shared | L25 |
+| 37 | L27 | E07 | [Publish the architecture, runbook, and portfolio demonstration](tickets/L27.md) | shared | L26 |
+| 38 | L28 | E07 | [Complete a mock interview and independent change exercise](tickets/L28.md) | shared | L27 |
 
 ## Epics
 
@@ -102,28 +96,35 @@ Exit: Feature-level ownership, injection-boundary, cancellation, retry, and reso
 
 Build the equivalent Python support API, then verify the completed backend projects through their integration/contract checks.
 
-Exit: Both backend projects build and pass their feature/contract tests for ownership, approvals, durable state, streaming, and resilience. This is the prerequisite for the frontend, not the formal evaluation phase.
-
-### [E06: One frontend for both implementations](epics/E06.md)
-
-Verify browser compatibility with the established backend contract and add one shared frontend.
-
-Exit: Select a backend when starting a conversation, chat, approve/reject an operation, and diagnose a failure. The two APIs and shared frontend build and run with their feature tests passing, establishing application_projects_built.
+Exit: Both backend projects build and pass their feature/contract tests for ownership, approvals, durable state, streaming, and resilience. Together they are the built application that the formal evaluation phase starts from.
 
 ### [E08: Post-build Microsoft evaluation and reporting](epics/E08.md)
 
-After the .NET, Python, and frontend projects are built, create shared evaluation datasets/runners, integrate native Microsoft evaluation APIs, and report deterministic and budgeted judge results.
+After the .NET and Python backends are built and verified, create shared evaluation datasets/runners, integrate native Microsoft evaluation APIs, and report deterministic and budgeted judge results.
 
 Exit: Both targets run the same versioned behavior datasets; native .NET/Python evaluations are demonstrated; model-based scores are separated from business gates; reproducible reports and CI artifacts exist.
 
-### [E09: Markdown documentation and portable Gatsby HTML](epics/E09.md)
+### [E09: Markdown documentation](epics/E09.md)
 
-After the application projects and evaluation reporting exist, author plain Markdown and render it with Gatsby into a portable static HTML/assets folder.
+After the backends and evaluation reporting exist, author plain Markdown that GitHub renders directly, with one documentation index and a link check in CI.
 
-Exit: One canonical Markdown source feeds a locked Gatsby build. The complete public folder can be copied and served by an ordinary static server with correct routes/assets and no application backend, model service, or Gatsby runtime.
+Exit: Every documentation page is reachable from docs/README.md, renders on GitHub without a site generator, and the required CI link check fails on a broken relative link, anchor, or image.
 
 ### [E07: Engineering evidence and interview readiness](epics/E07.md)
 
-Use the completed applications, evaluations, and static documentation to demonstrate engineering evidence and interview readiness.
+Use the completed backends, evaluations, and Markdown documentation to demonstrate engineering evidence and interview readiness.
 
 Exit: Complete a fault demonstration, publish a reproducible runbook, and answer a recorded or written mock interview.
+
+## Retired tickets and epics
+
+Removed from the plan by the owner. Their IDs are never reused; the GitHub issues stay closed for history.
+
+| ID | Title | Reason |
+| --- | --- | --- |
+| [L22 (#29)](https://github.com/olaheavy-dev/maf-support-lab/issues/29) | Verify browser compatibility with the established API contract | Completed in PR #97, then removed on 2026-11-11 when the owner dropped the frontend: the browser probes, their CI job and AppHost resource were deleted. The cross-backend HTTP probes (L21) keep verifying the contract. |
+| [L23 (#30)](https://github.com/olaheavy-dev/maf-support-lab/issues/30) | Build shared chat UI with backend selection | Not planned: the owner dropped the frontend on 2026-11-11 and closes the project once the backends are solid. |
+| [L24 (#31)](https://github.com/olaheavy-dev/maf-support-lab/issues/31) | Add approval UI, recovery states, and trace references | Not planned: the owner dropped the frontend on 2026-11-11. |
+| [L35 (#46)](https://github.com/olaheavy-dev/maf-support-lab/issues/46) | Build Gatsby Markdown-to-static-HTML documentation | Not planned: the owner dropped the Gatsby site on 2026-11-11; documentation is GitHub-rendered Markdown (L34). |
+| [L36 (#47)](https://github.com/olaheavy-dev/maf-support-lab/issues/47) | Validate and package copyable Gatsby static documentation | Not planned: the owner dropped the Gatsby site on 2026-11-11; documentation is GitHub-rendered Markdown (L34). |
+| [E06 (#6)](https://github.com/olaheavy-dev/maf-support-lab/issues/6) | One frontend for both implementations | Not planned: the owner dropped the frontend on 2026-11-11. |

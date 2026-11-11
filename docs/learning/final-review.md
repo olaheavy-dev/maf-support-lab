@@ -1,5 +1,7 @@
 # Final planning review - 2026-11-09
 
+> **Superseded in part (2026-11-11):** this review describes the original plan. The owner has since dropped the frontend (E06: L22–L24) and the Gatsby site (L35/L36); documentation is GitHub-rendered Markdown (L34), and the project closes once the backends are solid. See the [roadmap](roadmap.md)'s retired tickets.
+
 Reviewed all nine epics and 42 tickets, including feature scope, acceptance criteria, learning/interview outcomes, capability prerequisites, official/course reference roles, and the execution sequence.
 
 ## Review follow-up

@@ -299,7 +299,7 @@ DevUI and its OpenAI-compatible `/v1/responses` and `/v1/entities` endpoints are
 - a `chat-input` entrance that speaks MAF's chat protocol and forwards the text to triage;
 - a reply exit that emits an agent response update.
 
-DevUI's built-in guard admits only loopback callers with a localhost `Host` header. It applies to any path containing the segments `/v1/responses` or `/v1/conversations`, **which includes our `/api/v1/conversations` routes in Development**. Local use is unaffected. A proxy that forwards a non-localhost `Host` (relevant to L23) must preserve a loopback host in Development.
+DevUI's built-in guard admits only loopback callers with a localhost `Host` header. It applies to any path containing the segments `/v1/responses` or `/v1/conversations`, **which includes our `/api/v1/conversations` routes in Development**. Local use is unaffected. Any proxy that forwards a non-localhost `Host` must preserve a loopback host in Development.
 
 ## Live smoke check (opt-in, costs a small amount)
 

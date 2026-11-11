@@ -4,7 +4,7 @@
 
 Follow the roadmap's execution Order column and GitHub blocking relationships. Stable LNN ticket IDs and issue numbers survive reordering; they are not execution positions. Later work remains Backlog; the first unblocked ticket is Ready.
 
-Build both support APIs and the shared frontend through L24 before starting E08 formal evaluations or E09 Gatsby documentation. Feature tests and learner notes/decisions remain part of each implementation ticket. The formal sequence is projects -> evaluation datasets/runner -> Microsoft native evaluation -> budgeted quality scoring -> reporting -> Markdown/Gatsby static artifacts -> final operational/interview work.
+Build and verify both support APIs through L21 before starting E08 formal evaluations or E09 documentation. Feature tests and learner notes/decisions remain part of each implementation ticket. The formal sequence is projects -> evaluation datasets/runner -> Microsoft native evaluation -> budgeted quality scoring -> reporting -> Markdown documentation -> final operational/interview work.
 
 For each ticket:
 
@@ -34,7 +34,7 @@ Course references are comparison material when the planned behavior is absent fr
 
 ## Contract revision checkpoints
 
-L02 establishes the initial versioned contract. L10 checks native approvals and L12 checks native streaming against it before Python starts. A justified revision updates schemas, examples, contracts/README.md history, and every already implemented adapter/test in one PR, with rationale and compatibility/version impact. Later tickets use the current agreed revision. L22 is a browser compatibility check, not the first opportunity to correct a contract.
+L02 establishes the initial versioned contract. L10 checks native approvals and L12 checks native streaming against it before Python starts. A justified revision updates schemas, examples, contracts/README.md history, and every already implemented adapter/test in one PR, with rationale and compatibility/version impact. Later tickets use the current agreed revision. L21's cross-backend probes verify the built backends against it; they are not the first opportunity to correct a contract.
 
 ## Size and scope
 

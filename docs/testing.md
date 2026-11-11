@@ -15,10 +15,9 @@ Every pull request and every push to `main` runs `.github/workflows/repository-c
 | `dotnet` | Locked restore, Release build with warnings as errors, and the .NET integration tests in fake mode. The test host clears any provider key. |
 | `python` | Locked sync, ruff (lint and format), pyright strict, and the Python integration tests in fake mode. |
 | `cross-backend` | (L21) The real .NET and Python servers in fake mode, sent the same requests by `contracts/probes/run_probes.py`: every response is schema-validated, and the two backends must agree (see [0004](decisions/0004-sdk-comparison.md)). |
-| `browser` | (L22) Real Chromium through the probe proxy against both backends in fake mode: `frontend/probes` (Playwright). See [0006](decisions/0006-browser-integration.md). |
 | `repository-checks` | **The only required status check.** It always reports and passes only if every job above succeeded. A failed, cancelled, or skipped job makes it fail, so nothing can be silently skipped or left pending. |
 
-New language checks (Python in L17, the frontend in L23) become jobs listed in `repository-checks` → `needs`.
+New checks (Python in L17, the cross-backend probes in L21, the docs link check in L34) become jobs listed in `repository-checks` → `needs`.
 
 Run the same checks locally:
 

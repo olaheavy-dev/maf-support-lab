@@ -40,10 +40,3 @@ updates:
         patterns: ["fastapi", "uvicorn", "starlette", "pydantic*"]
       dev-tools:
         dependency-type: development
-# Add frontend updates when its manifest is introduced.
-  - package-ecosystem: npm
-    # Browser probes (L22): Playwright only; the proxy and page have no packages.
-    directory: /frontend/probes
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 2

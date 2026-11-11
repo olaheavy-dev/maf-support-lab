@@ -134,62 +134,12 @@ jobs:
       - name: Probe both backends and compare
         run: '"$RUNNER_TEMP/contracts-venv/bin/python" contracts/probes/run_probes.py'
 
-  # Browser probes (L22): real Chromium through the relative-URL proxy against both backends (fake mode, no
-  # credentials): chat streaming, approve/reject, refresh, disconnect recovery, safe errors, backend binding.
-  browser:
-    name: browser
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      ContinuousIntegrationBuild: "true"
-    defaults:
-      run:
-        working-directory: frontend/probes
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install .NET SDK from global.json
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/packages.lock.json"
-      - name: Install uv and Python
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          version: "0.13.7"
-          python-version: "3.15.2"
-          enable-cache: true
-          cache-dependency-glob: src/python/uv.lock
-      - name: Install Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "26.13.1"
-          cache: npm
-          cache-dependency-path: frontend/probes/package-lock.json
-      - name: Build the .NET API (locked restore, Release)
-        working-directory: .
-        run: |
-          dotnet restore src/dotnet/Support.Api
-          dotnet build src/dotnet/Support.Api --no-restore --configuration Release
-      - name: Sync the Python backend (locked)
-        working-directory: src/python
-        run: uv sync --locked
-      - name: Install probe tools (locked) and Chromium
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
-      - name: Browser probes against both backends
-        run: npx playwright test
-
   # The single required status check. It always reports, and it passes only when every
   # language job succeeded: a failed, cancelled, or skipped job turns it red.
   repository-checks:
     name: repository-checks
     if: always()
-    needs: [planning-and-contracts, dotnet, python, cross-backend, browser]
+    needs: [planning-and-contracts, dotnet, python, cross-backend]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

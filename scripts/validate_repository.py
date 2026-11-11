@@ -25,6 +25,15 @@ def validate(root: Path = ROOT) -> tuple[int, int, int]:
     epics = {epic["id"] for epic in backlog["epics"]}
     phases = {epic["id"]: epic.get("phase", "application") for epic in backlog["epics"]}
     require(len(epics) == len(backlog["epics"]), "Duplicate epic identifiers")
+    # Retired tickets and epics keep their stable IDs (never reused) and a recorded reason; nothing may depend on them.
+    retired = {item["id"]: item for item in backlog.get("retired_tickets", [])}
+    retired_epics = {item["id"]: item for item in backlog.get("retired_epics", [])}
+    require(len(retired) == len(backlog.get("retired_tickets", [])), "Duplicate retired ticket identifiers")
+    for key, item in {**retired, **retired_epics}.items():
+        require(bool(item.get("reason")) and bool(item.get("title")), f"Retired item needs a title and reason: {key}")
+    for key, item in retired.items():
+        require(item.get("closed_as") in {"completed", "not_planned"}, f"Retired ticket needs closed_as: {key}")
+    require(not (set(retired_epics) & epics), "An epic is both live and retired")
     seen: set[str] = set()
     available: set[str] = set()
     numbered_adrs: dict[int, str] = {}
@@ -93,10 +102,13 @@ def validate(root: Path = ROOT) -> tuple[int, int, int]:
                     f"Course source must be commit-pinned: {key}")
     for epic in epics:
         require(any(t["epic"] == epic for t in backlog["tickets"]), f"Empty epic: {epic}")
-    require(seen == {f"L{i:02}" for i in range(1, len(seen)+1)}, "Stable ticket IDs must remain unique and complete")
+    require(not (seen & set(retired)), "A ticket is both live and retired")
+    total = len(seen) + len(retired)
+    require(seen | set(retired) == {f"L{i:02}" for i in range(1, total+1)}, "Stable ticket IDs must remain unique and complete")
 
     require(mapping["repository"] == REPO_URL, "Unexpected GitHub issue repository")
-    require(set(mapping["issues"]) == epics | seen, "GitHub mapping does not match ticket/epic IDs")
+    require(set(mapping["issues"]) == epics | seen | set(retired) | set(retired_epics),
+            "GitHub mapping does not match ticket/epic IDs")
     numbers = [entry["number"] for entry in mapping["issues"].values()]
     require(len(numbers) == len(set(numbers)), "GitHub issue numbers must be unique")
     for key, entry in mapping["issues"].items():
@@ -110,6 +122,8 @@ def validate(root: Path = ROOT) -> tuple[int, int, int]:
     expected_tickets = {f"{key}.md" for key in seen}
     actual_tickets = {p.name for p in (root / "docs/learning/tickets").glob("L*.md")}
     require(actual_tickets == expected_tickets, "Unexpected/missing generated ticket files")
+    actual_epics = {p.name for p in (root / "docs/learning/epics").glob("E*.md")}
+    require(actual_epics == {f"{key}.md" for key in epics}, "Unexpected/missing generated epic files")
     for relative in (
         "README.md", "AGENTS.md", "CONTRIBUTING.md", "SECURITY.md", ".gitignore",
         ".github/CODEOWNERS", ".github/pull_request_template.md",
