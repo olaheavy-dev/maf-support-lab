@@ -18,6 +18,8 @@ dependencies = [
     "uvicorn==0.54.0",
     "pydantic==2.14.3",
     "pydantic-settings==2.16.2",
+    # L40: OTLP over gRPC to Aspire (the owner's choice; brings grpcio, which ships a cp315 wheel).
+    "opentelemetry-exporter-otlp-proto-grpc==1.45.2",
 ]
 
 [dependency-groups]

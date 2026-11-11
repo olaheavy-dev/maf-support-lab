@@ -41,7 +41,7 @@ Not selected: `Microsoft.Agents.AI.OpenAI` and `Microsoft.Extensions.AI.OpenAI` 
 | agent-framework-anthropic | 1.0.0b261106 | **Prerelease, unavoidable**: the only MAF Claude integration for Python; no stable release exists. |
 | anthropic (Python SDK) | 1.17.0 | Latest 1.x. **Not** the latest overall (2.8.0 when rechecked in L17), because agent-framework-anthropic requires `anthropic>=1.11.0,<2`. |
 | agent-framework-devui | 1.0.0b261106 | **Prerelease, unavoidable**: no stable release exists. Development only. |
-| opentelemetry-sdk / exporter-otlp | 1.45.2 | Stable |
+| opentelemetry-sdk / exporter-otlp-proto-grpc | 1.45.2 | Stable. Added in L40: OTLP over **gRPC** to Aspire (the owner's choice); brings `grpcio` 1.85.1, which ships a native cp315 wheel. **Not added:** `opentelemetry-instrumentation-fastapi` (0.66b2, prerelease), because FastAPI 0.162 has built-in, stable OpenTelemetry for HTTP spans and metrics, and adding both would duplicate them; nor `opentelemetry-instrumentation-logging` (prerelease), the suggested replacement for the SDK's `LoggingHandler`, which 1.45 deprecates. `support_agent/telemetry.py` has its own small handler on the stable logs API instead. |
 | jsonschema | 4.26.0 | Stable. The Python backend validates requests and triage output against the shared contract schemas (added in L18). |
 | fastapi / uvicorn | 0.162.3 / 0.54.0 | Stable. The web framework, chosen by the owner in L17 (MAF's DevUI is built on FastAPI). |
 | pydantic / pydantic-settings | 2.14.3 / 2.16.2 | Stable. Contract models and validated settings. |

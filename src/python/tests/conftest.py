@@ -10,6 +10,28 @@ import pytest
 # Importing the app module builds a default host: point it at a throwaway file, never the developer's local database.
 os.environ["STORAGE__PATH"] = os.path.join(tempfile.mkdtemp(prefix="support-import-"), "support.db")
 
+# Telemetry (L40): providers are once per process, so the whole test run shares in-memory exporters, installed before
+# any app is built. Nothing is exported over OTLP from tests, even inside an Aspire-launched shell.
+for _name in [name for name in os.environ if name.upper().startswith("OTEL_")]:
+    del os.environ[_name]
+
+from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter  # noqa: E402
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader  # noqa: E402
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter  # noqa: E402
+
+from support_agent import telemetry  # noqa: E402
+from support_agent.settings import Environment, IdentitySettings, Settings  # noqa: E402
+
+SPANS = InMemorySpanExporter()
+METRICS = InMemoryMetricReader()
+LOGS = InMemoryLogRecordExporter()
+telemetry.configure(
+    Settings(app_environment=Environment.DEVELOPMENT, identity=IdentitySettings(development_customer_id="CUST-1001")),
+    span_exporters=[SPANS],
+    metric_readers=[METRICS],
+    log_exporters=[LOGS],
+)
+
 ENVIRONMENT_PREFIXES = ("MODEL_PROVIDER__", "IDENTITY__", "APP_ENVIRONMENT", "ANTHROPIC_API_KEY")
 
 

@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncGenerator, Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import Request
@@ -25,6 +26,7 @@ from fastapi.sse import EventSourceResponse
 
 from support_agent import contract
 from support_agent.conversations import Claim, Turn
+from support_agent.telemetry import first_delta
 from support_agent.turn_control import Delta, Progress
 
 MAX_DELTA_LENGTH = 2000  # the contract's limit for one reply.delta (code points, as JSON Schema counts them)
@@ -86,6 +88,8 @@ async def _events(
                 elif isinstance(item, Progress):
                     yield event("turn.progress", _progress(item))
                 else:
+                    if not streamed:  # the first reply text of a live stream (L20's latency, measured: L40)
+                        first_delta.record((datetime.now(UTC) - claim.started_at).total_seconds())
                     streamed.append(item.text)
                     for piece in pieces(item.text):
                         yield event("reply.delta", {"text": piece})

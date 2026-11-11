@@ -2,7 +2,7 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L20): the host, agents, per-conversation sessions, approval-gated writes, durable state, a tested cross-customer access matrix, and streaming with cooperative cancellation.
+Status (L40): the host, agents, per-conversation sessions, approval-gated writes, durable state, a tested cross-customer access matrix, streaming with cooperative cancellation, and its own telemetry in Aspire.
 - **Read-only agents:** triage plus the orders, billing and technical specialists.
 - **The routing workflow:** `support-routing`.
 - **The version-1 contract API** for conversations and turns (JSON).
@@ -25,6 +25,7 @@ Each specialist has one write tool (cancel, refund, ticket) that needs the custo
 | `fake_model.py`, `model_provider.py` | A deterministic fake model on MAF's real chat-client layers; Claude in live mode |
 | `devui.py` | Development-only DevUI process over the same agents and services |
 | `operations.py`, `write_tools.py`, `approval_gate.py`, `policy.py`, `state.py` | Bound approvals: operations, the approval-required write tools, the gate that turns a native approval request into an operation (or declines it), the eligibility rules, and the simulated state the writes change |
+| `telemetry.py` | This process's OpenTelemetry providers and OTLP/gRPC exporters, the `support.*` metrics, and the log handler (L40) |
 | `streaming.py`, `turn_control.py` | Server-Sent Events for a turn; per-turn cooperative cancellation and live events (L20) |
 | `database.py` | The local SQLite store (L38): one file per backend and run, `atomically()` transactions |
 | `sessions.py` | Per-conversation native `AgentSession`s (stored after each run), `BoundedHistory` (12 plain messages; no tool traffic or notes), and the verified `ConversationContext` |
@@ -73,6 +74,15 @@ APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run p
 5. `GET /api/v1/operations/{id}` is the authoritative status.
 
 The tool call is re-sent before each native answer: stored history is plain text, and Anthropic rejects a tool result that doesn't follow its call. No note may sit between them. Both rules were found live; the fake model now enforces Anthropic's pairing rule.
+
+## Telemetry (L40)
+
+Under the AppHost, both Python processes send traces, logs and metrics to the Aspire dashboard over OTLP/gRPC, as `support-api-python` and `support-devui-python`. Each turn is one trace (HTTP → `support.turn` → workflow → agents → model calls → tools), and the contract's `trace_id` is that trace's id. Run on its own, nothing is exported unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+- **Off by default:** message text, tool data and customer ids; opting in takes `TELEMETRY__CAPTURE_SENSITIVE_DATA=true`.
+- **Fails fast:** a protocol other than gRPC fails at startup.
+- **Exit is bounded:** exit never waits more than about 5 s for an unreachable collector.
+
+Ownership, names, labels and the live check are in `docs/observability.md` ("The Python backend").
 
 ## Streaming and cancellation (L20)
 
@@ -141,6 +151,8 @@ Read from the environment, validated before serving (`support_agent/settings.py`
 | `IDENTITY__DEVELOPMENT_CUSTOMER_ID` | Required in development: the fixed local customer (e.g. `CUST-1001`). **Not authentication.** |
 | `MODEL_PROVIDER__MODE` | `fake` (default) or `live`. |
 | `MODEL_PROVIDER__ANTHROPIC__MODEL` | Required in live mode (e.g. `claude-haiku-5-5`). |
+| `TELEMETRY__CAPTURE_SENSITIVE_DATA` | `false` (default). `true` puts prompts, replies and tool data into spans: local debugging only. |
+| `OTEL_*` | Set by the AppHost (endpoint, gRPC, headers with the dashboard key, service name). Never commit them. |
 | `ANTHROPIC_API_KEY` | Required in live mode. Secret: environment or Aspire parameter only; never committed, logged, or returned. |
 | `STORAGE__PATH` | The SQLite file (default `.data/python/support.db`). Give each run or evaluation its own file. |
 

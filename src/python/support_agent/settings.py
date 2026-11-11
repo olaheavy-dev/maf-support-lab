@@ -40,6 +40,11 @@ class StorageSettings(BaseModel):
     path: Path = Path(".data") / "python" / "support.db"
 
 
+class TelemetrySettings(BaseModel):
+    # L40: off by default. When on, prompts, replies, and tool arguments/results go into spans: local debugging only.
+    capture_sensitive_data: bool = False
+
+
 class IdentitySettings(BaseModel):
     development_customer_id: str | None = None
 
@@ -56,6 +61,7 @@ class Settings(BaseSettings):
     model_provider: ModelProviderSettings = Field(default_factory=ModelProviderSettings)
     identity: IdentitySettings = Field(default_factory=IdentitySettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
+    telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
     # The standard Anthropic variable, used when MODEL_PROVIDER__ANTHROPIC__API_KEY is not set (as in .NET).
     anthropic_api_key: SecretStr | None = None
 
