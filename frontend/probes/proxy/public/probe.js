@@ -267,7 +267,11 @@ async function start() {
     send(message);
   };
   const conversation = await refreshPending();
-  if (conversation) await recover();
+  if (conversation && (await recover())) {
+    // The recovered turn may have just finished as awaiting_approval: its approval only appears once the turn is
+    // stored, so read the list again (Codex review on PR #97).
+    await refreshPending();
+  }
   document.body.dataset.ready = "true";
 }
 

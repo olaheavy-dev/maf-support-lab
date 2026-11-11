@@ -7,10 +7,13 @@
 // - Streams are forwarded as they arrive (no buffering), so Server-Sent Events reach the browser live.
 // - Zero dependencies (node:http only): this is a disposable probe, not the L23 frontend.
 //
-// Run: PORT=5300 services__support-api-dotnet__http__0=http://localhost:5180 node server.mjs
+// Run: PORT=5300 SUPPORT_API_DOTNET_HTTP=http://localhost:5180 node server.mjs
 //
-// Under Aspire a backend may be https only (the Python app gets Aspire's development certificate): then only
-// services__<resource>__https__0 is set, and Aspire also sets NODE_EXTRA_CA_CERTS so Node trusts that certificate.
+// Addresses: Aspire's WithReference sets both SUPPORT_API_<NAME>_HTTP(S) and services__<resource>__http(s)__0. The
+// shell-safe names are read first: POSIX shells such as Ubuntu's dash drop variables whose names contain "-", so the
+// services__… form vanishes whenever the proxy is started through a shell (found in CI). Under Aspire a backend may be
+// https only (the Python app gets Aspire's development certificate); Aspire then sets NODE_EXTRA_CA_CERTS, so Node
+// trusts it without verification ever being turned off.
 
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -25,9 +28,15 @@ const here = dirname(fileURLToPath(import.meta.url));
 const BACKENDS = { dotnet: "support-api-dotnet", python: "support-api-python" };
 
 export function upstreams(env = process.env) {
-  const found = {};
+  // No prototype: an alias like "constructor" or "__proto__" must never resolve to anything (Codex review on PR #97).
+  const found = Object.create(null);
   for (const [alias, resource] of Object.entries(BACKENDS)) {
-    const url = env[`services__${resource}__http__0`] ?? env[`services__${resource}__https__0`];
+    const key = resource.toUpperCase().replaceAll("-", "_");
+    const url =
+      env[`${key}_HTTP`] ??
+      env[`${key}_HTTPS`] ??
+      env[`services__${resource}__http__0`] ??
+      env[`services__${resource}__https__0`];
     if (url) found[alias] = new URL(url);
   }
   return found;
@@ -81,7 +90,7 @@ export function createProxy(targets = upstreams()) {
     }
 
     const match = API.exec(url.pathname);
-    const target = match ? targets[match[1]] : undefined;
+    const target = match && Object.hasOwn(targets, match[1]) ? targets[match[1]] : undefined;
     if (!target || match[2].includes("..") || !["GET", "POST"].includes(request.method ?? "")) {
       problem(response, 404, "not_found", "Not found", "The resource does not exist or is not available to you.");
       return;
@@ -127,7 +136,7 @@ export function createProxy(targets = upstreams()) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const targets = upstreams();
   if (Object.keys(targets).length === 0) {
-    console.error("No backends configured: set services__support-api-dotnet__http__0 and/or services__support-api-python__http__0.");
+    console.error("No backends configured: set SUPPORT_API_DOTNET_HTTP and/or SUPPORT_API_PYTHON_HTTP (Aspire sets them).");
     process.exit(1);
   }
   const port = Number(process.env.PORT ?? 5300);

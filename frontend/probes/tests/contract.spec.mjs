@@ -94,6 +94,33 @@ for (const alias of BACKENDS) {
       await expect(page.getByTestId("pending").locator("li")).toHaveCount(0);
     });
 
+    test("a reload while a write turn is still running shows its approval once the turn is recovered", async ({ page }) => {
+      await open(page, alias);
+      // A ticket: always eligible, whatever earlier tests changed on this shared backend.
+      await say(page, "Please open a support ticket: my printer shows error P-12.");
+      await expect(page.getByTestId("pending").locator("li")).toHaveCount(1);
+      // Reproduce the race (Codex review on PR #97): the first read after the reload sees the conversation as it was
+      // while the turn ran, with that turn active and its approval not yet listed. Later reads are the real ones.
+      let first = true;
+      await page.route("**/v1/conversations/*", async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        if (first && route.request().method() === "GET") {
+          first = false;
+          const { lastTurnId } = await page.evaluate(() => window.__probe.state ?? JSON.parse(sessionStorage.getItem("support-probe")));
+          body.pending_approvals = [];
+          body.active_turn_id = lastTurnId;
+        }
+        await route.fulfill({ response, json: body });
+      });
+      await page.reload();
+      await expect(page.locator('[data-recovered="true"]')).toHaveAttribute("data-outcome", "awaiting_approval");
+      const pending = page.getByTestId("pending").locator("li");
+      await expect(pending).toHaveCount(1);
+      await pending.getByTestId("approve").click();
+      await expect(assistant(page).last()).toHaveAttribute("data-kind", "approval_result");
+    });
+
     test("a dropped stream is not a cancellation: the turn is recovered by its id", async ({ page }) => {
       await open(page, alias);
       const result = await page.evaluate(() => window.__probeApi.send("Where is my order ORD-1002?", { abortAfterStart: true }));
@@ -136,9 +163,24 @@ for (const alias of BACKENDS) {
           unknownAlias: await get(`/api/evil/v1/conversations/${conversationId}`),
           encodedUpstream: await get(`/api/http%3A%2F%2Fexample.com/v1/conversations`),
           traversal: await get(`/api/${other}/v1/../../health`),
+          // Inherited object properties are not aliases (Codex review on PR #97: these used to crash the proxy).
+          constructor: await get(`/api/constructor/v1/conversations/${conversationId}`),
+          proto: await get(`/api/__proto__/v1/conversations/${conversationId}`),
+          toString: await get(`/api/tostring/v1/conversations/${conversationId}`),
+          stillUp: await get("/api/backends"),
         };
       }, { other });
-      expect(statuses).toEqual({ own: 200, otherBackend: 404, unknownAlias: 404, encodedUpstream: 404, traversal: 404 });
+      expect(statuses).toEqual({
+        own: 200,
+        otherBackend: 404,
+        unknownAlias: 404,
+        encodedUpstream: 404,
+        traversal: 404,
+        constructor: 404,
+        proto: 404,
+        toString: 404,
+        stillUp: 200,
+      });
     });
   });
 }
@@ -158,15 +200,27 @@ test("the proxy only tells the browser which aliases exist, never where they are
 
 test("backend addresses come only from Aspire-style service variables, http first, https when that's all there is", async () => {
   const { upstreams } = await import("../proxy/server.mjs");
-  const found = upstreams({
-    "services__support-api-dotnet__http__0": "http://localhost:5180",
-    "services__support-api-dotnet__https__0": "https://localhost:7180",
-    "services__support-api-python__https__0": "https://localhost:5443",
-    "services__some-other-service__http__0": "http://localhost:9999",
-  });
-  expect(Object.fromEntries(Object.entries(found).map(([alias, url]) => [alias, url.href]))).toEqual({
-    dotnet: "http://localhost:5180/",
-    python: "https://localhost:5443/",
-  });
-  expect(upstreams({})).toEqual({});
+  const asHrefs = (found) => Object.fromEntries(Object.entries(found).map(([alias, url]) => [alias, url.href]));
+  // Aspire's shell-safe names first (a POSIX shell drops names with "-"), then the services__… form; http before https.
+  expect(
+    asHrefs(
+      upstreams({
+        SUPPORT_API_DOTNET_HTTP: "http://localhost:5180",
+        "services__support-api-dotnet__http__0": "http://localhost:1111",
+        SUPPORT_API_PYTHON_HTTPS: "https://localhost:5443",
+        "services__some-other-service__http__0": "http://localhost:9999",
+      }),
+    ),
+  ).toEqual({ dotnet: "http://localhost:5180/", python: "https://localhost:5443/" });
+  expect(
+    asHrefs(
+      upstreams({
+        "services__support-api-dotnet__https__0": "https://localhost:7180",
+        "services__support-api-python__http__0": "http://localhost:5280",
+      }),
+    ),
+  ).toEqual({ dotnet: "https://localhost:7180/", python: "http://localhost:5280/" });
+  const none = upstreams({});
+  expect(Object.keys(none)).toEqual([]);
+  expect("constructor" in none).toBe(false); // no prototype, so no inherited "aliases"
 });

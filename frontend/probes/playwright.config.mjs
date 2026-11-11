@@ -1,6 +1,6 @@
 // Browser probes (L22): Chromium against the probe page, through the proxy, with both real backends in fake mode
 // (no key, no network). Each backend gets its own throwaway database. The proxy receives the backends' URLs the way
-// Aspire passes them (services__<resource>__http__0), so the browser never sees them.
+// Aspire passes them (SUPPORT_API_<NAME>_HTTP), so the browser never sees them.
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -68,8 +68,9 @@ export default defineConfig({
       env: {
         ...hermetic,
         PORT: String(ports.proxy),
-        "services__support-api-dotnet__http__0": `http://localhost:${ports.dotnet}`,
-        "services__support-api-python__http__0": `http://localhost:${ports.python}`,
+        // Aspire's shell-safe names (a POSIX shell drops the services__support-api-… form; see server.mjs).
+        SUPPORT_API_DOTNET_HTTP: `http://localhost:${ports.dotnet}`,
+        SUPPORT_API_PYTHON_HTTP: `http://localhost:${ports.python}`,
       },
     },
   ],

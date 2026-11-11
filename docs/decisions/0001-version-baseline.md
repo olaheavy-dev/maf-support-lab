@@ -14,10 +14,10 @@ Use the **latest stable release** of every runtime, framework, and package. Use 
 | .NET SDK / runtime | 10.0.403 / 10.0.14 (LTS) | .NET 11 is still a release candidate (`11.0.100-rc.3`), so it is not selected. Pin the SDK in `global.json` at L03. |
 | Python | 3.15.2 | The latest stable release. agent-framework-core, -anthropic, and -devui 1.25.0-era packages list 3.15 support (3.11+ required). |
 | uv | 0.13.7 | Latest release. The local machine currently has 0.11.14; upgrade before L17. |
-| Aspire | 13.6.4 (`Aspire.AppHost.Sdk`, `Aspire.Hosting.AppHost`, `Aspire.Hosting.Python`) | Stable. |
+| Aspire | 13.6.5 (`Aspire.AppHost.Sdk`, `Aspire.Hosting.AppHost`, `Aspire.Hosting.Python`, `Aspire.Hosting.JavaScript`) | Stable. Raised from 13.6.4 in L22 (the owner's choice: in the same PR) because 13.6.4 has advisory GHSA-f7vh-h5g3-7jrh (CVE-2026-120006, high, elevation of privilege; fixed in 13.6.5). The vulnerable packages came from the `Aspire.AppHost.Sdk` version, so every Aspire pin moves together. |
 | Node | 26.13.1 (LTS "Lithium") | Added in L22 for the browser probes; pinned in CI (`actions/setup-node`), `engines` ≥ 26.13.0. Node 27 is an alpha, so it is not selected. |
 | Playwright | `@playwright/test` 1.65.0, Chromium headless shell 158 | Added in L22. Exact version in `frontend/probes/package.json`, locked by `package-lock.json`. |
-| Aspire.Hosting.JavaScript | 13.6.4 | Added in L22 (`AddNodeApp` for the probe proxy). It matches the other Aspire packages; 13.6.5 exists, but Aspire upgrades come as one separate change. **Note:** NuGet reports advisory GHSA-f7vh-h5g3-7jrh (high) against `Aspire.Hosting` 13.6.4, which affects the existing AppHost too. That upgrade is tracked separately. |
+| Aspire.Hosting.JavaScript | 13.6.5 | Added in L22 (`AddNodeApp` for the probe proxy), at the same version as the other Aspire packages. |
 
 The frontend framework (L23) and the Gatsby toolchain (L35) are selected when they are introduced, under the same rule.
 
