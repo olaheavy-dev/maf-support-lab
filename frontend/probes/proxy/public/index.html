@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Support contract probe</title>
+    <style>
+      body { font: 15px/1.45 system-ui, sans-serif; margin: 0 auto; max-width: 760px; padding: 16px; color: #1d2433; }
+      header, form, .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      #transcript { border: 1px solid #ccd3e0; border-radius: 6px; padding: 8px; min-height: 120px; margin: 12px 0; }
+      .entry { margin: 6px 0; white-space: pre-wrap; }
+      .entry[data-role="user"]::before { content: "You: "; font-weight: 600; }
+      .entry[data-role="assistant"]::before { content: "Support: "; font-weight: 600; }
+      #pending li { margin: 6px 0; }
+      #error:empty, #status:empty { display: none; }
+      #error { color: #a3121e; border: 1px solid #f0b4b9; padding: 6px; border-radius: 6px; }
+      #status { color: #4a5568; }
+      input[type="text"] { flex: 1; min-width: 200px; padding: 6px; }
+    </style>
+  </head>
+  <body>
+    <!-- A developer probe for the version-1 contract (L22), not the product UI (L23). -->
+    <header>
+      <strong>Support contract probe</strong>
+      <label>Backend <select id="backend" data-testid="backend"></select></label>
+      <button id="new" data-testid="new-conversation" type="button">New conversation</button>
+      <span id="conversation" data-testid="conversation"></span>
+    </header>
+    <div id="transcript" data-testid="transcript" aria-live="polite"></div>
+    <section>
+      <h2>Waiting for your approval</h2>
+      <ul id="pending" data-testid="pending"></ul>
+    </section>
+    <p id="status" data-testid="status"></p>
+    <p id="error" data-testid="error" role="alert"></p>
+    <form id="composer">
+      <input id="message" data-testid="message" type="text" maxlength="4000" autocomplete="off" placeholder="Ask about an order, a bill, or a problem" />
+      <button data-testid="send" type="submit">Send</button>
+    </form>
+    <script type="module" src="/probe.js"></script>
+  </body>
+</html>
