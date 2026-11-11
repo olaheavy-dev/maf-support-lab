@@ -40,6 +40,15 @@ public sealed class CliAndComparisonTests
         Assert.Contains("unknown on every case", markdown, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Native_runs_are_not_mixed_into_the_backend_comparison()
+    {
+        var native = Run("dotnet", ("a", "failed", 0));
+        native["run"]!["configuration"] = new JsonObject { ["mode"] = "native-recorded" };
+        Assert.False(Comparison.IsBehaviourRun(native));
+        Assert.True(Comparison.IsBehaviourRun(Run("python", ("a", "passed", 1))));
+    }
+
     private static JsonObject Run(string backend, params (string Case, string Status, double Ms)[] cases)
     {
         var run = DatasetTests.ValidRun();

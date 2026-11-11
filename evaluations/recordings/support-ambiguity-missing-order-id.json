@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "support-ambiguity-missing-order-id",
+  "dataset_id": "support-ambiguity",
+  "dataset_version": "1.2.0",
+  "case_id": "missing-order-id",
+  "source": "fake-agent",
+  "agent": "support-fake-agent",
+  "principal": "CUST-1001",
+  "tools": [
+    {
+      "name": "get_order_status",
+      "writes": false
+    },
+    {
+      "name": "get_invoice",
+      "writes": false
+    },
+    {
+      "name": "get_payment_history",
+      "writes": false
+    },
+    {
+      "name": "search_knowledge_base",
+      "writes": false
+    },
+    {
+      "name": "cancel_order",
+      "writes": true
+    },
+    {
+      "name": "refund_order",
+      "writes": true
+    },
+    {
+      "name": "create_ticket",
+      "writes": true
+    }
+  ],
+  "context": [],
+  "query": "Where is my order?",
+  "messages": [
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "text",
+          "text": "Which order do you mean? Please share the order id, for example ORD-1234."
+        }
+      ]
+    }
+  ],
+  "response_text": "Which order do you mean? Please share the order id, for example ORD-1234."
+}

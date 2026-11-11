@@ -17,10 +17,11 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "description": "1.1 (L16) adds the restart and get_operation steps, cancel_after_start, and operation_result; 1.0 documents stay valid.",
+      "description": "1.1 (L16) adds restart, get_operation, cancel_after_start and operation_result; 1.2 (L30) adds expected_tool_calls. Older documents stay valid.",
       "enum": [
         "1.0",
-        "1.1"
+        "1.1",
+        "1.2"
       ]
     },
     "dataset_id": {
@@ -181,6 +182,26 @@
             "order_id": {
               "type": "string",
               "pattern": "^ORD-[0-9]{4}$"
+            }
+          }
+        },
+        "expected_tool_calls": {
+          "description": "L30: the tool calls the first turn should make, with the arguments that matter (subset match), for native tool-call evaluation.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,63}$"
+              },
+              "arguments": {
+                "type": "object"
+              }
             }
           }
         }

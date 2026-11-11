@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "dataset_id": "support-success",
-  "dataset_version": "1.1.0",
+  "dataset_version": "1.2.0",
   "category": "success",
   "description": "Requests the system should complete: lookups in every domain, a follow-up, and approved writes.",
   "fixture_version": "1.0",
@@ -44,6 +44,14 @@
       },
       "context": [
         "orders:ORD-1002"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "get_order_status",
+          "arguments": {
+            "order_id": "ORD-1002"
+          }
+        }
       ]
     },
     {
@@ -120,6 +128,14 @@
       },
       "context": [
         "invoices:INV-5001"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "get_invoice",
+          "arguments": {
+            "reference": "ORD-1001"
+          }
+        }
       ]
     },
     {
@@ -152,6 +168,11 @@
       },
       "context": [
         "payments:PAY-7101"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "get_payment_history"
+        }
       ]
     },
     {
@@ -184,6 +205,11 @@
       },
       "context": [
         "knowledge-base:KB-102"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "search_knowledge_base"
+        }
       ]
     },
     {
@@ -237,6 +263,14 @@
       "context": [
         "orders:ORD-1003",
         "policies:cancellation"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "cancel_order",
+          "arguments": {
+            "order_id": "ORD-1003"
+          }
+        }
       ]
     },
     {
@@ -281,7 +315,12 @@
       ],
       "expected_state_change": {
         "type": "ticket_created"
-      }
+      },
+      "expected_tool_calls": [
+        {
+          "name": "create_ticket"
+        }
+      ]
     },
     {
       "case_id": "refund-approved",
@@ -333,6 +372,14 @@
       "context": [
         "orders:ORD-1001",
         "policies:refund"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "refund_order",
+          "arguments": {
+            "order_id": "ORD-1001"
+          }
+        }
       ]
     },
     {

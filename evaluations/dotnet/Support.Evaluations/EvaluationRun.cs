@@ -11,7 +11,7 @@ internal sealed record RunIdentity(string SourceCommit, string ModelMode, string
 internal static class EvaluationRun
 {
     public const string RunnerName = "support-evaluations";
-    public const string RunnerVersion = "0.2.0";
+    public const string RunnerVersion = "0.3.0";
     public const string ScorerName = "contract-facts";
     public const string ScorerVersion = "1.0.0";
 
@@ -27,7 +27,7 @@ internal static class EvaluationRun
         int Count(string status) => results.Count(result => result!["status"]!.GetValue<string>() == status);
         var run = new JsonObject
         {
-            ["schema_version"] = "1.1",
+            ["schema_version"] = "1.2",
             ["run"] = new JsonObject
             {
                 ["run_id"] = "run_" + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(16)),

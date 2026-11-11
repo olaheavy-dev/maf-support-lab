@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "dataset_id": "support-failure",
-  "dataset_version": "1.1.0",
+  "dataset_version": "1.2.0",
   "category": "failure",
   "description": "Failures and interruptions that must end as contract results: a model failure, invalid triage output, an invalid request, and a cancelled turn. Uses fake-model markers, so it is fake-mode only.",
   "fixture_version": "1.0",

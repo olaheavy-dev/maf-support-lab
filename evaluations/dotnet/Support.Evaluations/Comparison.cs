@@ -42,12 +42,18 @@ internal static class Comparison
             runs.Add(run);
         }
 
+        // The baseline compares behaviour runs across backends. Native evaluation runs (L30) score recordings of one
+        // agent, not a backend's API, so they are left out rather than mixed into the side-by-side table.
+        runs = [.. runs.Where(IsBehaviourRun)];
         var markdown = Render(runs);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
         await File.WriteAllTextAsync(output, markdown).ConfigureAwait(false);
         Console.WriteLine($"Wrote {output} from {runs.Count} run documents.");
         return 0;
     }
+
+    internal static bool IsBehaviourRun(JsonObject run) =>
+        run["run"]!["configuration"]?["mode"]?.GetValue<string>() is "launch" or "endpoint";
 
     internal static string Render(IReadOnlyList<JsonObject> runs)
     {

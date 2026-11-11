@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "dataset_id": "support-denial",
-  "dataset_version": "1.1.0",
+  "dataset_version": "1.2.0",
   "category": "denial",
   "description": "Requests the system must refuse or answer as not found: unknown and foreign records, ineligible writes, a rejection, another customer's decision.",
   "fixture_version": "1.0",
@@ -36,7 +36,15 @@
       ],
       "expected_state_change": {
         "type": "none"
-      }
+      },
+      "expected_tool_calls": [
+        {
+          "name": "get_order_status",
+          "arguments": {
+            "order_id": "ORD-9999"
+          }
+        }
+      ]
     },
     {
       "case_id": "other-customer-order",
@@ -67,7 +75,15 @@
       ],
       "expected_state_change": {
         "type": "none"
-      }
+      },
+      "expected_tool_calls": [
+        {
+          "name": "get_order_status",
+          "arguments": {
+            "order_id": "ORD-2001"
+          }
+        }
+      ]
     },
     {
       "case_id": "cancel-ineligible",
@@ -94,6 +110,14 @@
       "context": [
         "orders:ORD-1001",
         "policies:cancellation"
+      ],
+      "expected_tool_calls": [
+        {
+          "name": "cancel_order",
+          "arguments": {
+            "order_id": "ORD-1001"
+          }
+        }
       ]
     },
     {

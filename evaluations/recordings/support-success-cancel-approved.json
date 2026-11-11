@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "support-success-cancel-approved",
+  "dataset_id": "support-success",
+  "dataset_version": "1.2.0",
+  "case_id": "cancel-approved",
+  "source": "fake-agent",
+  "agent": "support-fake-agent",
+  "principal": "CUST-1001",
+  "tools": [
+    {
+      "name": "get_order_status",
+      "writes": false
+    },
+    {
+      "name": "get_invoice",
+      "writes": false
+    },
+    {
+      "name": "get_payment_history",
+      "writes": false
+    },
+    {
+      "name": "search_knowledge_base",
+      "writes": false
+    },
+    {
+      "name": "cancel_order",
+      "writes": true
+    },
+    {
+      "name": "refund_order",
+      "writes": true
+    },
+    {
+      "name": "create_ticket",
+      "writes": true
+    }
+  ],
+  "context": [
+    "orders:ORD-1003",
+    "policies:cancellation"
+  ],
+  "query": "Please cancel order ORD-1003.",
+  "messages": [
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "approval_request",
+          "call_id": "call_cancel_order",
+          "name": "cancel_order",
+          "arguments": {
+            "orderId": "ORD-1003"
+          }
+        }
+      ]
+    }
+  ],
+  "response_text": ""
+}

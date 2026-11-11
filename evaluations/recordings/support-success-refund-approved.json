@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "capture_id": "support-success-refund-approved",
+  "dataset_id": "support-success",
+  "dataset_version": "1.2.0",
+  "case_id": "refund-approved",
+  "source": "fake-agent",
+  "agent": "support-fake-agent",
+  "principal": "CUST-1001",
+  "tools": [
+    {
+      "name": "get_order_status",
+      "writes": false
+    },
+    {
+      "name": "get_invoice",
+      "writes": false
+    },
+    {
+      "name": "get_payment_history",
+      "writes": false
+    },
+    {
+      "name": "search_knowledge_base",
+      "writes": false
+    },
+    {
+      "name": "cancel_order",
+      "writes": true
+    },
+    {
+      "name": "refund_order",
+      "writes": true
+    },
+    {
+      "name": "create_ticket",
+      "writes": true
+    }
+  ],
+  "context": [
+    "orders:ORD-1001",
+    "policies:refund"
+  ],
+  "query": "I want a refund for ORD-1001, the headphones crackle.",
+  "messages": [
+    {
+      "role": "assistant",
+      "contents": [
+        {
+          "type": "approval_request",
+          "call_id": "call_refund_order",
+          "name": "refund_order",
+          "arguments": {
+            "orderId": "ORD-1001",
+            "reason": "I want a refund for ORD-1001, the headphones crackle."
+          }
+        }
+      ]
+    }
+  ],
+  "response_text": ""
+}

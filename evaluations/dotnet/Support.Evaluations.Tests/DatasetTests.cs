@@ -13,7 +13,7 @@ public sealed class DatasetTests
         Assert.Equal(5, paths.Count);
         var datasets = paths.Select(DatasetLoader.Load).ToList();
         Assert.Equal(["adversarial", "ambiguity", "denial", "failure", "success"], datasets.Select(d => d.Category).Order(StringComparer.Ordinal));
-        Assert.All(datasets, d => Assert.Equal("1.1", d.SchemaVersion));
+        Assert.All(datasets, d => Assert.Equal("1.2", d.SchemaVersion));
         Assert.Contains(datasets.SelectMany(d => d.Cases), c => c.Split == "heldout");
         Assert.All(datasets.SelectMany(d => d.Cases).Where(c => c.Writes), c => Assert.Equal("fresh_store", c.Reset));
     }

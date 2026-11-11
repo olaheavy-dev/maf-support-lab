@@ -94,7 +94,7 @@ def new(case_id: str, purpose: str, steps: list, split: str = "development", pri
 
 def dataset(dataset_id: str, category: str, description: str, cases: list, live: dict) -> dict:
     return {
-        "schema_version": "1.1", "dataset_id": dataset_id, "dataset_version": "1.1.0", "category": category,
+        "schema_version": "1.2", "dataset_id": dataset_id, "dataset_version": "1.2.0", "category": category,
         "description": description, "fixture_version": FIXTURE_VERSION, "live_run": live, "cases": cases,
     }
 
@@ -186,6 +186,28 @@ DATASETS = [
         from_scenario("S15-duplicate-approval", "duplicate-approval"),
     ], {"eligible": True, "max_cases": 5, "max_model_calls_per_case": 6, "repetitions": 1}),
 ]
+
+# L30: the first turn's expected tool calls for native (in-process) evaluation, with canonical snake_case argument names;
+# each SDK's adapter maps them to its own parameter naming. An empty list means "no tool should be needed".
+EXPECTED_TOOL_CALLS: dict[str, list[dict]] = {
+    "order-status": [{"name": "get_order_status", "arguments": {"order_id": "ORD-1002"}}],
+    "invoice": [{"name": "get_invoice", "arguments": {"reference": "ORD-1001"}}],
+    "payment-history": [{"name": "get_payment_history"}],
+    "knowledge-base": [{"name": "search_knowledge_base"}],
+    "unknown-order": [{"name": "get_order_status", "arguments": {"order_id": "ORD-9999"}}],
+    "other-customer-order": [{"name": "get_order_status", "arguments": {"order_id": "ORD-2001"}}],
+    "cancel-approved": [{"name": "cancel_order", "arguments": {"order_id": "ORD-1003"}}],
+    "cancel-ineligible": [{"name": "cancel_order", "arguments": {"order_id": "ORD-1001"}}],
+    "refund-approved": [{"name": "refund_order", "arguments": {"order_id": "ORD-1001"}}],
+    "ticket-approved": [{"name": "create_ticket"}],
+    "missing-order-id": [],
+}
+for item in DATASETS:
+    for case in item["cases"]:
+        if case["case_id"] in EXPECTED_TOOL_CALLS:
+            case["expected_tool_calls"] = EXPECTED_TOOL_CALLS[case["case_id"]]
+missing = set(EXPECTED_TOOL_CALLS) - {c["case_id"] for d in DATASETS for c in d["cases"]}
+assert not missing, f"expected_tool_calls for unknown cases: {missing}"
 
 for item in DATASETS:
     (ROOT / "evaluations/datasets" / f"{item['dataset_id']}.json").write_text(json.dumps(item, indent=2, ensure_ascii=False) + "\n")
