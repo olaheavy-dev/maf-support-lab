@@ -2,6 +2,10 @@
 // decides where /api/{alias}/... goes. Every server-provided string is rendered with textContent, never as HTML.
 
 const STATE_KEY = "support-probe";
+// Recovery keeps polling longer than the backends' longest turn (90 s deadline by default, L15/L42). After that the
+// page says so and offers to check again, instead of giving up silently (Codex review on PR #97). ?recoveryMs=…
+// shortens the window for the browser tests.
+const RECOVERY_MS = Number(new URLSearchParams(location.search).get("recoveryMs") ?? 120_000);
 const $ = (id) => document.getElementById(id);
 
 // What the probe has seen, for the browser tests (events in order, per stream).
@@ -218,12 +222,21 @@ export async function refreshPending() {
   return conversation;
 }
 
-/** After a refresh or a dropped stream: find the last turn by its id, wait while it runs, then show it. */
-export async function recover() {
+/**
+ * After a refresh or a dropped stream: find the turn, wait while it runs, then show it. The conversation's own
+ * active_turn_id comes first: a reload can happen before turn.started arrived, when the browser has no id of its own
+ * for the running turn (Codex review on PR #97).
+ */
+export async function recover(activeTurnId) {
   const state = load();
-  if (!state?.lastTurnId) return null;
-  for (let attempt = 0; attempt < 60; attempt++) {
-    const response = await fetch(api(`/conversations/${state.conversationId}/turns/${state.lastTurnId}`));
+  const turnId = activeTurnId ?? state?.lastTurnId;
+  if (!state?.conversationId || !turnId) return null;
+  if (turnId !== state.lastTurnId) save({ ...state, lastTurnId: turnId });
+  $("retry")?.remove();
+  const deadline = Date.now() + RECOVERY_MS;
+  let wait = 250;
+  for (;;) {
+    const response = await fetch(api(`/conversations/${state.conversationId}/turns/${turnId}`));
     if (!response.ok) {
       showError(await problemText(response));
       return null;
@@ -235,10 +248,23 @@ export async function recover() {
       renderResult(turn, bubble);
       return turn;
     }
+    if (Date.now() >= deadline) {
+      // An explicit state, not a silent stop: the turn may still finish, and the customer can check again.
+      status("Still working. It is taking longer than usual.");
+      const retry = document.createElement("button");
+      retry.id = "retry";
+      retry.dataset.testid = "retry";
+      retry.textContent = "Check again";
+      retry.onclick = async () => {
+        if (await recover(turnId)) await refreshPending();
+      };
+      $("status").after(retry);
+      return null;
+    }
     status("Still working…");
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, wait));
+    wait = Math.min(wait * 2, 2_000);
   }
-  return null;
 }
 
 async function start() {
@@ -267,7 +293,7 @@ async function start() {
     send(message);
   };
   const conversation = await refreshPending();
-  if (conversation && (await recover())) {
+  if (conversation && (await recover(conversation.active_turn_id ?? undefined))) {
     // The recovered turn may have just finished as awaiting_approval: its approval only appears once the turn is
     // stored, so read the list again (Codex review on PR #97).
     await refreshPending();

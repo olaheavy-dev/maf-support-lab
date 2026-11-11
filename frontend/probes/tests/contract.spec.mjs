@@ -121,6 +121,59 @@ for (const alias of BACKENDS) {
       await expect(assistant(page).last()).toHaveAttribute("data-kind", "approval_result");
     });
 
+    test("a reload before turn.started arrived recovers the conversation's active turn", async ({ page }) => {
+      await open(page, alias);
+      await say(page, "Please open a support ticket: my scanner shows error S-3.");
+      await expect(page.getByTestId("pending").locator("li")).toHaveCount(1);
+      // As if the page reloaded before it read turn.started: it has no id for that turn (Codex review on PR #97).
+      const turnId = await page.evaluate(() => {
+        const state = JSON.parse(sessionStorage.getItem("support-probe"));
+        const id = state.lastTurnId;
+        delete state.lastTurnId;
+        sessionStorage.setItem("support-probe", JSON.stringify(state));
+        return id;
+      });
+      let first = true;
+      await page.route("**/v1/conversations/*", async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        if (first && route.request().method() === "GET") {
+          first = false; // the mid-turn view: the turn is active and its approval not yet listed
+          body.pending_approvals = [];
+          body.active_turn_id = turnId;
+        }
+        await route.fulfill({ response, json: body });
+      });
+      await page.reload();
+      await expect(page.locator('[data-recovered="true"]')).toHaveAttribute("data-turn-id", turnId);
+      await expect(page.locator('[data-recovered="true"]')).toHaveAttribute("data-outcome", "awaiting_approval");
+      await expect(page.getByTestId("pending").locator("li")).toHaveCount(1);
+    });
+
+    test("recovery that outlasts its window says so and can check again", async ({ page }) => {
+      await open(page, alias);
+      await say(page, "Where is my order ORD-1002?");
+      await expect(assistant(page).last()).toHaveAttribute("data-outcome", "completed");
+      // The turn reads as still running until the test lets it finish (Codex review on PR #97).
+      let running = true;
+      await page.route("**/v1/conversations/*/turns/*", async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        if (running) {
+          for (const key of ["outcome", "finished_at", "reply", "route", "error", "operations", "pending_approval"]) delete body[key];
+          body.state = "running";
+        }
+        await route.fulfill({ response, json: body });
+      });
+      await page.goto("/?recoveryMs=800");
+      await expect(page.getByTestId("retry")).toBeVisible();
+      await expect(page.getByTestId("status")).toContainText("longer than usual");
+      running = false;
+      await page.getByTestId("retry").click();
+      await expect(page.locator('[data-recovered="true"]')).toHaveAttribute("data-outcome", "completed");
+      await expect(page.getByTestId("retry")).toHaveCount(0);
+    });
+
     test("a dropped stream is not a cancellation: the turn is recovered by its id", async ({ page }) => {
       await open(page, alias);
       const result = await page.evaluate(() => window.__probeApi.send("Where is my order ORD-1002?", { abortAfterStart: true }));

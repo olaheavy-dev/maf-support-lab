@@ -40,7 +40,7 @@ The version-1 contract works from a browser **unchanged**. L22's probes found no
 2. `GET /api/{alias}/v1/conversations/{conversationId}`.
    - A `404` (expired, deleted, or not this customer's) clears the stored state, and the browser starts over.
    - A `200` gives `pending_approvals[]`, which are the server's truth, with `summary` and `expires_at`. Render each with Approve and Reject.
-3. If `active_turn_id` is set, or `lastTurnId` isn't shown yet, poll `GET …/turns/{id}` until it's finished, then render it.
+3. Recover `active_turn_id` if set (a reload can come before `turn.started` gave the browser an id), otherwise the stored `lastTurnId`. Poll `GET …/turns/{id}` with backoff for longer than the backends' 90 s turn deadline (120 s), then render it, and re-read the conversation so an approval from that turn appears. If the window passes, say so and offer **Check again**: never stop silently.
 4. A decision posts `{operation_id, decision}` to `…/approvals/{approval_id}`.
    - A decision repeated after a lost response returns the same turn.
    - A late one gets `410 approval_expired`, and a conflicting one gets `409`. Both are rendered as text.
