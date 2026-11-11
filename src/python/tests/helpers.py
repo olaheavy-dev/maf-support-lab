@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from support_agent import contract
 from support_agent.app import create_app, get_principal_source
 from support_agent.identity import DevelopmentPrincipalSource, PrincipalSource
-from support_agent.settings import Environment, IdentitySettings, Settings, StorageSettings
+from support_agent.settings import Environment, IdentitySettings, ResilienceSettings, Settings, StorageSettings
 
 
 class SwitchablePrincipal:
@@ -34,12 +34,16 @@ def new_database_path() -> Path:
     return Path(tempfile.mkdtemp(prefix="support-test-")) / "support.db"
 
 
-def host(customer: str = "CUST-1001", storage: Path | None = None) -> tuple[FastAPI, SwitchablePrincipal]:
-    """A host as ``customer``. Pass the same ``storage`` to a second host to simulate a restart on the same file."""
+def host(
+    customer: str = "CUST-1001", storage: Path | None = None, resilience: ResilienceSettings | None = None
+) -> tuple[FastAPI, SwitchablePrincipal]:
+    """A host as ``customer``. Pass the same ``storage`` to a second host to simulate a restart on the same file, and
+    ``resilience`` to tighten a turn's limits (L42)."""
     settings = Settings(
         app_environment=Environment.DEVELOPMENT,
         identity=IdentitySettings(development_customer_id="CUST-1001"),
         storage=StorageSettings(path=storage or new_database_path()),
+        resilience=resilience or ResilienceSettings(),
     )
     app = create_app(settings)
     principal = SwitchablePrincipal(customer)

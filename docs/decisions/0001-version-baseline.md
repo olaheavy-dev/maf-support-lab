@@ -45,7 +45,7 @@ Not selected: `Microsoft.Agents.AI.OpenAI` and `Microsoft.Extensions.AI.OpenAI` 
 | jsonschema | 4.26.0 | Stable. The Python backend validates requests and triage output against the shared contract schemas (added in L18). |
 | fastapi / uvicorn | 0.162.3 / 0.54.0 | Stable. The web framework, chosen by the owner in L17 (MAF's DevUI is built on FastAPI). |
 | pydantic / pydantic-settings | 2.14.3 / 2.16.2 | Stable. Contract models and validated settings. |
-| Dev tools: pytest, httpx, ruff, pyright | 9.2.0, 0.28.1, 0.17.4, 1.1.414 | Stable. pyright chosen by the owner in L17 (strict mode). |
+| Dev tools: pytest, httpx, httpx2, ruff, pyright | 9.2.0, 0.28.1, 2.16.0, 0.17.4, 1.1.414 | Stable. pyright chosen by the owner in L17 (strict mode). httpx2 (added in L42) is the Anthropic SDK's own HTTP library; the tests use its `MockTransport` as a fake Anthropic API under the real SDK. |
 
 ## Model provider and model
 

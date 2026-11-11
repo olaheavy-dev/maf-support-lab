@@ -33,7 +33,9 @@ from support_agent.conversations import Claim, Conversation, ConversationStore, 
 from support_agent.dependencies import Caller
 from support_agent.identity import Principal, pinned
 from support_agent.operations import Decision, Operation, OperationService, Status, approval_scope
+from support_agent.resilience import FailureCode, budgeting, classify, current_budget
 from support_agent.routing import TurnRoute
+from support_agent.settings import ResilienceSettings
 from support_agent.telemetry import current_trace_id, tracer, turn_duration, turns
 from support_agent.turn_control import Delta, Progress, TurnControl, controlling, emit, raise_if_cancelled
 from support_agent.workflow import FALLBACK, RoutingRequest, SupportReply, build_workflow
@@ -61,6 +63,7 @@ STATUS = {
     "approval_expired": 410,
 }
 FAILED = TurnError("internal_error", "Something went wrong while handling your message. Please try again.")
+TIMED_OUT_WRITE = "The approved action took too long and was stopped before anything was changed."
 SHUTDOWN_GRACE_SECONDS = 5.0
 
 
@@ -130,8 +133,13 @@ class RunningTurns:
 
 
 def create_router(
-    store: ConversationStore, agents: SupportAgents, operations: OperationService, turns: RunningTurns
+    store: ConversationStore,
+    agents: SupportAgents,
+    operations: OperationService,
+    turns: RunningTurns,
+    limits: ResilienceSettings | None = None,
 ) -> APIRouter:
+    limits = limits or ResilienceSettings()
     router = APIRouter(prefix="/api/v1")
     ops = operations.store
 
@@ -198,7 +206,9 @@ def create_router(
         if owner:
             if streaming.is_requested(request):
                 claim.control.observer = asyncio.Queue()  # attached before the turn starts, so nothing is missed
-            turns.detach(complete_turn(agents, operations, conversation, claim, message, principal), claim.control)
+            turns.detach(
+                complete_turn(agents, operations, conversation, claim, message, principal, limits), claim.control
+            )
         return await answer_claim(request, conversation, claim, live=owner)
 
     @router.get("/conversations/{conversation_id}/turns/{turn_id}")
@@ -279,7 +289,9 @@ def create_router(
             )
         if streaming.is_requested(request):
             claim.control.observer = asyncio.Queue()
-        turns.detach(complete_decision(agents, operations, conversation, claim, operation, principal), claim.control)
+        turns.detach(
+            complete_decision(agents, operations, conversation, claim, operation, principal, limits), claim.control
+        )
         return await answer_claim(request, conversation, claim, live=True, resumed_from=operation.source_turn_id)
 
     @router.get("/operations/{operation_id}")
@@ -314,14 +326,28 @@ def observed_turn(
             agent = turn.route.target if turn.route and turn.route.target else ("unrouted" if turn.route else "unknown")
             labels = {"support.agent": agent, "support.turn.outcome": turn.outcome}
             span.set_attributes({**labels, "support.reply_kind": turn.reply_kind or "none"})
+            if (budget := current_budget()) is not None:
+                # L42: model calls (including one refused over budget) and HTTP attempts (including SDK retries).
+                span.set_attributes(
+                    {
+                        "support.turn.model_calls": budget.model_calls,
+                        "support.turn.model_attempts": budget.model_attempts,
+                    }
+                )
             turns.add(1, {**labels, "support.reply_kind": turn.reply_kind or "none"})
             turn_duration.record(time.monotonic() - clock, labels)
             if turn.outcome == "failed":
-                span.set_status(StatusCode.ERROR, turn.error.code if turn.error else "failed")
-                span.set_attribute("error.type", turn.error.code if turn.error else "internal_error")
+                code = turn.error.code if turn.error else "internal_error"
+                span.set_status(StatusCode.ERROR, code)
+                span.set_attributes({"error.type": code, "support.turn.error_code": code})
                 log.error(
                     "Turn failed",
-                    extra={"support.turn.id": turn.turn_id, "support.conversation.id": turn.conversation_id, **labels},
+                    extra={
+                        "support.turn.id": turn.turn_id,
+                        "support.conversation.id": turn.conversation_id,
+                        "support.turn.error_code": code,
+                        **labels,
+                    },
                 )
             else:
                 log.info(
@@ -345,11 +371,14 @@ async def complete_turn(
     claim: Claim,
     message: str,
     principal: Principal,
+    limits: ResilienceSettings | None = None,
 ) -> None:
-    """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once."""
-    with observed_turn(conversation, claim) as observe:
+    """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once. The turn has
+    its own model-call budget and deadline (L42)."""
+    limits = limits or ResilienceSettings()
+    with budgeting(limits.max_model_calls_per_turn), observed_turn(conversation, claim) as observe:
         injection.inspect("message", message)  # diagnostic only (L41): the turn runs exactly the same either way
-        await _complete_turn(agents, operations, conversation, claim, message, principal, observe)
+        await _complete_turn(agents, operations, conversation, claim, message, principal, observe, limits)
 
 
 async def _complete_turn(
@@ -360,15 +389,27 @@ async def _complete_turn(
     message: str,
     principal: Principal,
     observe: Callable[[Turn], None],
+    limits: ResilienceSettings,
 ) -> None:
+    deadline = asyncio.timeout(limits.turn_timeout_seconds)
     try:
         with controlling(claim.control):
             claim.control.started = True
             raise_if_cancelled()  # cancelled before this task first ran: stored as cancelled below
-            turn, verified_order_id = await run_turn(agents, operations, conversation, claim, message, principal)
+            async with deadline:
+                turn, verified_order_id = await run_turn(agents, operations, conversation, claim, message, principal)
     except asyncio.CancelledError:
         acknowledge_cancellation()
         observe(conversation.complete(claim, cancelled_turn(conversation, claim, claim.started_at), operations.store))
+        return
+    except TimeoutError:
+        if not deadline.expired():
+            raise
+        # The deadline stopped the turn at its next await. A normal turn never writes (writes run only after an
+        # approval), so nothing changed.
+        log.warning("Turn %s passed its deadline", claim.turn_id)
+        timed_out = failed_turn(conversation, claim, claim.started_at, error=turn_error(classify_timeout()))
+        observe(conversation.complete(claim, timed_out, operations.store))
         return
     except BaseException:
         observe(conversation.complete(claim, failed_turn(conversation, claim, claim.started_at), operations.store))
@@ -376,7 +417,21 @@ async def _complete_turn(
     observe(conversation.complete(claim, turn, operations.store, verified_order_id))
 
 
-def failed_turn(conversation: Conversation, claim: Claim, started: datetime, resumed_from: str | None = None) -> Turn:
+def turn_error(failure: FailureCode) -> TurnError:
+    return TurnError(failure.code, failure.detail, failure.retry_after_seconds)
+
+
+def classify_timeout() -> FailureCode:
+    return classify(TimeoutError(), turn_timed_out=True)
+
+
+def failed_turn(
+    conversation: Conversation,
+    claim: Claim,
+    started: datetime,
+    resumed_from: str | None = None,
+    error: TurnError = FAILED,
+) -> Turn:
     return Turn(
         conversation.conversation_id,
         claim.turn_id,
@@ -388,7 +443,7 @@ def failed_turn(conversation: Conversation, claim: Claim, started: datetime, res
         started,
         now(),
         "failed",
-        FAILED,
+        error,
         resumed_from_turn_id=resumed_from,
     )
 
@@ -444,9 +499,14 @@ async def run_turn(
                     reply = event.data
             if reply is None:
                 raise RuntimeError("The workflow finished without a reply.")
-        except Exception:
-            log.exception("Turn %s failed in conversation %s", claim.turn_id, conversation.conversation_id)
-            return failed_turn(conversation, claim, started), None
+        except Exception as error:
+            # Classified (L42): the code tells the client what happened; the detail is fixed, safe text. The full error
+            # goes to the log and the trace, never into the result.
+            failure = classify(error)
+            log.exception(
+                "Turn %s failed in conversation %s (%s)", claim.turn_id, conversation.conversation_id, failure.code
+            )
+            return failed_turn(conversation, claim, started, error=turn_error(failure)), None
     outcome = "awaiting_approval" if reply.pending_operation_id else "completed"
     turn = Turn(
         conversation.conversation_id,
@@ -490,15 +550,22 @@ async def complete_decision(
     claim: Claim,
     operation: Operation,
     principal: Principal,
+    limits: ResilienceSettings | None = None,
 ) -> None:
     """Resumes the paused specialist with the customer's decision, as a new turn; always completes the claim.
 
     Cancelled before the write commits: the turn is cancelled, and an approved operation fails with code ``cancelled``.
-    Cancelled after it committed: the committed result stands, and the turn completes from the record."""
-    with observed_turn(conversation, claim, resumed_from=operation.source_turn_id) as observe:
+    Cancelled after it committed: the committed result stands, and the turn completes from the record.
+    Bounded like any turn (L42): past its deadline before the commit, the operation fails with code ``timeout`` and
+    nothing changed; past it after the commit, the committed result stands."""
+    limits = limits or ResilienceSettings()
+    with (
+        budgeting(limits.max_model_calls_per_turn),
+        observed_turn(conversation, claim, resumed_from=operation.source_turn_id) as observe,
+    ):
         # Diagnostic only. In Python the reason never reaches the model (MAF's approval response carries none, L37).
         injection.inspect("decision_reason", operation.decision_reason)
-        await _complete_decision(agents, operations, conversation, claim, operation, principal, observe)
+        await _complete_decision(agents, operations, conversation, claim, operation, principal, observe, limits)
 
 
 async def _complete_decision(
@@ -509,14 +576,26 @@ async def _complete_decision(
     operation: Operation,
     principal: Principal,
     observe: Callable[[Turn], None],
+    limits: ResilienceSettings,
 ) -> None:
     started = now()
     route = TurnRoute(target=operation.specialist)
+    deadline = asyncio.timeout(limits.turn_timeout_seconds)
     try:
         with controlling(claim.control):
             claim.control.started = True
             raise_if_cancelled()
-            text = await resume(agents, operations, conversation, operation, principal)
+            async with deadline:
+                text = await resume(agents, operations, conversation, operation, principal)
+    except TimeoutError:
+        if not deadline.expired():
+            raise
+        # Guarded on the stored status: an approved write still running changed nothing (its write and its commit are
+        # one transaction), so it fails with code timeout. One that committed just before the deadline stays committed,
+        # and the turn reports it. A timeout never rolls a write back.
+        log.warning("Resuming operation %s passed its deadline", operation.operation_id)
+        operations.store.fail(operation, TIMED_OUT_WRITE, datetime.now(UTC), code="timeout")
+        text = factual(operation)
     except asyncio.CancelledError:
         acknowledge_cancellation()
         operations.store.fail(operation, "Cancelled before the change was made.", datetime.now(UTC), code="cancelled")

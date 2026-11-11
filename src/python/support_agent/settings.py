@@ -45,6 +45,26 @@ class TelemetrySettings(BaseModel):
     capture_sensitive_data: bool = False
 
 
+class ResilienceSettings(BaseModel):
+    """Every limit that bounds a turn (L42, the same defaults as .NET's L15 ``Resilience`` section). Out-of-range values
+    refuse to start, so a deadline or budget can always be created. Timeouts are seconds and may be fractional."""
+
+    # Wall-clock limit for one turn (or one resumed approval), from start to its result. Then: failed/timeout.
+    turn_timeout_seconds: float = Field(default=90, gt=0, le=3600)
+    # Model calls one turn may make (triage, specialist steps, declines, resume). Then: failed/budget_exhausted.
+    max_model_calls_per_turn: int = Field(default=10, ge=1, le=100)
+    # Tool-calling iterations within one agent run (MAF's function-invocation loop), then one final answer without tools.
+    max_tool_iterations: int = Field(default=4, ge=1, le=50)
+    # Time one tool call may take. Then: failed/tool_unavailable.
+    tool_timeout_seconds: float = Field(default=10, gt=0, le=600)
+    # The Anthropic SDK's own retries per model call: the only retry layer for model calls.
+    model_max_retries: int = Field(default=2, ge=0, le=10)
+    # Time one HTTP attempt to the model may take (the SDK retries a timed-out attempt).
+    model_attempt_timeout_seconds: float = Field(default=30, gt=0, le=600)
+    # Output cap per model call.
+    max_output_tokens: int = Field(default=1024, ge=1, le=64000)
+
+
 class IdentitySettings(BaseModel):
     development_customer_id: str | None = None
 
@@ -62,6 +82,7 @@ class Settings(BaseSettings):
     identity: IdentitySettings = Field(default_factory=IdentitySettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
+    resilience: ResilienceSettings = Field(default_factory=ResilienceSettings)
     # The standard Anthropic variable, used when MODEL_PROVIDER__ANTHROPIC__API_KEY is not set (as in .NET).
     anthropic_api_key: SecretStr | None = None
 

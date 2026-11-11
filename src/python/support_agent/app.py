@@ -11,6 +11,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, cast
 
+import anthropic
 from fastapi import Depends, FastAPI
 from fastapi.responses import PlainTextResponse
 
@@ -21,7 +22,7 @@ from support_agent.database import Database
 from support_agent.dependencies import get_principal, get_principal_source, get_settings
 from support_agent.fixtures import Fixtures
 from support_agent.identity import Principal, principal_source_for
-from support_agent.model_provider import create_client
+from support_agent.model_provider import create_provider
 from support_agent.operations import build_operations
 from support_agent.resources import Resources
 from support_agent.services import Services
@@ -32,8 +33,13 @@ from support_agent.telemetry import configure as configure_telemetry
 PROBES = ("/health", "/alive")
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
-    """Builds the host. Settings are validated before this returns, so bad configuration never starts serving."""
+def create_app(
+    settings: Settings | None = None, *, provider_http_client: anthropic.DefaultAsyncHttpxClient | None = None
+) -> FastAPI:
+    """Builds the host. Settings are validated before this returns, so bad configuration never starts serving.
+
+    ``provider_http_client`` is a server-side test seam no client can reach: tests pass a fake Anthropic HTTP API to run
+    the real SDK's retries deterministically (L42). The app never sets it."""
     settings = settings or Settings()
     resources = Resources()
 
@@ -62,8 +68,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.resources = resources
 
     # One model client per process, owned by the lifespan; the agents and the guarded services are built once.
-    client = create_client(settings)
+    provider = create_provider(settings, provider_http_client)
+    client = provider.client
     resources.own("model client", _closer(client))
+    resources.own("model provider", provider.close)
     app.state.telemetry = telemetry
     resources.own("telemetry", _flushing(telemetry))
     # One SQLite file per backend and run (L38), opened at startup and closed (checkpointed) at shutdown.
@@ -72,10 +80,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.database = database
     app.state.services = Services.create(Fixtures.load(), database)
     app.state.operations = build_operations(app.state.services.state, database)
-    app.state.agents = create_agents(client, app.state.services, app.state.operations)
+    app.state.agents = create_agents(client, app.state.services, app.state.operations, settings.resilience)
     app.state.conversations = ConversationStore(database)
     app.state.turns = turns
-    app.include_router(create_router(app.state.conversations, app.state.agents, app.state.operations, turns))
+    app.include_router(
+        create_router(app.state.conversations, app.state.agents, app.state.operations, turns, settings.resilience)
+    )
 
     @app.get("/health", response_class=PlainTextResponse)
     def health(current: Annotated[Settings, Depends(get_settings)]) -> str:

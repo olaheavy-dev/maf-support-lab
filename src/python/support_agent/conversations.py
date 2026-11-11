@@ -38,6 +38,13 @@ def now() -> datetime:
 class TurnError:
     code: str
     detail: str
+    retry_after_seconds: int | None = None  # rate_limited only: the provider's hint (L42)
+
+    def to_contract(self) -> dict[str, Any]:
+        body: dict[str, Any] = {"code": self.code, "detail": self.detail}
+        if self.retry_after_seconds is not None:
+            body["retry_after_seconds"] = self.retry_after_seconds
+        return body
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +79,7 @@ class Turn:
                 "created_at": self.created_at.isoformat(),
                 "finished_at": self.finished_at.isoformat(),
                 "outcome": self.outcome,
-                "error": None if self.error is None else {"code": self.error.code, "detail": self.error.detail},
+                "error": None if self.error is None else self.error.to_contract(),
                 "pending_operation_id": self.pending_operation_id,
                 "operation_ids": list(self.operation_ids),
                 "resumed_from_turn_id": self.resumed_from_turn_id,
@@ -83,7 +90,7 @@ class Turn:
     def from_json(cls, text: str) -> Turn:
         data: dict[str, Any] = json.loads(text)
         route: dict[str, Any] | None = data["route"]
-        error: dict[str, str] | None = data["error"]
+        error: dict[str, Any] | None = data["error"]
         return cls(
             data["conversation_id"],
             data["turn_id"],
@@ -99,7 +106,7 @@ class Turn:
             datetime.fromisoformat(data["created_at"]),
             datetime.fromisoformat(data["finished_at"]),
             data["outcome"],
-            None if error is None else TurnError(error["code"], error["detail"]),
+            None if error is None else TurnError(error["code"], error["detail"], error.get("retry_after_seconds")),
             data["pending_operation_id"],
             tuple(data["operation_ids"]),
             data["resumed_from_turn_id"],
@@ -125,7 +132,7 @@ class Turn:
         if self.outcome != "failed" and self.reply_kind is not None:
             body["reply"] = {"kind": self.reply_kind, "text": self.reply_text}
         if self.error is not None:
-            body["error"] = {"code": self.error.code, "detail": self.error.detail}
+            body["error"] = self.error.to_contract()
         if self.resumed_from_turn_id is not None:
             body["resumed_from_turn_id"] = self.resumed_from_turn_id
         if (

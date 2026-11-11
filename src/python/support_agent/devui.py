@@ -32,7 +32,7 @@ def entities(settings: Settings) -> list[Any]:
     database = Database(settings.storage.path.with_name("devui.db"))
     services = Services.create(Fixtures.load(), database)
     operations = build_operations(services.state, database)
-    agents = create_agents(create_client(settings), services, operations)
+    agents = create_agents(create_client(settings), services, operations, settings.resilience)
     return [*agents.specialists.values(), build_workflow(agents, operations, for_chat=True)]
 
 
