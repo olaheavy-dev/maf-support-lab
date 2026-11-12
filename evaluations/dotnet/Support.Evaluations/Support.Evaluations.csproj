@@ -13,6 +13,7 @@
     <!-- L30: MAF's local evaluation (EvalItem, LocalEvaluator, EvaluateAsync) and the Microsoft.Extensions.AI.Evaluation
          abstractions it builds on. Evaluation-only: no application project references them. -->
     <PackageReference Include="Microsoft.Agents.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
   </ItemGroup>
 
