@@ -189,7 +189,7 @@ public sealed partial class LoadTests : IDisposable
                         return Json(200, new JsonObject { ["outcome"] = "awaiting_approval", ["conversation_id"] = conversation, ["turn_id"] = $"turn_{id}", ["pending_approval"] = new JsonObject { ["approval_id"] = $"appr_{id}", ["operation_id"] = $"op_{id}" } });
                     }
 
-                    var clientId = body["client_turn_id"]!.GetValue<string>();
+                    var clientId = body!["client_turn_id"]!.GetValue<string>();
                     if (!IgnoreClientTurnId && turnsByClientId.TryGetValue(clientId, out var existing))
                     {
                         return Json(200, new JsonObject { ["outcome"] = "completed", ["conversation_id"] = conversation, ["turn_id"] = existing });
@@ -209,7 +209,7 @@ public sealed partial class LoadTests : IDisposable
                 if (path.Contains("/approvals/", StringComparison.Ordinal))
                 {
                     var operation = body!["operation_id"]!.GetValue<string>();
-                    var decision = body["decision"]!.GetValue<string>();
+                    var decision = body!["decision"]!.GetValue<string>();
                     var (decided, ticket) = operations[operation];
                     var first = decided is null;
                     decided ??= decision;

@@ -117,7 +117,7 @@ def wait_healthy(server: Server) -> None:
                 if response.status == 200:
                     return
         except OSError:
-            pass
+            pass  # not listening yet: keep polling until the deadline
         time.sleep(0.3)
     raise RuntimeError(f"{server.url} did not become healthy within {STARTUP_SECONDS} s; see {server.log}")
 
