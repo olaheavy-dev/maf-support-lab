@@ -21,6 +21,8 @@
     <PackageReference Include="Microsoft.Agents.AI.DevUI" />
     <PackageReference Include="Microsoft.Agents.AI.Hosting" />
     <PackageReference Include="Microsoft.Agents.AI.Hosting.OpenAI" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
   </ItemGroup>
 
   <!-- Shared synthetic fixtures (read-only) copied next to the binaries. -->
