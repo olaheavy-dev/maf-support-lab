@@ -33,6 +33,8 @@ dotnet run --project apphost          # both backends in fake mode (no key) + th
 scripts/demo.sh http://localhost:5180 # an answer, a denial, a write approved twice that runs once, a failure
 ```
 
+![The demo script against the .NET backend in fake mode: an answer, a denial, an ineligible cancel, a ticket write approved twice that runs once, a refused change of mind, a model failure, and a rejected identity field](docs/assets/demo.gif)
+
 The [demonstration](docs/demo.md) shows the real output from a fresh clone on both backends. The [runbook](docs/runbook.md) has prerequisites (the .NET 11 SDK, Python 3.15, uv), live mode with Claude, and the full check suite.
 
 ## Read more

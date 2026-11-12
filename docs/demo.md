@@ -13,7 +13,7 @@ scripts/demo.sh http://localhost:5180             # the .NET backend
 scripts/demo.sh https://localhost:<port> -k       # the Python backend: Aspire serves it over https on a port shown in the dashboard
 ```
 
-The demo needs `curl`, `jq` and `uuidgen`. It can be run again and again: each run opens a new support ticket. If no approval is proposed, which happens only outside fake mode, it stops with a message. Prerequisites and troubleshooting are in the [runbook](runbook.md).
+The demo needs `curl`, `jq` and `uuidgen`. The README's animation was recorded with [VHS](https://github.com/charmbracelet/vhs) from [`assets/demo.tape`](assets/demo.tape), which says how to re-record it. It can be run again and again: each run opens a new support ticket. If no approval is proposed, which happens only outside fake mode, it stops with a message. Prerequisites and troubleshooting are in the [runbook](runbook.md).
 
 ## What it shows
 
