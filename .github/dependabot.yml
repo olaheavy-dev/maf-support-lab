@@ -27,6 +27,20 @@ updates:
         patterns: ["Microsoft.Extensions.*", "Microsoft.AspNetCore.*"]
       tests:
         patterns: ["xunit*"]
+    ignore:
+      # Held at 10.x while Microsoft Agent Framework (1.28) depends on Microsoft.Extensions.AI 10.11: moving the family
+      # ahead of the framework risks a mismatch (owner's decision, 2026-11-12; see docs/decisions/0001). Remove this when
+      # an Agent Framework release depends on 11.x, and move the framework and the family together.
+      - dependency-name: "Microsoft.Extensions.AI*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.Http.Resilience"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.ServiceDiscovery"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.TimeProvider.Testing"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "microsoft.extensions.ai.evaluation.console"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: dotnet-sdk
     # The SDK pinned in /global.json. Runtime moves (a new major) stay deliberate, reviewed changes.
     directory: /

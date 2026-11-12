@@ -1,7 +1,7 @@
 # 0004 - SDK comparison: one contract, two native implementations
 
 - Status: Accepted (2026-11-11).
-- Versions: MAF .NET 1.28.0 with the Anthropic C# SDK 13.7.0, and MAF Python 1.25.0 with `agent-framework-anthropic` 1.0.0b261106 and the Anthropic Python SDK 1.17.0 ([0001](0001-version-baseline.md)).
+- Versions: MAF .NET 1.28.0 with the Anthropic C# SDK 13.8.0, and MAF Python 1.25.0 with `agent-framework-anthropic` 1.0.0b261106 and the Anthropic Python SDK 1.17.0 ([0001](0001-version-baseline.md)).
 
 ## Decision
 
