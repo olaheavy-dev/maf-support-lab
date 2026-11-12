@@ -1,4 +1,4 @@
-# Code scanning (L26): CodeQL's security-and-quality queries over the code this repository actually has: C# (both
+# Code scanning: CodeQL's security-and-quality queries over the code this repository actually has: C# (both
 # .NET projects and the evaluation runner, built as CI builds them), Python (both uv projects and the scripts), and
 # the GitHub Actions workflows themselves. Results go to the Security tab. Not a required check: findings are
 # triaged there, and a new query can flag old code without any change here.

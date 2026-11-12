@@ -1,4 +1,4 @@
-"""Native Python evaluation with Microsoft Agent Framework 1.25.0 (L31): the Python counterpart of L30.
+"""Native Python evaluation with Microsoft Agent Framework 1.25.0: the Python counterpart of the .NET native evaluation.
 
 Two commands, no judge model and no credentials:
 
@@ -11,7 +11,7 @@ Plus ``workflow``: ``evaluate_workflow`` runs a one-agent workflow and scores th
 
 The checks are the same as .NET's (tool arguments, writes wait for approval, no unexpected writes, grounded record ids,
 the found record cited). None of them can show that a write was authorized: that is the backend's gate, verified through
-its API by the behaviour runner (L16).
+its API by the behaviour runner.
 """
 
 from __future__ import annotations

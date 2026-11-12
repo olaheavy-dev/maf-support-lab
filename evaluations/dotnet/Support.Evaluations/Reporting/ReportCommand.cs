@@ -6,7 +6,7 @@ using Microsoft.Extensions.AI.Evaluation.Reporting.Storage;
 namespace Support.Evaluations.Reporting;
 
 /// <summary>
-/// <c>report --results DIR [--store DIR] [--execution NAME]</c> (L33): reads the result documents a run left in DIR
+/// <c>report --results DIR [--store DIR] [--execution NAME]</c>: reads the result documents a run left in DIR
 /// (evaluation-run and evaluation-quality), checks each against its schema, and writes them to a disk result store
 /// under one execution name. The <c>aieval</c> tool then renders HTML or JSON from that store. Reading files only:
 /// no backend, agent, or judge is started, and no credentials are read.

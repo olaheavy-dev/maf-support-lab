@@ -91,7 +91,7 @@ internal sealed partial class DecideApprovalCommandHandler(
         try
         {
             // A decision already recorded, but whose turn was never stored (the process stopped in between), is finished now
-            // from the record (L11): the write is never run a second time.
+            // from the record: the write is never run a second time.
             recordedEarlier = operation.Decision == command.Decision;
             if (!recordedEarlier && !(operation.TryDecide(command.Decision, clock.GetUtcNow()) && operations.TryUpdate(operation, OperationStatus.AwaitingApproval)))
             {
@@ -105,12 +105,12 @@ internal sealed partial class DecideApprovalCommandHandler(
             throw;
         }
 
-        // The decision is recorded. The resumed run is detached from this request (L12): only a cancel request stops it.
+        // The decision is recorded. The resumed run is detached from this request: only a cancel request stops it.
         reservation.StartedAt = clock.GetUtcNow();
         reservation.ResumedFromTurnId = operation.SourceTurnId;
         command.Observer.Started(new(conversation.ConversationId, reservation.TurnId, null, operation.SourceTurnId));
         var decided = operation;
-        // The caller's principal is pinned for the whole detached run (L13): identity never changes mid-turn and never
+        // The caller's principal is pinned for the whole detached run: identity never changes mid-turn and never
         // depends on a request that has ended.
         var caller = principal;
         _ = Task.Run(
@@ -139,7 +139,7 @@ internal sealed partial class DecideApprovalCommandHandler(
     {
         reservation.TraceId = TraceIds.Current();
         injection.Inspect("decision_reason", command.Reason); // the rejection reason reaches the model: diagnostic only
-        using var budgetScope = TurnBudget.Begin(resilience.Value.MaxModelCallsPerTurn); // bounded like any turn (L15)
+        using var budgetScope = TurnBudget.Begin(resilience.Value.MaxModelCallsPerTurn); // bounded like any turn
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(resilience.Value.TurnTimeoutSeconds), clock);
         using var run = CancellationTokenSource.CreateLinkedTokenSource(reservation.CancellationToken, deadline.Token);
         try
@@ -165,7 +165,7 @@ internal sealed partial class DecideApprovalCommandHandler(
                 if (operation.Status == OperationStatus.Running)
                 {
                     // Nothing was applied (the write and its commit are one transaction). A cancel seen before the commit
-                    // stops it (L12); anything else is a failure. Either way the operation's record says so.
+                    // stops it; anything else is a failure. Either way the operation's record says so.
                     var cancelled = reservation.CancelRequested;
                     var timedOut = !cancelled && deadline.IsCancellationRequested;
                     if (!cancelled)

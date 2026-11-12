@@ -1,14 +1,14 @@
 [project]
 name = "support-evaluations"
 version = "0.1.0"
-description = "Evaluation tooling for the VoltCart support backends (L29+): dataset and result contracts, and native Python evaluations later (L31). Kept out of the backend's manifest."
+description = "Evaluation tooling for the support backends: dataset and result contracts, and native Python evaluations. Kept out of the backend's manifest."
 readme = "README.md"
 requires-python = ">=3.15"
 dependencies = [
-    # The same validator as the backend and contract tests; evaluation-only packages (L31+) are added here, never to
+    # The same validator as the backend and contract tests; evaluation-only packages are added here, never to
     # src/python/pyproject.toml.
     "jsonschema==4.26.0",
-    # L31: Microsoft Agent Framework's local evaluation (EvalItem, LocalEvaluator, evaluate_agent, evaluate_workflow).
+    # Microsoft Agent Framework's local evaluation (EvalItem, LocalEvaluator, evaluate_agent, evaluate_workflow).
     # Core only, the same release as the backend; no provider integration is needed (the evaluated agent is scripted).
     "agent-framework-core==1.25.0",
 ]

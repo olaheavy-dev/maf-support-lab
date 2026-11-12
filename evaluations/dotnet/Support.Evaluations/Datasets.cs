@@ -29,7 +29,7 @@ internal sealed record EvaluationCase(
     StateChange ExpectedStateChange,
     IReadOnlyList<ExpectedCall>? ExpectedToolCalls = null);
 
-/// <summary>A tool call the first turn should make (L30), with canonical snake_case argument names (subset match).</summary>
+/// <summary>A tool call the first turn should make, with canonical snake_case argument names (subset match).</summary>
 internal sealed record ExpectedCall(string Name, JsonElement? Arguments);
 
 internal sealed record CaseStep(

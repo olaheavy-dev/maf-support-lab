@@ -7,7 +7,7 @@ using Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 namespace Support.Api.Tests.Observability;
 
 /// <summary>
-/// L06 acceptance: what Aspire receives for a fake-mode success and failure. The tests read the app's real
+/// What Aspire receives for a fake-mode success and failure. The tests read the app's real
 /// OpenTelemetry pipeline through in-memory exporters, so they check behaviour, not how the code is written.
 /// </summary>
 [Collection(TelemetryTestGroup.Name)]
@@ -174,7 +174,7 @@ public sealed class TelemetryTests
             new Uri($"/api/v1/conversations/{conversation}/turns", UriKind.Relative),
             new { client_turn_id = Guid.NewGuid().ToString(), message = $"Where is ORD-1002? {FakeChatClient.FailureTrigger}" },
             TestContext.Current.CancellationToken);
-        // A turn that runs and fails is a result, not an HTTP error (contract; L12): 200 with outcome failed.
+        // A turn that runs and fails is a result, not an HTTP error (contract): 200 with outcome failed.
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(TestContext.Current.CancellationToken);
         ContractSchemas.AssertValid("turn-result", body);

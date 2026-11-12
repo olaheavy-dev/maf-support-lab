@@ -10,7 +10,7 @@ namespace Support.Evaluations.Reporting;
 
 /// <summary>
 /// Maps this repository's result documents into Microsoft.Extensions.AI.Evaluation.Reporting's
-/// <see cref="ScenarioRunResult"/> (L33), so the <c>aieval</c> tool can render them. It is an adapter, not an
+/// <see cref="ScenarioRunResult"/>, so the <c>aieval</c> tool can render them. It is an adapter, not an
 /// evaluator: nothing is re-scored and no model is called. The documents are already scored by the deterministic runner,
 /// the native evaluators (recorded responses), or the quality lane; the adapter only carries their verdicts across.
 /// <list type="bullet">
@@ -47,7 +47,7 @@ internal static class ReportAdapter
                 metrics.AddRange(step["checks"]!.AsArray().OfType<JsonObject>().Select(check => CheckMetric($"step {step["index"]} ", check)));
             }
 
-            // Native evaluations (L30/L31) score the whole conversation: their checks sit on the case, not on a step.
+            // Native evaluations score the whole conversation: their checks sit on the case, not on a step.
             metrics.AddRange((result["checks"]?.AsArray() ?? []).OfType<JsonObject>().Select(check => CheckMetric("", check)));
 
             if (status == "error")

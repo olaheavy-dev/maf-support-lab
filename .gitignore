@@ -34,5 +34,5 @@ telemetry/
 # Keep dependency lockfiles tracked.
 
 
-# Evaluation results (L29): generated, never committed; CI uploads them as artifacts
+# Evaluation results: generated, never committed; CI uploads them as artifacts
 evaluations/results/

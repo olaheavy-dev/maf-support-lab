@@ -325,7 +325,7 @@
       "url": "https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests?view=aspnetcore-11.0",
       "kind": "official-doc",
       "checked_on": "2026-11-09",
-      "note": "Use the version selector matching the runtime selected in L01; the selected runtime is .NET 11 (L44)."
+      "note": "Use the version selector matching the selected runtime (.NET 11)."
     },
     "ms-http-resilience": {
       "title": ".NET HTTP resilience patterns",
@@ -423,42 +423,42 @@
       "url": "https://docs.python.org/3/library/asyncio-task.html#task-cancellation",
       "kind": "official-doc",
       "checked_on": "2026-11-09",
-      "note": "Official Python language/runtime guidance. Select the Python version established in L01/L17; cancellation is cooperative and does not roll back committed operations."
+      "note": "Official Python language/runtime guidance. Select the pinned Python version (3.15); cancellation is cooperative and does not roll back committed operations."
     },
     "ms-clean-architecture": {
       "title": "Common web application architectures (Clean Architecture)",
       "url": "https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures",
       "kind": "official-doc",
       "checked_on": "2026-11-10",
-      "note": "Layer responsibilities and inward-pointing dependencies; L43 applies them as folders in one project rather than separate projects."
+      "note": "Layer responsibilities and inward-pointing dependencies; applied here as folders in one project rather than separate projects."
     },
     "ms-cqrs": {
       "title": "Simplified CQRS reads and command handlers",
       "url": "https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/cqrs-microservice-reads",
       "kind": "official-doc",
       "checked_on": "2026-11-10",
-      "note": "Commands, queries, and one handler per use case; L43 uses plain handler interfaces without a mediator."
+      "note": "Commands, queries, and one handler per use case; used here as plain handler interfaces without a mediator."
     },
     "archunitnet-docs": {
       "title": "ArchUnitNET documentation",
       "url": "https://archunitnet.readthedocs.io/en/latest/",
       "kind": "official-doc",
       "checked_on": "2026-11-10",
-      "note": "Architecture-rule library selected for L43 (TngTech.ArchUnitNET.xUnitV3 0.13.5, Apache-2.0, released 2026-10-26)."
+      "note": "Architecture-rule library used for the layering tests (TngTech.ArchUnitNET.xUnitV3 0.13.5, Apache-2.0, released 2026-10-26)."
     },
     "ms-dotnet-support": {
       "title": ".NET releases, patches, and support",
       "url": "https://learn.microsoft.com/en-us/dotnet/core/releases-and-support",
       "kind": "official-doc",
       "checked_on": "2026-11-12",
-      "note": "LTS vs STS; L44 checks end-of-support dates against the release index (10.0 and 11.0 both end 2028-11-14)."
+      "note": "LTS vs STS; the runtime decision checked end-of-support dates against the release index (10.0 and 11.0 both end 2028-11-14)."
     },
     "ms-dotnet11-whats-new": {
       "title": "What's new in .NET 11",
       "url": "https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-11/overview",
       "kind": "official-doc",
       "checked_on": "2026-11-12",
-      "note": "Runtime/SDK changes to review for L44."
+      "note": "Runtime and SDK changes reviewed for the move to .NET 11."
     },
     "ms-ca2026": {
       "title": "CA2026: Prefer JsonElement.Parse over JsonDocument.Parse().RootElement",

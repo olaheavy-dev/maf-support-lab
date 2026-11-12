@@ -1,7 +1,7 @@
 """The ASGI application: health, the development whoami endpoint, and the shared host shell.
 
 Run it with ``uv run python -m support_agent`` (see README.md), or through the Aspire AppHost, which starts it with
-Uvicorn as ``support_agent.app:app``. Agents and the contract API arrive in later tickets (L18+).
+Uvicorn as ``support_agent.app:app``. The agents and the contract API are wired in below.
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ def create_app(
     """Builds the host. Settings are validated before this returns, so bad configuration never starts serving.
 
     ``provider_http_client`` is a server-side test seam no client can reach: tests pass a fake Anthropic HTTP API to run
-    the real SDK's retries deterministically (L42). The app never sets it."""
+    the real SDK's retries deterministically. The app never sets it."""
     settings = settings or Settings()
     resources = Resources()
 
@@ -48,11 +48,11 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
         yield
-        # Running turns are cancelled cooperatively and stored before the database and clients close (L20).
+        # Running turns are cancelled cooperatively and stored before the database and clients close.
         await turns.shutdown()
         await resources.close_all()
 
-    # Telemetry (L40): this process's providers, set up once; FastAPI's built-in telemetry creates the HTTP spans and
+    # Telemetry: this process's providers, set up once; FastAPI's built-in telemetry creates the HTTP spans and
     # metrics on them. Health probes are not traced.
     telemetry = configure_telemetry(settings)
     app = FastAPI(
@@ -74,7 +74,7 @@ def create_app(
     resources.own("model provider", provider.close)
     app.state.telemetry = telemetry
     resources.own("telemetry", _flushing(telemetry))
-    # One SQLite file per backend and run (L38), opened at startup and closed (checkpointed) at shutdown.
+    # One SQLite file per backend and run, opened at startup and closed (checkpointed) at shutdown.
     database = Database(settings.storage.path)
     resources.own("database", _closing(database))
     app.state.database = database

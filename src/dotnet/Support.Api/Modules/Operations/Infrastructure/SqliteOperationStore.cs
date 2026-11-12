@@ -25,7 +25,7 @@ internal sealed class SqliteOperationStore(SupportDatabase database) : IOperatio
             ("@owner", snapshot.OwnerCustomerId), ("@status", OperationNames.Of(snapshot.Status)), ("@json", JsonSerializer.Serialize(snapshot, Json)));
     }
 
-    // Every query is a constant; the key is always a bound parameter (L26: no SQL is built from strings).
+    // Every query is a constant; the key is always a bound parameter (no SQL is built from strings).
     private const string ByOperation = "SELECT json FROM operations WHERE operation_id = @key";
     private const string ByApproval = "SELECT json FROM operations WHERE approval_id = @key";
     private const string ByConversation = "SELECT json FROM operations WHERE conversation_id = @key";

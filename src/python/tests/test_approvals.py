@@ -1,4 +1,4 @@
-"""L37: every simulated write waits for the customer's approval of the exact action, bound to the customer, the
+"""Every simulated write waits for the customer's approval of the exact action, bound to the customer, the
 conversation, the operation, and its arguments. No approval or a rejection changes nothing; an approved eligible write
 changes simulated state once and reports the facts. Native approval and business authorization are separate checks.
 """

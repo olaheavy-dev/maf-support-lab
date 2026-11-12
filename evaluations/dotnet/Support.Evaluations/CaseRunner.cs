@@ -20,7 +20,7 @@ internal sealed record RunOptions(string Backend, IReadOnlySet<string> Splits, T
 }
 
 /// <summary>
-/// Runs one case through the public API (L29, extended in L16): a new conversation, each step streamed (so tool calls
+/// Runs one case through the public API: a new conversation, each step streamed (so tool calls
 /// are visible), and every expected fact checked. Model wording is only a content check, never evidence of what
 /// happened; state comes from the operation record (get_operation).
 /// </summary>
@@ -245,7 +245,7 @@ internal sealed class CaseRunner(Func<Uri, HttpClient> clientFor, IBackends back
             ["status"] = status,
             ["latency_ms"] = Math.Round(latency, 1),
             ["steps"] = steps,
-            // The contract doesn't expose token usage, so it is unknown here, never zero (L40/L42).
+            // The contract doesn't expose token usage, so it is unknown here, never zero.
             ["usage"] = new JsonObject { ["available"] = false },
         };
         if (skipReason is not null)

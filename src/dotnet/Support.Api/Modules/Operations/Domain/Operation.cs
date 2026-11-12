@@ -7,7 +7,7 @@ namespace Support.Api.Modules.Operations.Domain;
 /// A proposed write and its approval, bound when created to the customer, the conversation, the kind, and the exact
 /// arguments. Its status is the authoritative record of what happened, whatever happened to any connection.
 /// State changes are guarded: a decision is recorded once, and the write runs at most once. The durable store
-/// (L11) guards the same transitions by status, so they hold across restarts too.
+/// Guards the same transitions by status, so they hold across restarts too.
 /// </summary>
 public sealed class Operation
 {
@@ -166,7 +166,7 @@ public sealed class Operation
 
     private bool executing;
 
-    /// <summary>The operation's full state, for durable storage (L11).</summary>
+    /// <summary>The operation's full state, for durable storage.</summary>
     public OperationSnapshot ToSnapshot()
     {
         lock (gate)

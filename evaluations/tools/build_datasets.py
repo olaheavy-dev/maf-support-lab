@@ -1,4 +1,4 @@
-"""Builds evaluations/datasets/*.json from the shared feature scenarios plus evaluation-only cases (L29).
+"""Builds evaluations/datasets/*.json from the shared feature scenarios plus evaluation-only cases.
 
 Run it after changing fixtures/scenarios/feature-scenarios.json or a case below, and commit the output. The datasets
 are the reviewed artifact; this script only keeps them in step with the scenarios they came from. Every dataset is
@@ -65,7 +65,7 @@ def from_scenario(scenario_id: str, case_id: str, split: str = "development") ->
     return case
 
 
-# The authoritative state after an approved write: the operation record, not the model's words (L16).
+# The authoritative state after an approved write: the operation record, not the model's words.
 RESULTS = {
     "S10-cancel-approved": {"order_id": "ORD-1003", "order_status": "cancelled"},
     "S19-refund-approved": {"order_id": "ORD-1001"},
@@ -187,7 +187,7 @@ DATASETS = [
     ], {"eligible": True, "max_cases": 5, "max_model_calls_per_case": 6, "repetitions": 1}),
 ]
 
-# L30: the first turn's expected tool calls for native (in-process) evaluation, with canonical snake_case argument names;
+# The first turn's expected tool calls for native (in-process) evaluation, with canonical snake_case argument names;
 # each SDK's adapter maps them to its own parameter naming. An empty list means "no tool should be needed".
 EXPECTED_TOOL_CALLS: dict[str, list[dict]] = {
     "order-status": [{"name": "get_order_status", "arguments": {"order_id": "ORD-1002"}}],

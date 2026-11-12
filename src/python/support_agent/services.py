@@ -1,4 +1,4 @@
-"""Read-only record access, scoped to the trusted principal (L18).
+"""Read-only record access, scoped to the trusted principal.
 
 Ownership is decided here, in application code, never by the model: another customer's record is reported exactly like
 a missing one (None). Ids are validated before any lookup. Nothing in this module changes state.
@@ -86,6 +86,6 @@ class Services:
 
     @classmethod
     def create(cls, fixtures: Fixtures, database: Database) -> Services:
-        """The services over the simulated state stored in this host's database (L38)."""
+        """The services over the simulated state stored in this host's database."""
         state = SimulatedState(fixtures, database)
         return cls(OrderService(state), BillingService(state), KnowledgeService(fixtures), state)

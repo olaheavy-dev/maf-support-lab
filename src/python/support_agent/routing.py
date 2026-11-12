@@ -1,4 +1,4 @@
-"""Triage output and the deterministic routing rules (L18, porting L07).
+"""Triage output and the deterministic routing rules (the Python counterpart of .NET's routing).
 
 The model only classifies. Its output is untrusted until it passes the full triage-decision contract schema; then
 code decides: the requested action must belong to the target's team, "other" is never routed, and actions about one
@@ -96,7 +96,7 @@ class TriageOutcome:
 
     @property
     def effective_order_id(self) -> str | None:
-        """The order named in this message, else the one a tool verified earlier in this conversation (L19)."""
+        """The order named in this message, else the one a tool verified earlier in this conversation."""
         return self.order_id or self.context.verified_order_id
 
     @property

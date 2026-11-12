@@ -1,4 +1,4 @@
-"""Server-Sent Events for a turn (contract 1.1 streaming; L20, porting L12's TurnStream).
+"""Server-Sent Events for a turn (contract 1.1 streaming; the Python counterpart of .NET's TurnStream).
 
 Asked for with ``Accept: text/event-stream`` on the turn and approval routes. The stream is:
 - ``turn.started``;
@@ -88,7 +88,7 @@ async def _events(
                 elif isinstance(item, Progress):
                     yield event("turn.progress", _progress(item))
                 else:
-                    if not streamed:  # the first reply text of a live stream (L20's latency, measured: L40)
+                    if not streamed:  # the first reply text of a live stream (the latency, measured)
                         first_delta.record((datetime.now(UTC) - claim.started_at).total_seconds())
                     streamed.append(item.text)
                     for piece in pieces(item.text):

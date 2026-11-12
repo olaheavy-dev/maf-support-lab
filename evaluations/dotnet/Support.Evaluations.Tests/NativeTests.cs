@@ -5,7 +5,7 @@ using Support.Evaluations.Native;
 namespace Support.Evaluations.Tests;
 
 /// <summary>
-/// Native MAF evaluation (L30): local checks pass and fail on real evidence, recorded responses are scored without a
+/// Native MAF evaluation: local checks pass and fail on real evidence, recorded responses are scored without a
 /// model call, and the results keep their versions and evidence links. No judge model, no credentials.
 /// </summary>
 public sealed class NativeTests

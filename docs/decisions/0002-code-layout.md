@@ -1,11 +1,11 @@
 # 0002 - Code layout: modules and layers as folders
 
-- Status: Accepted (L43, 2026-11-10). The owner chose each option below.
-- Applies to: `src/dotnet/Support.Api` now. The Python backend (L17) follows the same module and layer names in Python style.
+- Status: Accepted (2026-11-10). The owner chose each option below.
+- Applies to: `src/dotnet/Support.Api` now. The Python backend follows the same module and layer names in Python style.
 
 ## Context
 
-By L05 the API had folders by topic (`Agents/`, `Contract/`, `Orders/`, `Configuration/`…) but no layers. One 193-line endpoint file mixed four jobs:
+After the first agent, the API had folders by topic (`Agents/`, `Contract/`, `Orders/`, `Configuration/`…) but no layers. One 193-line endpoint file mixed four jobs:
 
 - HTTP parsing and validation;
 - the idempotent turn flow and running the agent;
@@ -54,7 +54,7 @@ The rules apply across modules. For example, Conversations' Application may use 
 
 **Agents is the shared AI runtime; feature modules plug into it.**
 - The Agents module holds the model provider, the `SupportAgents` collection, `TurnActivity`, and DevUI.
-- Each feature module builds its own agent and tools, and registers a `SupportAgent(name, agent)`. Orders does this today; L07/L08 specialists will too.
+- Each feature module builds its own agent and tools, and registers a `SupportAgent(name, agent)`. Orders, Billing and Technical all do this.
 - Agents never refers back to a feature module. This removed an Agents↔Orders loop found in review.
 
 **Agent tools are Presentation.** A tool is the model's endpoint. `get_order_status` validates nothing itself: it sends a query and turns the `Result` into what the model sees. Ownership stays in the handler (AGENTS.md: authorization and idempotency live in application/tool code).
@@ -75,14 +75,14 @@ The rules apply across modules. For example, Conversations' Application may use 
 | --- | --- | --- |
 | Six projects per module | Folders | Same separation with less ceremony. The architecture tests replace the compiler's project-reference check. |
 | PublicApi and IntegrationEvents projects | None | Modules call each other's Application layer directly. No events exist yet. |
-| Full module isolation rules | Only "Agents depends on no module" | Feature modules legitimately share identity and the agent runtime. Fuller isolation is the L43 stretch exercise. |
+| Full module isolation rules | Only "Agents depends on no module" | Feature modules legitimately share identity and the agent runtime. Fuller isolation is the stretch exercise. |
 | Carter | Plain minimal-API `Map…` methods | No need for another package. |
 | `apps/api/` layout | `src/dotnet/` kept | About 30 tickets reference the existing paths, and the Python backend sits beside it. |
 | Non-generic `ICommand`, `Result` without value | Omitted | No use case needs them yet. Add them when one does. |
 
 ## Consequences
 
-- New behaviour has an obvious home. Examples: L06 telemetry goes in Infrastructure/host defaults; L07 triage adds Application handlers and an Agents change; L11 durability replaces `InMemoryConversationStore` only.
+- New behaviour has an obvious home. Examples: telemetry went into Infrastructure and host defaults; triage added Application handlers and an Agents change; durable storage replaced `InMemoryConversationStore` only.
 - A handler is easy to test without HTTP, and an endpoint stays a translation layer.
-- **Known gap:** the dependency rules see real uses, such as fields, constructor parameters, `new`, and method calls. They do **not** see a bare `typeof(...)` inside a method body (checked by mutation during L43). Code review covers that rare case.
+- **Known gap:** the dependency rules see real uses, such as fields, constructor parameters, `new`, and method calls. They do **not** see a bare `typeof(...)` inside a method body (checked by mutation). Code review covers that rare case.
 - A rule can be broken by placing a type in the wrong folder *and* namespace together. The placement rule catches types outside layers, but not a type deliberately put in the wrong layer. That is a review concern.

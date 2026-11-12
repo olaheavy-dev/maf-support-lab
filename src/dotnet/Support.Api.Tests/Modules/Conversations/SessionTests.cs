@@ -8,7 +8,7 @@ using Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 namespace Support.Api.Tests.Modules.Conversations;
 
 /// <summary>
-/// L09: a conversation remembers its own context. Follow-ups work without repeating the id, only verified facts
+/// A conversation remembers its own context. Follow-ups work without repeating the id, only verified facts
 /// are remembered, conversations never share state, history is bounded, and one turn runs at a time.
 /// </summary>
 public sealed class SessionTests
@@ -114,7 +114,7 @@ public sealed class SessionTests
     [Fact]
     public async Task Each_earlier_message_reaches_the_specialist_exactly_once()
     {
-        // Guards against re-saving loaded history on every turn (a real L09 bug: a custom storage filter had
+        // Guards against re-saving loaded history on every turn (a real bug: a custom storage filter had
         // replaced MAF's default, which skips messages that came from history).
         var seen = new ConcurrentQueue<IReadOnlyList<ChatMessage>>();
         await using var factory = Start(new CountingScript(messages =>

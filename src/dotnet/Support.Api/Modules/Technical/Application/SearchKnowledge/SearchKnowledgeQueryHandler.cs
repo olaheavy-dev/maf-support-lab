@@ -16,7 +16,7 @@ internal sealed partial class SearchKnowledgeQueryHandler(IKnowledgeBase knowled
     public Task<Result<IReadOnlyList<KnowledgeArticle>>> Handle(SearchKnowledgeQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
-        // Tool arguments are model output (L14): bounded and printable, or rejected.
+        // Tool arguments are model output: bounded and printable, or rejected.
         var text = query.Text ?? string.Empty;
         if (text.Length > MaxQueryLength || text.Any(character => char.IsControl(character) && character is not ('\n' or '\t')))
         {

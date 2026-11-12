@@ -1,8 +1,8 @@
-"""The agents' read-only tools (L18). Each takes ids and nothing else: never a customer id, never a confirmation.
+"""The agents' read-only tools. Each takes ids and nothing else: never a customer id, never a confirmation.
 
 The customer is the pinned principal (identity.current_principal), so a model cannot choose whose records it reads.
 Each tool records its outcome in the turn activity, which decides the reply kind. There is deliberately no tool that
-changes anything: writes arrive with the approval gate (L37).
+changes anything: writes arrive with the approval gate.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ KNOWLEDGE_SEARCH = "search_knowledge_base"
 
 
 def _record(tool_name: str, outcome: ToolOutcome, verified_order_id: str | None = None) -> None:
-    """Records the outcome for the turn (it decides the reply kind) and in ``support.tool.calls`` (L40)."""
+    """Records the outcome for the turn (it decides the reply kind) and in ``support.tool.calls``."""
     tool_calls.add(1, {"support.tool.name": tool_name, "support.tool.outcome": str(outcome)})
     activity = current_activity()
     if activity is not None:
@@ -122,7 +122,7 @@ def technical_tools(services: Services) -> list[FunctionTool]:
         except InvalidReferenceError:
             return {"search": "invalid_query", "articles": []}
         _record(KNOWLEDGE_SEARCH, ToolOutcome.FOUND if articles else ToolOutcome.NO_MATCH)
-        # Article text is data the model reads (an indirect-injection path): diagnostic only, names recorded (L41).
+        # Article text is data the model reads (an indirect-injection path): diagnostic only, names recorded.
         injection.inspect("tool_result", "\n".join(line for a in articles for line in (a.title, *a.steps)))
         return {
             "search": "found" if articles else "no_match",

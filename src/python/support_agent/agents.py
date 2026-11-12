@@ -1,6 +1,6 @@
-"""The agents (L18): triage plus three read-only specialists, each with only its own tools.
+"""The agents: triage plus three read-only specialists, each with only its own tools.
 
-Instructions are ported from the .NET backend, minus the write tools, which only arrive with the approval gate (L37).
+Instructions are ported from the .NET backend, minus the write tools, which only arrive with the approval gate.
 Identity never enters a prompt: tools read the pinned principal.
 """
 
@@ -79,7 +79,7 @@ class SupportAgents:
 
 
 def bound_tool_loop(client: SupportsChatGetResponse[Any], limits: ResilienceSettings) -> None:
-    """MAF's tool loop allows 40 iterations by default: far too many for a support turn (L42). After the limit it asks
+    """MAF's tool loop allows 40 iterations by default: far too many for a support turn. After the limit it asks
     the model for one final answer without tools. Tool faults never reach this loop's error count: ToolLimits ends
     the turn instead."""
     configuration: Any = getattr(client, "function_invocation_configuration", None)
@@ -95,7 +95,7 @@ def create_agents(
 ) -> SupportAgents:
     """One client shared by all agents; each specialist gets only its own read tools and its one approval-gated write.
 
-    Every agent is bounded the same way (L42): each model call counts against the running turn's budget, each tool
+    Every agent is bounded the same way: each model call counts against the running turn's budget, each tool
     call has a time limit, and each call's output is capped."""
     limits = limits or ResilienceSettings()
     bound_tool_loop(client, limits)

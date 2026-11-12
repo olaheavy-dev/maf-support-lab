@@ -1,4 +1,4 @@
-# Evaluation reports and CI lanes (L33)
+# Evaluation reports and CI lanes
 
 Every evaluation result can be rendered as a Microsoft.Extensions.AI.Evaluation report (HTML for people, JSON for machines). Rendering reads result files only: it starts no backend, agent or judge, and needs no credentials. Generated outputs live in `evaluations/results/`, which Git ignores. This page holds the curated summary.
 
@@ -9,9 +9,9 @@ Every evaluation result can be rendered as a Microsoft.Extensions.AI.Evaluation 
 | Deterministic behaviour (both backends, all datasets, launch mode) | `repository-checks` → `cross-backend` | every push and PR | **Required.** Any failed or errored case exits 1 and fails the job. | none (fake model) |
 | Native .NET evaluation of recorded conversations | `cross-backend` | every push and PR | **Required** (same rule) | none (recorded) |
 | Native Python evaluation | `repository-checks` → `evaluations` | every push and PR | **Required** | none (fake or recorded) |
-| Fault and bounded-load scenarios, both backends (L25) | `cross-backend` | every push and PR | **Required** (correctness checks only; timings recorded, not gated) | none (fake model) |
+| Fault and bounded-load scenarios, both backends | `cross-backend` | every push and PR | **Required** (correctness checks only; timings recorded, not gated) | none (fake model) |
 | Fake-judge tests of the quality lane, and the report adapter tests | `dotnet` (solution tests) | every push and PR | **Required** | none |
-| Model-judged quality (L32) | `Quality (live, billed)` workflow | **only when started by hand** (`workflow_dispatch`); needs the `ANTHROPIC_API_KEY` secret | never | at most 60 per run (worst case 53) |
+| Model-judged quality | `Quality (live, billed)` workflow | **only when started by hand** (`workflow_dispatch`); needs the `ANTHROPIC_API_KEY` secret | never | at most 60 per run (worst case 53) |
 | Report | `cross-backend`, and the quality workflow | after the evaluations, even if they failed | no: it shows results, it doesn't judge them | none |
 
 Artifacts: `evaluation-results` (deterministic and native run documents, `comparison.md`, `report/report.html`, `report/report.json`, `report/store/`) and `quality-results` (the quality document and its report). Both are kept for 14 days. They contain synthetic fixture data only, and no credentials.
@@ -59,7 +59,7 @@ The live lane is `quality --live` (see [quality.md](quality.md)), locally or thr
 
 ## Curated summary (2026-11-12, assistant-run, local)
 
-The report was built from 23 documents into **107 scenario results** (execution `local-l33`, source commit `a04648e` plus the L33 working tree):
+The report was built from 23 documents into **107 scenario results** (execution `local-l33`, source commit `a04648e` plus the working tree):
 
 | Results | Scenarios | Outcome |
 | --- | --- | --- |

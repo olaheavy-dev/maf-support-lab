@@ -1,4 +1,4 @@
-"""L18: the tools read only the pinned principal's records; anything else looks missing, and nothing can write."""
+"""The tools read only the pinned principal's records; anything else looks missing, and nothing can write."""
 
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def test_each_specialist_has_its_reads_and_one_approval_gated_write_and_triage_h
     ]
     writes = [tool for tool in every if WRITE_VERBS.search(str(getattr(tool, "name", "")))]
     reads = [tool for tool in every if tool not in writes]
-    # Every write needs the customer's approval (L37); no read does.
+    # Every write needs the customer's approval; no read does.
     assert [str(getattr(tool, "name", "")) for tool in writes] == ["cancel_order", "refund_order", "create_ticket"]
     assert all(getattr(tool, "approval_mode", None) == "always_require" for tool in writes)
     assert all(getattr(tool, "approval_mode", None) != "always_require" for tool in reads)

@@ -1,4 +1,4 @@
-"""L18: development-only DevUI lists the read-only specialists and the workflow, and goes through the same guards."""
+"""Development-only DevUI lists the read-only specialists and the workflow, and goes through the same guards."""
 
 from __future__ import annotations
 

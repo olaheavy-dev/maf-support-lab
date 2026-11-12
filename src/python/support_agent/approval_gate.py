@@ -1,4 +1,4 @@
-"""Adapts native approval requests to the contract's bound approvals (L37, porting L10's ApprovalGate).
+"""Adapts native approval requests to the contract's bound approvals (porting the ApprovalGate).
 
 When a specialist's model calls a write tool, MAF pauses with a ``function_approval_request`` instead of running it.
 The gate then either proposes it as a bound operation (valid arguments, the customer's own record, eligible now), which
@@ -39,7 +39,7 @@ def requests(response: AgentResponse[Any]) -> list[Content]:
 
 
 def batch_of(response: AgentResponse[Any], pending: list[Content]) -> list[Content]:
-    """All tool calls the model made in the turn that paused, in the model's order (L20, found live).
+    """All tool calls the model made in the turn that paused, in the model's order (found live).
 
     In a mixed batch (say get_order_status and cancel_order in one response) MAF pauses the approval-required call,
     keeps the other calls in the session, and runs them when the batch is answered, sending their results too. So the
@@ -57,10 +57,10 @@ def batch_of(response: AgentResponse[Any], pending: list[Content]) -> list[Conte
 def answer(pending: list[Content], approved: bool, batch: list[Content] | None = None) -> list[Message]:
     """The native answer to paused requests, preceded by the tool calls of the batch they belong to.
 
-    Stored history keeps only plain text (L19), so the assistant message that made the calls is not in the session, and
+    Stored history keeps only plain text, so the assistant message that made the calls is not in the session, and
     MAF does not re-add it. Anthropic rejects a tool result that does not directly follow its tool call (HTTP 400,
-    found live in L37), so the calls are sent again, right before the decision that answers them: all calls of the
-    batch, since MAF also answers the non-paused ones (found live in L20)."""
+    found live), so the calls are sent again, right before the decision that answers them: all calls of the
+    batch, since MAF also answers the non-paused ones (found live)."""
     calls = batch or [request.function_call for request in pending if request.function_call is not None]
     return [
         Message(role="assistant", contents=calls),
@@ -75,7 +75,7 @@ async def decline(
 ) -> AgentResponse[Any]:
     """Answers native requests with "rejected": the tool never runs. No note is added: MAF places the rejection result
     after any other input, and a message between a tool call and its result is rejected by Anthropic (HTTP 400, found
-    live in L37). The reply the customer sees states the factual reason, written by code (see the workflow)."""
+    live). The reply the customer sees states the factual reason, written by code (see the workflow)."""
     response: AgentResponse[Any] = await agent.run(answer(pending, approved=False, batch=batch), session=session)
     return response
 

@@ -6,7 +6,7 @@ namespace Support.Api.Modules.Conversations.Domain;
 /// <summary>
 /// A conversation owned by one customer: its finished turns (kept for client_turn_id replay), the one turn allowed to
 /// run at a time, and the verified routing context that follow-ups use. Finished turns and the context are stored durably
-/// (L11) and restored with <see cref="Restore"/>; a turn still running is not, so after a restart it is simply gone and
+/// And restored with <see cref="Restore"/>; a turn still running is not, so after a restart it is simply gone and
 /// the client can retry it with the same client_turn_id.
 /// </summary>
 public sealed class Conversation
@@ -165,7 +165,7 @@ public sealed class Conversation
         }
     }
 
-    /// <summary>The running turn with this id, if it is the one running now (L12: status lookup and cancel).</summary>
+    /// <summary>The running turn with this id, if it is the one running now (for status lookup and cancel).</summary>
     public TurnReservation? FindRunning(string turnId)
     {
         lock (gate)

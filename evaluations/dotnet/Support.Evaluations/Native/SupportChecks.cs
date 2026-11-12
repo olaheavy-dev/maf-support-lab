@@ -6,10 +6,10 @@ using Microsoft.Extensions.AI;
 namespace Support.Evaluations.Native;
 
 /// <summary>
-/// The local checks native evaluation runs (L30), through MAF's <see cref="LocalEvaluator"/>: no judge model, no
+/// The local checks native evaluation runs, through MAF's <see cref="LocalEvaluator"/>: no judge model, no
 /// credentials. Each one assesses only what its evidence can show. A conversation can prove which tool the model chose
 /// and whether a write paused, but not that a refund was authorized: that is the backend's gate, checked through its
-/// API by the behaviour runner (L16), and these checks never replace it.
+/// API by the behaviour runner, and these checks never replace it.
 /// </summary>
 internal static partial class SupportChecks
 {

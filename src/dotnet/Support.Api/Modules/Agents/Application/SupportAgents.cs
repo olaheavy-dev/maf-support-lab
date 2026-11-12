@@ -59,7 +59,7 @@ public sealed class SupportAgents
             : throw new InvalidOperationException($"No agent named '{name}' is registered.");
 
     /// <summary>
-    /// Bounds an agent's tool loop (L15): MAF's function-invocation step limit, and a time limit per tool call. A tool
+    /// Bounds an agent's tool loop: MAF's function-invocation step limit, and a time limit per tool call. A tool
     /// that overruns or throws ends the turn (tool_unavailable) instead of letting the model retry it in a loop.
     /// </summary>
     private static void Bound(AIAgent agent, ResilienceOptions limits)

@@ -15,7 +15,7 @@ using Support.Api.Modules.Technical.Application;
 namespace Support.Api.Tests.Modules.Access;
 
 /// <summary>
-/// L13: the cross-customer matrix. For both synthetic customers, every way to reach the other customer's data (each
+/// The cross-customer matrix. For both synthetic customers, every way to reach the other customer's data (each
 /// API route, streamed and plain; each tool and service called directly; the agents through the API and DevUI) is
 /// denied, and a denial looks exactly like a missing record. Identity comes only from the trusted server-side source:
 /// client headers, query strings, body fields, model arguments, and guessed ids never change it.
@@ -198,7 +198,7 @@ public sealed class AccessMatrixTests
     [Fact]
     public async Task A_detached_turn_keeps_the_principal_it_started_with()
     {
-        // Since L12 a turn outlives its request. Its principal is pinned when it starts, so a change of the configured
+        // A turn outlives its request. Its principal is pinned when it starts, so a change of the configured
         // identity mid-turn (or a request that has already ended) cannot change whose data the turn reads.
         var principals = new SwitchablePrincipalSource("CUST-1001");
         var model = new GatedModel();

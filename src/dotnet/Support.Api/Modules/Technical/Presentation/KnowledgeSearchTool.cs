@@ -11,7 +11,7 @@ namespace Support.Api.Modules.Technical.Presentation;
 
 /// <summary>
 /// The technical agent's only capability: search documented fixes. There is deliberately no ticket tool; when nothing
-/// matches, the reply offers escalation and nothing is created (tickets arrive with approval in L10).
+/// matches, the reply offers escalation and nothing is created (a ticket is a separate, approval-gated write).
 /// </summary>
 public sealed partial class KnowledgeSearchTool(
     IQueryHandler<SearchKnowledgeQuery, IReadOnlyList<KnowledgeArticle>> search,
@@ -38,7 +38,7 @@ public sealed partial class KnowledgeSearchTool(
 
         var articles = result.Value;
         // Article text is data handed to the model. It is checked for injection phrasing for diagnostics only; the
-        // model may still follow it, which is why every action it could lead to is gated in code (L14).
+        // model may still follow it, which is why every action it could lead to is gated in code.
         injection.Inspect("tool_result", string.Join('\n', articles.SelectMany(article => article.Steps.Prepend(article.Title))));
         var outcome = articles.Count > 0 ? ToolOutcome.Found : ToolOutcome.NoMatch;
         var outcomeName = articles.Count > 0 ? "found" : "no_match";

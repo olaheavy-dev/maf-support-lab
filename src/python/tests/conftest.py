@@ -10,7 +10,7 @@ import pytest
 # Importing the app module builds a default host: point it at a throwaway file, never the developer's local database.
 os.environ["STORAGE__PATH"] = os.path.join(tempfile.mkdtemp(prefix="support-import-"), "support.db")
 
-# Telemetry (L40): providers are once per process, so the whole test run shares in-memory exporters, installed before
+# Telemetry: providers are once per process, so the whole test run shares in-memory exporters, installed before
 # any app is built. Nothing is exported over OTLP from tests, even inside an Aspire-launched shell.
 for _name in [name for name in os.environ if name.upper().startswith("OTEL_")]:
     del os.environ[_name]
@@ -40,5 +40,5 @@ def clean_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: os.PathLike[str
     for name in list(os.environ):
         if name.upper().startswith(ENVIRONMENT_PREFIXES):
             monkeypatch.delenv(name, raising=False)
-    # Every test gets its own database file (L38), also when it builds Settings itself (live and host tests).
+    # Every test gets its own database file, also when it builds Settings itself (live and host tests).
     monkeypatch.setenv("STORAGE__PATH", os.path.join(tmp_path, "support.db"))

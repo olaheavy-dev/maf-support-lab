@@ -1,4 +1,4 @@
-# The model-judged quality lane (L32/L33): billed, so it runs only when someone starts it by hand. It is never a
+# The model-judged quality lane: billed, so it runs only when someone starts it by hand. It is never a
 # required check and never runs on push or pull request. Its budget is the one in evaluations/config/quality.json
 # (60 model calls, worst case 53); the runner refuses a configuration over budget before calling anything.
 # Needs the repository secret ANTHROPIC_API_KEY. Results and the report are uploaded as the quality-results artifact.

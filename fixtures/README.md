@@ -34,7 +34,7 @@ Resulting outcomes:
 
 Each scenario names the acting `principal` (set through the trusted test host, never through a request), ordered `steps` (`send` a message, `decide` an approval, optionally `as_principal` another customer, or `resend_previous`), per-step expectations, and the expected business state change.
 
-Expectations assert observable facts: route, outcome, reply kind, operation status, text that must or must not appear, and HTTP error code. They don't assert exact wording. These are feature-test inputs, not the formal evaluation datasets introduced in L29.
+Expectations assert observable facts: route, outcome, reply kind, operation status, text that must or must not appear, and HTTP error code. They don't assert exact wording. These are feature-test inputs, not the formal evaluation datasets introduced.
 
 ## Reset and isolation rules
 

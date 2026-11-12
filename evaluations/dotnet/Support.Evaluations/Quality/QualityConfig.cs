@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Support.Evaluations.Quality;
 
 /// <summary>
-/// The quality lane's configuration (evaluations/config/quality.json, L32): the judge, the backends' live model, the
+/// The quality lane's configuration (evaluations/config/quality.json): the judge, the backends' live model, the
 /// metrics, which dataset cases are sampled, the call budget, and the calibration examples. Everything that affects a
 /// score is pinned here and copied into the result, so two runs can be compared.
 /// </summary>

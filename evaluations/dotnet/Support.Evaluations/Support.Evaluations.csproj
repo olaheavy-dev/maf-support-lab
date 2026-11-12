@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The evaluation runner (L29+). It talks to either backend over HTTP only: it references no application project,
+  <!-- The evaluation runner. It talks to either backend over HTTP only: it references no application project,
        and the application manifests never gain evaluation dependencies. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -10,15 +10,15 @@
 
   <ItemGroup>
     <PackageReference Include="JsonSchema.Net" />
-    <!-- L30: MAF's local evaluation (EvalItem, LocalEvaluator, EvaluateAsync) and the Microsoft.Extensions.AI.Evaluation
+    <!-- MAF's local evaluation (EvalItem, LocalEvaluator, EvaluateAsync) and the Microsoft.Extensions.AI.Evaluation
          abstractions it builds on. Evaluation-only: no application project references them. -->
     <PackageReference Include="Microsoft.Agents.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
-    <!-- L32: the AI-judged quality evaluators (Relevance, Groundedness) and the Anthropic SDK for the judge client.
+    <!-- The AI-judged quality evaluators (Relevance, Groundedness) and the Anthropic SDK for the judge client.
          Only the explicit live quality lane calls a model. -->
     <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Quality" />
     <PackageReference Include="Anthropic" />
-    <!-- L33: the result store the aieval tool reports from. The runner writes results only; it never evaluates here. -->
+    <!-- The result store the aieval tool reports from. The runner writes results only; it never evaluates here. -->
     <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Reporting" />
   </ItemGroup>
 

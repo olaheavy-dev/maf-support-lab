@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace Support.Evaluations.Tests;
 
-/// <summary>The committed datasets are valid, and malformed or unversioned datasets and results are rejected (L29).</summary>
+/// <summary>The committed datasets are valid, and malformed or unversioned datasets and results are rejected.</summary>
 public sealed class DatasetTests
 {
     [Fact]

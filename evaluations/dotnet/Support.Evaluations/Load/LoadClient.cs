@@ -22,7 +22,7 @@ internal sealed record Timed(int Status, JsonObject? Body, double Milliseconds)
 }
 
 /// <summary>
-/// The contract API as the load scenarios use it (L25): black-box HTTP, JSON responses, every call timed. A backend
+/// The contract API as the load scenarios use it: black-box HTTP, JSON responses, every call timed. A backend
 /// process serves one customer, so a client is per customer (base URL).
 /// </summary>
 internal sealed class LoadClient(HttpClient http)

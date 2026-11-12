@@ -45,7 +45,7 @@ public sealed partial class FakeChatClient : IChatClient
 
     /// <summary>
     /// Messages containing this marker keep the specialist's model call busy (cancellably), so a running turn can be
-    /// cancelled from outside, as the L16 evaluation does. Fake mode only.
+    /// cancelled from outside, as the evaluation does. Fake mode only.
     /// </summary>
     public const string SlowTrigger = "[fake:slow-model]";
 
@@ -94,7 +94,7 @@ public sealed partial class FakeChatClient : IChatClient
             await Task.Delay(SlowDelay, cancellationToken).ConfigureAwait(false);
         }
 
-        // Text comes out word by word, like a real model's tokens (L12), so streaming has several deltas to show.
+        // Text comes out word by word, like a real model's tokens, so streaming has several deltas to show.
         var response = await GetResponseAsync(history, options, cancellationToken).ConfigureAwait(false);
         foreach (var update in response.ToChatResponseUpdates())
         {

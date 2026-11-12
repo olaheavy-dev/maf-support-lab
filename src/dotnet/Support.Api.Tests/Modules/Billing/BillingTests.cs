@@ -4,7 +4,7 @@ using Support.Api.Modules.Billing.Presentation;
 
 namespace Support.Api.Tests.Modules.Billing;
 
-/// <summary>L08: billing reads are scoped to the server's principal, whatever the model asks for.</summary>
+/// <summary>Billing reads are scoped to the server's principal, whatever the model asks for.</summary>
 public sealed class BillingTests
 {
     [Fact]

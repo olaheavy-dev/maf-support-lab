@@ -1,4 +1,4 @@
-"""L20: cooperative cancellation (porting .NET L12's CancellationTests).
+"""Cooperative cancellation (porting .NET the CancellationTests).
 
 ``POST …/turns/{id}/cancel`` asks a running turn to stop. It stops at its next await, or at the pre-commit boundary
 before any write. Cancelled before a write commits: the turn is ``cancelled``, the approved operation ``failed`` with

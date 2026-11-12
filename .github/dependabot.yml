@@ -28,13 +28,13 @@ updates:
       tests:
         patterns: ["xunit*"]
   - package-ecosystem: dotnet-sdk
-    # The SDK pinned in /global.json (L26). Runtime moves (a new major) stay deliberate, reviewed changes.
+    # The SDK pinned in /global.json. Runtime moves (a new major) stay deliberate, reviewed changes.
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 1
   - package-ecosystem: uv
-    # The Python backend (L17): pyproject.toml plus uv.lock; Dependabot updates both together.
+    # The Python backend: pyproject.toml plus uv.lock; Dependabot updates both together.
     directory: /src/python
     schedule:
       interval: weekly
@@ -47,7 +47,7 @@ updates:
       dev-tools:
         dependency-type: development
   - package-ecosystem: uv
-    # Evaluation tooling (L29): its own manifest, never the backend's.
+    # Evaluation tooling: its own manifest, never the backend's.
     directory: /evaluations/python
     schedule:
       interval: weekly

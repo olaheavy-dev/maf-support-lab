@@ -86,4 +86,4 @@ sequenceDiagram
 | Streaming | MAF `RunStreamingAsync` → SSE | `streaming.py` (FastAPI `EventSourceResponse`) |
 | Cancellation | per-turn `CancellationTokenSource` | `turn_control.py` (`TurnCancelled`) |
 
-The details are in the [.NET README](../src/dotnet/README.md#approvals-l10) and the [Python README](../src/python/README.md#approvals-l37).
+The details are in the [.NET README](../src/dotnet/README.md#approvals) and the [Python README](../src/python/README.md#approvals).

@@ -10,7 +10,7 @@ internal static class IdentityModule
 {
     /// <summary>
     /// The configured principal source (development customer, or a test's principal). The application resolves
-    /// <see cref="IPrincipalSource"/>, which wraps it so a detached turn's pinned principal wins (L13).
+    /// <see cref="IPrincipalSource"/>, which wraps it so a detached turn's pinned principal wins.
     /// </summary>
     public const string ConfiguredSourceKey = "configured";
 

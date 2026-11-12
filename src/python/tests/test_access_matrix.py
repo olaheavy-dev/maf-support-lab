@@ -1,4 +1,4 @@
-"""L39: the cross-customer matrix (porting .NET L13's AccessMatrixTests).
+"""The cross-customer matrix (porting .NET the AccessMatrixTests).
 
 For both synthetic customers where the fixtures allow, every way to reach the other customer's data is denied:
 - each API route;
@@ -44,7 +44,7 @@ CLAIMS: list[tuple[dict[str, str], str]] = [
     ({"X-Customer-Id": "{owner}"}, ""),
     ({"X-User-Id": "{owner}", "X-Principal": "{owner}"}, ""),
     ({}, "?customer_id={owner}"),
-    ({"Accept": "text/event-stream", "X-Customer-Id": "{owner}"}, ""),  # a streaming request (L20) claiming identity
+    ({"Accept": "text/event-stream", "X-Customer-Id": "{owner}"}, ""),  # a streaming request claiming identity
 ]
 # Ids of the right shape that exist for nobody.
 NOBODY = {

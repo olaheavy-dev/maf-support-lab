@@ -13,7 +13,7 @@ using Support.Api.Modules.Operations.Application;
 namespace Support.Api.Modules.Conversations.Presentation;
 
 /// <summary>
-/// Server-Sent Events for a turn (contract 1.1 streaming, L12). The turn's live events arrive through an
+/// Server-Sent Events for a turn (contract 1.1 streaming). The turn's live events arrive through an
 /// <see cref="ITurnObserver"/>; this class writes them as <c>turn.started</c>, <c>turn.progress</c>, <c>reply.delta</c>,
 /// and one terminal <c>turn.final</c> carrying the stored turn result. Errors found before the turn starts are normal
 /// problem responses. Reply text is the model's tokens as they arrive; if the reply the server settles on differs from

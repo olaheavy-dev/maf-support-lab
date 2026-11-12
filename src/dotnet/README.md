@@ -22,24 +22,24 @@ Support.Api/
 │  ├─ Domain/                 Result, Error, ErrorType
 │  ├─ Application/            ICommand/IQuery + handler interfaces, TraceIds, SupportTelemetry (span/meter name)
 │  ├─ Infrastructure/         SupportTelemetryRegistration (subscribes the OTel pipeline, service version);
-│  │                          Persistence/ SupportDatabase (SQLite file, schema, atomic unit of work; L11)
+│  │                          Persistence/ SupportDatabase (SQLite file, schema, atomic unit of work)
 │  └─ Presentation/           ContractJson, ApiResults (every problem response), Result.Match
 └─ Modules/
    ├─ Conversations/          the contract API
    │  ├─ Domain/              Conversation (idempotent turn reservation), Turn, ReplyKind
    │  ├─ Application/         CreateConversation, GetConversation, SubmitTurn, GetTurn handlers; IConversationStore
-   │  ├─ Infrastructure/      SqliteConversationStore  ← storage lives here (SQLite since L11)
+   │  ├─ Infrastructure/      SqliteConversationStore  ← storage lives here (SQLite)
    │  └─ Presentation/        ConversationEndpoints (thin), ConversationRequests (contract validation), contract shapes
    ├─ Orders/
    │  ├─ Domain/              Order, OrderId
    │  ├─ Application/         GetOrderStatus query + handler (ownership check); IOrderRepository
    │  ├─ Infrastructure/      FixtureOrderRepository (fixtures/data/orders.json), OrdersAgentFactory (the orders agent)
    │  └─ Presentation/        OrderStatusTool: the model's "endpoint"
-   ├─ Billing/                (L08) read-only: GetInvoice (INV- or ORD- id) and GetPaymentHistory, owner-checked;
+   ├─ Billing/ read-only: GetInvoice (INV- or ORD- id) and GetPaymentHistory, owner-checked;
    │                          BillingTools (get_invoice, get_payment_history), BillingAgentFactory
-   ├─ Technical/              (L08) read-only: keyword knowledge search; KnowledgeSearchTool (search_knowledge_base),
-   │                          TechnicalAgentFactory. No ticket tool until L10.
-   ├─ Triage/                 (L07) every message is triaged, then routed by code
+   ├─ Technical/ read-only: keyword knowledge search; KnowledgeSearchTool (search_knowledge_base),
+   │                          TechnicalAgentFactory; tickets are created through the approval gate.
+   ├─ Triage/ every message is triaged, then routed by code
    │  ├─ Domain/              TriageDecision, RouteTarget, RoutingRules (action must match target), TurnRoute, SupportReply
    │  ├─ Application/         TriageDecisionParser (full contract validation), TriageOutcome, ISupportRouter, TriageMetrics
    │  └─ Infrastructure/      TriageAgentFactory (JSON-only classifier, no tools); Routing/ (the MAF workflow and executors)
@@ -127,8 +127,8 @@ In fake mode, a message containing `[fake:model-error]` produces a failed turn t
 - In Development that is a fixed customer from server configuration (`Identity:DevelopmentCustomerId`, `CUST-1001`).
 - Headers, query strings, request bodies, and model output are never used for identity. Tests prove headers and query strings are ignored.
 - Tests run as other customers by replacing the *configured* principal source in the test host (`IdentityModule.ConfiguredSourceKey`). That injection point is in server code, so a client can't reach it.
-- **Pinned per turn (L13):** a turn outlives its request (L12). Its handler reads the principal once when it accepts the turn and pins it (`PrincipalScope`) for the whole detached run.
-- **Cross-customer matrix (L13):** `AccessMatrixTests` covers every route, tool, service and DevUI entry point, in both directions. A foreign record is indistinguishable from a missing one. See `docs/threat-model.md`.
+- **Pinned per turn:** a turn outlives its request. Its handler reads the principal once when it accepts the turn and pins it (`PrincipalScope`) for the whole detached run.
+- **Cross-customer matrix:** `AccessMatrixTests` covers every route, tool, service and DevUI entry point, in both directions. A foreign record is indistinguishable from a missing one. See `docs/threat-model.md`.
 - Outside Development there is no identity provider yet, and resolving a principal fails closed.
 - This is **not** authentication. Production authentication is out of scope (see `docs/threat-model.md`).
 
@@ -136,11 +136,11 @@ In fake mode, a message containing `[fake:model-error]` produces a failed turn t
 
 Implemented so far (see [contracts/README.md](../../contracts/README.md)):
 - `POST /api/v1/conversations` and `GET /api/v1/conversations/{id}`;
-- `POST /api/v1/conversations/{id}/turns`: JSON, or Server-Sent Events with `Accept: text/event-stream` (L12);
-- `GET /api/v1/conversations/{id}/turns/{turn_id}`: a finished turn, or `state: running` while it runs (L12);
-- `POST /api/v1/conversations/{id}/turns/{turn_id}/cancel`: cooperative cancel, `202` (L12);
-- `POST /api/v1/conversations/{id}/approvals/{approval_id}`: the customer's decision, which resumes the paused write as a new turn (L10);
-- `GET /api/v1/operations/{operation_id}`: the authoritative status of a write (L10).
+- `POST /api/v1/conversations/{id}/turns`: JSON, or Server-Sent Events with `Accept: text/event-stream`;
+- `GET /api/v1/conversations/{id}/turns/{turn_id}`: a finished turn, or `state: running` while it runs;
+- `POST /api/v1/conversations/{id}/turns/{turn_id}/cancel`: cooperative cancel, `202`;
+- `POST /api/v1/conversations/{id}/approvals/{approval_id}`: the customer's decision, which resumes the paused write as a new turn;
+- `GET /api/v1/operations/{operation_id}`: the authoritative status of a write.
 
 The rules:
 - Requests with unknown fields (such as `customer_id`) get `400 invalid_request`.
@@ -151,7 +151,7 @@ The rules:
   - a *different* turn is rejected with `409 turn_in_progress`. It is not queued, so the client decides whether to retry.
   - Other conversations aren't affected.
 
-Since L11 conversations, finished turns, approvals and simulated changes survive a restart (see "Durable state" below). Streaming and cancellation are described below (L12).
+Conversations, finished turns, approvals and simulated changes survive a restart (see "Durable state" below). Streaming and cancellation are described below.
 
 ```bash
 curl -s -X POST localhost:5180/api/v1/conversations -H 'content-type: application/json' -d '{}'
@@ -159,7 +159,7 @@ curl -s -X POST localhost:5180/api/v1/conversations/<conversation_id>/turns -H '
   -d '{"client_turn_id":"'$(uuidgen)'","message":"Where is my order ORD-1002?"}'
 ```
 
-## Routing (L07)
+## Routing
 
 Every turn runs the `support-routing` workflow (MAF Workflows 1.28.0, built per turn). The first case that matches wins:
 
@@ -187,7 +187,7 @@ The reply kind comes from what the tools recorded, not from the model's wording:
 - **`confidence` is recorded on the triage span only.** It never affects routing: it is model-generated and uncalibrated.
 - **The specialist receives the original message**, alongside the validated fields. The customer stays in trusted server context, and the triage `order_id` is only a claim: ownership is still checked by the orders handler.
 
-## Approvals (L10)
+## Approvals
 
 Every simulated write (cancel an order, refund an order, open a ticket) waits for the customer's approval of the **exact** action. The model can ask; only the customer can approve; and the service decides whether the write is allowed.
 
@@ -212,12 +212,12 @@ POST …/approvals/appr_… { "operation_id": "op_…", "decision": "approve" | 
 
 **Where each rule lives:**
 - **Eligibility:** `OrderRules` (cancel only `processing`; refund only `delivered`, within 30 days of the fixtures' reference time, not already refunded), using `fixtures/data/policies.json`.
-- **Writes:** each module performs its own: `CancelOrderWriteHandler` (Orders), `RefundOrderWriteHandler` (Billing: full refund, `RFD-…`, a refund payment), `CreateTicketWriteHandler` (Technical: `TKT-…`). They change simulated state in the local SQLite file, atomically with the operation's `committed` record (L11), and never touch the fixture files.
+- **Writes:** each module performs its own: `CancelOrderWriteHandler` (Orders), `RefundOrderWriteHandler` (Billing: full refund, `RFD-…`, a refund payment), `CreateTicketWriteHandler` (Technical: `TKT-…`). They change simulated state in the local SQLite file, atomically with the operation's `committed` record, and never touch the fixture files.
 - **The approval record:** `Operations` module (`Operation`, `OperationService`, `GET /api/v1/operations/{id}`).
 - **No model-supplied authority:** no tool takes a customer id or a "confirmed" flag.
 - **History:** native approval requests and responses are dropped from conversation history, because approvals are operation state, not chat.
 
-## Conversation memory (L09)
+## Conversation memory
 
 The agents are shared singletons; **a conversation's state lives with the conversation**, never in an agent object:
 - **Native sessions:** each conversation has its own MAF `AgentSession` per specialist, created on first use and reused on later turns (`Triage/Infrastructure/Routing/ConversationSessions.cs`).
@@ -230,9 +230,9 @@ The agents are shared singletons; **a conversation's state lives with the conver
 
   Triage stays stateless and gets the previous route as a hint.
 - **Isolation:** sessions are reached only through an owned conversation (another customer gets `404`). Separate conversations share nothing.
-- **Limits:** DevUI workflow chats are stateless. Sessions are stored after every run since L11, with no expiry yet.
+- **Limits:** DevUI workflow chats are stateless. Sessions are stored after every run, with no expiry yet.
 
-## Durable state (L11)
+## Durable state
 
 Everything a conversation needs survives a restart. It lives in one local SQLite file: `Storage:Path`, by default `.data/dotnet/support.db`, which Git ignores. Delete the file to start fresh. The Python backend and each evaluation run use their own file.
 
@@ -249,7 +249,7 @@ Everything a conversation needs survives a restart. It lives in one local SQLite
   - After a crash, a retried decision is answered from the stored record if the operation already finished. If it's still `running`, the paused request is resumed, which is safe because nothing was applied.
 - **No workflow checkpoints:** the workflow never pauses mid-run, because an approval ends the turn. See `docs/decisions/0003-state-and-idempotency.md`, which also explains why this is *not* exactly-once against a real external provider.
 
-## Streaming and cancellation (L12)
+## Streaming and cancellation
 
 - **A turn is detached from its HTTP request.**
   - It runs on its own cancellation, which **only** `POST …/turns/{turn_id}/cancel` triggers.
@@ -318,7 +318,7 @@ They never run in CI or a plain `dotnet test`.
 | --- | --- | --- |
 | Identity, ownership, eligibility, approval enforcement, idempotency, operation state | Application handlers (plain C#, `Modules/*/Application`) | Must be deterministic, testable, and impossible for the model to bypass. |
 | HTTP contract, validation, error mapping, streaming | Presentation endpoints (`Modules/*/Presentation`, `Common/Presentation`) | Implements `contracts/` exactly. |
-| Understanding the request, choosing a route, wording the reply, deciding which read tool to call | Agents and workflow (MAF, from L05/L07) | Language understanding is the model's job; its output is validated before use. |
+| Understanding the request, choosing a route, wording the reply, deciding which read tool to call | Agents and workflow (MAF) | Language understanding is the model's job; its output is validated before use. |
 | Startup, health, telemetry, local orchestration | Host, ServiceDefaults, AppHost | Infrastructure, not business logic. |
 
 Agents reach application handlers through tools. Tools receive the principal from trusted server context, never as a model argument.

@@ -1,4 +1,4 @@
-"""L20 (found live): a model may ask for a read and a write in one response. MAF pauses the write, keeps the read in the
+"""Found live: a model may ask for a read and a write in one response. MAF pauses the write, keeps the read in the
 session, and runs it when the write is answered, sending both results. The answer must therefore re-send every call of
 that batch, or Anthropic rejects the orphaned result (HTTP 400). The fake model enforces Anthropic's pairing rule.
 """

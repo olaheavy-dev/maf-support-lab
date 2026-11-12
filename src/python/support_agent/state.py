@@ -1,4 +1,4 @@
-"""The simulated business state (L37; durable since L38): orders, payments, and tickets that approved writes change.
+"""The simulated business state (durable): orders, payments, and tickets that approved writes change.
 
 Orders start from the shared fixtures; an order a write changed is stored in the database and wins over the fixture
 (the fixture files are never changed). Refund payments and tickets are stored with their id counters. Inside

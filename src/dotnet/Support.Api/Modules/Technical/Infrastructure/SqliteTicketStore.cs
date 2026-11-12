@@ -5,7 +5,7 @@ using Support.Api.Modules.Technical.Domain;
 
 namespace Support.Api.Modules.Technical.Infrastructure;
 
-/// <summary>Simulated tickets in the local database, numbered TKT-0001 upwards by a stored counter (L11).</summary>
+/// <summary>Simulated tickets in the local database, numbered TKT-0001 upwards by a stored counter.</summary>
 internal sealed class SqliteTicketStore(SupportDatabase database) : ITicketStore
 {
     private static readonly JsonSerializerOptions StoredJson = new(JsonSerializerDefaults.Web);

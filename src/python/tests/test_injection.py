@@ -1,4 +1,4 @@
-"""L41: prompt injection, direct and indirect (porting .NET L14's InjectionTests).
+"""Prompt injection, direct and indirect (porting .NET the InjectionTests).
 
 Every attacker model here *always* follows the attack, so these tests prove the application's gates, not the model's
 judgment: ownership, exact-argument approval, eligibility, and tool-argument validation hold whatever the model does.
@@ -246,7 +246,7 @@ def test_an_injection_in_the_rejection_reason_never_reaches_the_model_and_change
     assert operation["status"] == "rejected"
     assert order_status(app, "ORD-1003") == "processing"
     assert len(operations_of(app, conversation)) == 1
-    # Python difference: MAF Python's approval response carries no reason, so the model never sees it (L37).
+    # Python difference: MAF Python's approval response carries no reason, so the model never sees it.
     assert not any("cancel it anyway" in m.text for messages in seen for m in messages)
 
 

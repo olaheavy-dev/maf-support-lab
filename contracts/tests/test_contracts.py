@@ -11,7 +11,7 @@ from schema_registry import ROOT, load_json, schema_files, validator
 EXAMPLES = ROOT / "contracts" / "examples"
 INDEX = load_json(EXAMPLES / "index.json")["examples"]
 
-# Cases the L02 acceptance criteria require the examples to cover.
+# Cases the acceptance criteria require the examples to cover.
 REQUIRED_COVERAGE = {
     "success",
     "missing_order",

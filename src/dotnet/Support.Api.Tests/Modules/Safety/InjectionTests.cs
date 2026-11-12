@@ -17,7 +17,7 @@ using Support.Api.Modules.Technical.Domain;
 namespace Support.Api.Tests.Modules.Safety;
 
 /// <summary>
-/// L14: prompt injection, direct (in the customer's message or decision reason) and indirect (in a tool result). The
+/// Prompt injection, direct (in the customer's message or decision reason) and indirect (in a tool result). The
 /// fake model here is an <em>obedient attacker</em>: it does exactly what the injected text says. Every attempted
 /// cross-customer read, unapproved write, or changed approved action must still be stopped by code. The phrase
 /// heuristic only records signals: it has false positives, is bypassed by paraphrase, and never decides anything.

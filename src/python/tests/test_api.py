@@ -1,4 +1,4 @@
-"""L18: the version-1 contract API in Python: validation, ownership, idempotency, and controlled failures."""
+"""The version-1 contract API in Python: validation, ownership, idempotency, and controlled failures."""
 
 from __future__ import annotations
 
@@ -148,7 +148,7 @@ def test_a_triage_decision_whose_action_and_target_disagree_is_never_routed(targ
 
 
 def test_a_turn_that_fails_after_triage_still_reports_its_route() -> None:
-    """L21 (found by the cross-backend probes): like .NET, a failed turn keeps the route triage chose."""
+    """Found by the cross-backend probes: like .NET, a failed turn keeps the route triage chose."""
     app, _ = host()
     with TestClient(app) as client:
         api = Api(client)

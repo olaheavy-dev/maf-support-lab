@@ -1,4 +1,4 @@
-"""Per-turn control (L20, porting L12): cooperative cancellation and the live events a stream shows.
+"""Per-turn control (the Python counterpart of .NET's turn control): cooperative cancellation and the live events a stream shows.
 
 A turn runs as its own task, detached from any request. Its ``TurnControl`` is the only way to stop it: a cancel request
 sets the flag and cancels the task, so an in-flight model call stops at its next await. Work also checks the flag at

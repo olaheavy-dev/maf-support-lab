@@ -15,7 +15,7 @@ namespace Support.Api.Modules.Conversations.Presentation;
 /// <summary>
 /// Version-1 conversation and turn routes (contracts/README.md). Each endpoint only translates:
 /// HTTP in, a command or query to its handler, the result back out as contract JSON, or as Server-Sent Events when
-/// the client asks for <c>text/event-stream</c> (L12).
+/// the client asks for <c>text/event-stream</c>.
 /// </summary>
 internal static class ConversationEndpoints
 {

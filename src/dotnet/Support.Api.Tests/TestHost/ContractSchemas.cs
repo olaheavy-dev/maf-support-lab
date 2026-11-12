@@ -4,7 +4,7 @@ using Json.Schema;
 namespace Support.Api.Tests.TestHost;
 
 /// <summary>
-/// Validates API output against the shared L02 contract schemas (contracts/schemas), the same files
+/// Validates API output against the shared contract schemas (contracts/schemas), the same files
 /// the Python backend will be checked against.
 /// </summary>
 internal static class ContractSchemas

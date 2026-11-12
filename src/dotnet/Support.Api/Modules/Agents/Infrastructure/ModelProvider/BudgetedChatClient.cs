@@ -5,7 +5,7 @@ using Support.Api.Common.Application.Resilience;
 namespace Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 
 /// <summary>
-/// Counts every model call against the running turn's budget before it is made (L15). A model that loops (calling
+/// Counts every model call against the running turn's budget before it is made. A model that loops (calling
 /// tools forever, or asking for approvals again and again) runs out of budget and the turn fails safely instead of
 /// spending without limit. Outermost in the pipeline, so a refused call never reaches the provider or its telemetry.
 /// </summary>
@@ -29,7 +29,7 @@ internal sealed class BudgetedChatClient(IChatClient inner) : DelegatingChatClie
 }
 
 /// <summary>
-/// Sits under the Anthropic SDK's own HTTP client (L15): counts every HTTP attempt (so retries are visible per turn)
+/// Sits under the Anthropic SDK's own HTTP client: counts every HTTP attempt (so retries are visible per turn)
 /// and keeps the provider's retry-after hint, which the SDK honours when retrying but does not expose on its exception.
 /// It never retries anything itself: the SDK is the single retry owner for model calls.
 /// </summary>

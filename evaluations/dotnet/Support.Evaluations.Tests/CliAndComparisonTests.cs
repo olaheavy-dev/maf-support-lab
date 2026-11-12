@@ -2,7 +2,7 @@ using System.Text.Json.Nodes;
 
 namespace Support.Evaluations.Tests;
 
-/// <summary>The run options that would make a run unsafe or ambiguous are refused, and the comparison flags disagreement (L16).</summary>
+/// <summary>The run options that would make a run unsafe or ambiguous are refused, and the comparison flags disagreement.</summary>
 public sealed class CliAndComparisonTests
 {
     [Theory]

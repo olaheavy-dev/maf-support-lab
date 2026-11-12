@@ -1,7 +1,7 @@
 namespace Support.Api.Common.Application.Resilience;
 
 /// <summary>
-/// Every limit that bounds a turn (L15), in one place (configuration section <c>Resilience</c>). Defaults are sized for
+/// Every limit that bounds a turn, in one place (configuration section <c>Resilience</c>). Defaults are sized for
 /// the slowest normal turn with headroom; see docs/observability.md for the retry inventory and the worst case.
 /// </summary>
 public sealed class ResilienceOptions

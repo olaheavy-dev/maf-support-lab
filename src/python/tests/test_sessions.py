@@ -1,4 +1,4 @@
-"""L19: each conversation has its own native sessions and verified context; nothing is shared or global."""
+"""Each conversation has its own native sessions and verified context; nothing is shared or global."""
 
 from __future__ import annotations
 

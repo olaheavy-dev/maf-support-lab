@@ -1,4 +1,4 @@
-"""The documentation link checker (L34): it fails on a broken relative link, anchor, or image, and only on those."""
+"""The documentation link checker: it fails on a broken relative link, anchor, or image, and only on those."""
 
 from __future__ import annotations
 

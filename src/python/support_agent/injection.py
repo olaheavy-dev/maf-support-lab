@@ -1,4 +1,4 @@
-"""A diagnostic prompt-injection heuristic (L41, porting L14's InjectionSignals).
+"""A diagnostic prompt-injection heuristic (porting the InjectionSignals).
 
 It looks for well-known attack phrasings in customer text and tool results and records which ones it found, on the
 current span and as a metric, so attacks can be studied. **It never blocks, rewrites, or decides anything.** It has

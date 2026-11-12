@@ -1,4 +1,4 @@
-"""L20: turns stream as Server-Sent Events (contract 1.1), porting .NET L12's StreamingTests.
+"""Turns stream as Server-Sent Events (contract 1.1), porting .NET the StreamingTests.
 
 Every event is checked against ``stream-event.schema.json`` as it is parsed. A stream is ``turn.started``, then
 progress and reply text, then exactly one ``turn.final`` carrying the stored turn. The deltas after the last
@@ -271,7 +271,7 @@ def test_a_plain_json_request_still_gets_one_turn_result() -> None:
 
 
 def test_a_write_the_model_asks_for_shows_as_a_tool_call_before_the_pause() -> None:
-    """The same as .NET (aligned in L29): a paused write tool is still reported as a tool call, then the pause."""
+    """The same as .NET (aligned): a paused write tool is still reported as a tool call, then the pause."""
     app, _ = host()
     with TestClient(app) as client:
         conversation = Api(client).create_conversation()

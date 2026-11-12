@@ -1,6 +1,6 @@
 # 0004 - SDK comparison: one contract, two native implementations
 
-- Status: Accepted (L21, 2026-11-11).
+- Status: Accepted (2026-11-11).
 - Versions: MAF .NET 1.28.0 with the Anthropic C# SDK 13.7.0, and MAF Python 1.25.0 with `agent-framework-anthropic` 1.0.0b261106 and the Anthropic Python SDK 1.17.0 ([0001](0001-version-baseline.md)).
 
 ## Decision
@@ -30,30 +30,30 @@ They may differ in the wording of human-readable text, and in how they get there
 
 | Resource | .NET | Python |
 | --- | --- | --- |
-| Model client | DI singleton. The SDK's `HttpClient` is created directly, not by `IHttpClientFactory`, so the service defaults' resilience handler can't add a second retry layer (L15). | Created once in the FastAPI lifespan and registered with `Resources`, which closes clients newest first. MAF won't close an SDK client it was given, so the app closes it (L42). |
+| Model client | DI singleton. The SDK's `HttpClient` is created directly, not by `IHttpClientFactory`, so the service defaults' resilience handler can't add a second retry layer. | Created once in the FastAPI lifespan and registered with `Resources`, which closes clients newest first. MAF won't close an SDK client it was given, so the app closes it. |
 | Database | `SupportDatabase` singleton, one file per backend and run | `Database`, opened at startup and closed (checkpointed) at shutdown |
 | Running turns | Detached `Task`s with their own `CancellationTokenSource`; host shutdown cancels them | `RunningTurns`: detached tasks; shutdown cancels them and waits for them to be stored before the database closes |
-| Telemetry | Aspire `ServiceDefaults`; host-owned providers | Its own providers, once per process; flushed in the lifespan; a bounded 5 s exit (L40) |
+| Telemetry | Aspire `ServiceDefaults`; host-owned providers | Its own providers, once per process; flushed in the lifespan; a bounded 5 s exit |
 | DevUI | Same process, Development only | A separate process: a mounted sub-app's lifespan doesn't run, and DevUI calls `/v1` at the root |
 
 ## Known implementation differences (none is client-visible except as noted)
 
 | Area | .NET | Python | Effect on the contract |
 | --- | --- | --- | --- |
-| Rejection reason | Reaches the model with the native rejection | Audit-only: MAF Python's approval response has no reason field | None. The reason is never trusted either way (L41). |
-| Tool call/result pairing | The native session keeps the tool call | History is plain text, so the gate re-sends the call (or the whole parallel batch) before answering | None. Found live in L37/L20; the fake model now enforces Anthropic's pairing rule. |
+| Rejection reason | Reaches the model with the native rejection | Audit-only: MAF Python's approval response has no reason field | None. The reason is never trusted either way. |
+| Tool call/result pairing | The native session keeps the tool call | History is plain text, so the gate re-sends the call (or the whole parallel batch) before answering | None. Found live; the fake model now enforces Anthropic's pairing rule. |
 | Cancellation | `CancellationToken` everywhere | A flag plus `task.cancel()`, only for a started task. `TurnCancelled` subclasses `CancelledError` because MAF's tool layer absorbs ordinary exceptions. | None. Both have the same pre-commit boundary. |
 | Tool fault ends the turn | `MaximumConsecutiveErrorsPerRequest = 0` | `ToolLimits` raises `MiddlewareFailure`; only MAF's argument validation goes back to the model | None (`tool_unavailable` in both). |
 | Tool timeout | `FunctionInvoker` with a timeout | `asyncio.timeout`. A sync tool runs in a worker thread, which finishes in the background (read-only lookups only). | None. |
 | Rate-limit hint | A `DelegatingHandler` captures `retry-after`, because the SDK's exception lacks it | Read from `RateLimitError.response` | None (`retry_after_seconds` in both). |
-| Validation messages | Its own wording; one `errors[]` entry for the first problem | jsonschema's wording; possibly several entries | **Wording only.** Both always list errors with JSON pointers, and `""` is the whole body (aligned in L21). |
+| Validation messages | Its own wording; one `errors[]` entry for the first problem | jsonschema's wording; possibly several entries | **Wording only.** Both always list errors with JSON pointers, and `""` is the whole body (aligned). |
 | Fake models | `FakeChatClient` | `fake_model.py`, a port | Reply **wording** differs; routes, kinds, facts and ids match. |
-| Tool argument names | C# parameter names (`orderId`, `relatedOrderId`): MEAI's `AIFunctionFactory` keeps them | snake_case (`order_id`) | None for clients (arguments never cross the API). Evaluation datasets store canonical snake_case, and each native adapter maps it (L30). |
-| Approval-required calls in native evaluation | A paused write arrives as a `ToolApprovalRequestContent` that **replaces** the call. MAF 1.28.0's `EvalChecks.ToolCallArgsMatch` counts only `FunctionCallContent`, so in a live `EvaluateAsync(queries, …)` run it reports the write as "not called". | The response **keeps** the `function_call` **and** adds a `function_approval_request`, so MAF 1.25.0's `tool_call_args_match` sees a paused write even live (L31). | None for clients. Both SDKs' captures keep the call (and the approval), and recorded evaluation scores the same evidence. |
+| Tool argument names | C# parameter names (`orderId`, `relatedOrderId`): MEAI's `AIFunctionFactory` keeps them | snake_case (`order_id`) | None for clients (arguments never cross the API). Evaluation datasets store canonical snake_case, and each native adapter maps it. |
+| Approval-required calls in native evaluation | A paused write arrives as a `ToolApprovalRequestContent` that **replaces** the call. MAF 1.28.0's `EvalChecks.ToolCallArgsMatch` counts only `FunctionCallContent`, so in a live `EvaluateAsync(queries, …)` run it reports the write as "not called". | The response **keeps** the `function_call` **and** adds a `function_approval_request`, so MAF 1.25.0's `tool_call_args_match` sees a paused write even live. | None for clients. Both SDKs' captures keep the call (and the approval), and recorded evaluation scores the same evidence. |
 | Evaluation API | `Microsoft.Agents.AI` evaluation types are stable in 1.28.0. `AgentEvaluationResults.InputItems` returns the evaluated conversations. | `agent_framework` marks evaluation **experimental** in 1.25.0 (`ExperimentalWarning: [EVALS]`). `EvalResults` doesn't return the evaluated items, so recording wraps `LocalEvaluator` in an `Evaluator` that keeps them. | None for clients; the evaluation code differs. |
 | Evaluation orchestration | `agent.EvaluateAsync(...)`, an extension method; separate overloads for queries and responses | `evaluate_agent(agent=…, queries=… / responses=…)` and `evaluate_workflow(...)`, free async functions with keyword arguments; workflows are evaluated per agent too | None. Both score recorded responses without re-running the agent. |
 
-## Compatibility evidence (L21)
+## Compatibility evidence
 
 - **Each backend's own feature and contract tests:** .NET 246 passed (10 live tests skipped); Python 266 passed (14 live tests skipped). Both run the same 19 shared scenarios (`fixtures/scenarios`), with no model credentials.
 - **Cross-backend probes** (`contracts/probes/run_probes.py`, the `cross-backend` CI job):
@@ -65,7 +65,7 @@ They may differ in the wording of human-readable text, and in how they get there
   2. .NET's invalid create body had no `errors[]`, although the contract requires it. It now lists the offending pointer.
   3. Python used `"/"` for the whole body. It now uses `""` (RFC 6901).
 - **The probes catch regressions:** removing Python's ownership check, or changing .NET's `client_turn_id_reused` status, each fails them (checked when the probes were introduced).
-- **Out of scope here:** model quality, statistical comparison and formal evaluation wait for E08 (L29+). These probes assert contract behaviour on synthetic fixtures, not answer quality.
+- **Out of scope here:** model quality, statistical comparison and formal evaluation are covered by the [evaluation suite](../../evaluations/README.md). These probes assert contract behaviour on synthetic fixtures, not answer quality.
 
 ## Choosing an SDK for a team
 

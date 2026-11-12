@@ -1,11 +1,11 @@
-"""Writes and their approvals (L37, porting L10).
+"""Writes and their approvals (the Python counterpart of .NET's operations).
 
 A write is proposed as an ``Operation`` bound, when created, to the customer, the conversation, the kind, and the
 exact arguments (canonical JSON). The customer's decision is recorded once; an approved write runs at most once, and
 only inside an ``approval_scope`` naming exactly that operation. Eligibility and ownership are checked by the module
 that owns the data, both before asking (so customers aren't asked to approve impossible actions) and again,
 authoritatively, at execution. Approval is human consent; these checks are business authorization. Both are needed.
-Durable since L38: operations and their paused native requests are stored in SQLite, every status change is guarded
+Durable: operations and their paused native requests are stored in SQLite, every status change is guarded
 on the stored status, and an approved write commits in one transaction with its "committed" record.
 """
 
@@ -259,7 +259,7 @@ class OperationStore:
         if not rows:
             return None
         stored: dict[str, Any] = json.loads(rows[0][0])
-        if "request" not in stored:  # stored before L20: the request alone
+        if "request" not in stored:  # stored by an older version: the request alone
             return Content.from_dict(stored), []
         return Content.from_dict(stored["request"]), [Content.from_dict(call) for call in stored["batch"]]
 
@@ -459,7 +459,7 @@ class OperationService:
     async def execute_approved(self, principal: Principal, kind: Kind, arguments: Mapping[str, Any]) -> dict[str, Any]:
         """Runs a write only for the approved operation in scope: same customer, same kind, exactly the same arguments, once.
 
-        The pre-commit boundary (L20): once the turn's cancellation was requested, no write starts. A write that already
+        The pre-commit boundary: once the turn's cancellation was requested, no write starts. A write that already
         committed stays committed; cancellation never rolls it back."""
         operation = _approved.get()
         mapped = map_arguments(kind, arguments, self.policy.ticket_priorities)

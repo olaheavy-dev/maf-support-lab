@@ -7,7 +7,7 @@ using Support.Evaluations.Load;
 namespace Support.Evaluations.Tests;
 
 /// <summary>
-/// The load scenarios' checks (L25) against a misbehaving fake API: each check must fail when the backend leaks,
+/// The load scenarios' checks against a misbehaving fake API: each check must fail when the backend leaks,
 /// duplicates, or lets two decisions win, and pass when it behaves. (The real backends are exercised by the
 /// <c>load</c> command itself; these prove the checks can fail at all.)
 /// </summary>

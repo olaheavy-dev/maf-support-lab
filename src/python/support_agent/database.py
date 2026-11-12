@@ -1,4 +1,4 @@
-"""The local durable store (L38, porting L11): one SQLite file per backend and per run.
+"""The local durable store (the Python counterpart of the .NET store): one SQLite file per backend and per run.
 
 The Python backend never shares this file with .NET, and each test or evaluation run gets its own (``STORAGE__PATH``).
 Writes inside :meth:`Database.atomically` share one ``BEGIN IMMEDIATE`` transaction and commit together or not at all;

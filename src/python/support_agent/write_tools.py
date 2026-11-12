@@ -1,4 +1,4 @@
-"""The agents' only write tools (L37). Each is a native approval-required MAF tool: the framework pauses for the
+"""The agents' only write tools. Each is a native approval-required MAF tool: the framework pauses for the
 customer's decision instead of running it. When it does run (after approval), it can only perform the operation the
 customer approved, with exactly these arguments, once (OperationService.execute_approved). None takes a customer id or
 a "confirmed" flag: approval comes from the customer's decision, never from the model.

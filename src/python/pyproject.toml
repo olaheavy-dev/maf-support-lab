@@ -18,7 +18,7 @@ dependencies = [
     "uvicorn==0.54.0",
     "pydantic==2.14.3",
     "pydantic-settings==2.16.2",
-    # L40: OTLP over gRPC to Aspire (the owner's choice; brings grpcio, which ships a cp315 wheel).
+    # OTLP over gRPC to Aspire (the owner's choice; brings grpcio, which ships a cp315 wheel).
     "opentelemetry-exporter-otlp-proto-grpc==1.45.2",
 ]
 
@@ -52,7 +52,7 @@ ignore = ["S101", "E501"]
 "tests/**" = ["S105", "S106"] # fake keys in tests are not secrets
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-# The Python backend never borrows .NET behavior (L17): no CLR bridge, so its telemetry and authorization are its own.
+# The Python backend never borrows .NET behavior: no CLR bridge, so its telemetry and authorization are its own.
 "clr".msg = "Do not import .NET code into the Python backend."
 "pythonnet".msg = "Do not import .NET code into the Python backend."
 

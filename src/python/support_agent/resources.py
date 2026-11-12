@@ -1,4 +1,4 @@
-"""Ownership of long-lived resources (L17).
+"""Ownership of long-lived resources.
 
 The application lifespan owns every client it creates (later, the Anthropic client and the database): each is
 registered here when created and closed exactly once, newest first, when the host shuts down. Nothing else closes

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.maf-support-lab.example/evaluations/v1/evaluation-capture.schema.json",
   "title": "Captured conversation",
-  "description": "One recorded agent turn for native evaluation (L30): the query, the agent's response messages with tool calls, results and paused approvals, the tools it had, and the case it came from. Normalized, so no SDK's internal serialization leaks into it.",
+  "description": "One recorded agent turn for native evaluation: the query, the agent's response messages with tool calls, results and paused approvals, the tools it had, and the case it came from. Normalized, so no SDK's internal serialization leaks into it.",
   "type": "object",
   "required": [
     "schema_version",

@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 namespace Support.Evaluations.Load;
 
 /// <summary>
-/// <c>load --backend dotnet|python [--levels 1,4,16] [--turns-per-level 96] [--out DIR] [--source-commit SHA]</c> (L25): fault and
+/// <c>load --backend dotnet|python [--levels 1,4,16] [--turns-per-level 96] [--out DIR] [--source-commit SHA]</c>: fault and
 /// bounded-load scenarios against one backend that the runner launches itself, in fake model mode (no key, no cost).
 /// Read-only scenarios share one store; every scenario that writes gets a fresh store and fresh processes. Writes one
 /// evaluation-load document; exits 1 if any check failed. Live load is out of scope: a live model would measure the

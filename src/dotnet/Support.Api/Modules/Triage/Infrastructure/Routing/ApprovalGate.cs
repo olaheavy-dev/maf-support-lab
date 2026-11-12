@@ -9,7 +9,7 @@ using Support.Api.Modules.Triage.Domain;
 namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 
 /// <summary>
-/// Adapts native approval requests to the contract's bound approvals (L10). When a specialist's model calls a write
+/// Adapts native approval requests to the contract's bound approvals. When a specialist's model calls a write
 /// tool, the framework pauses with a <see cref="ToolApprovalRequestContent"/> instead of running it. This gate then:
 /// proposes it as an operation (valid arguments, the customer's own record, eligible now), which ends the turn
 /// awaiting approval; or declines it natively with the factual reason, so nothing is proposed and the model explains.
@@ -36,7 +36,7 @@ internal sealed class ApprovalGate(OperationService operations, PendingNativeApp
             if (requests.Count == 1 && requests[0].ToolCall is FunctionCallContent call)
             {
                 var native = requests[0];
-                // The operation and its paused native request are stored together (L11, Codex review on PR #77): an
+                // The operation and its paused native request are stored together (Codex review on PR #77): an
                 // approval is never listed as pending unless the request it would resume was stored too.
                 var proposal = request.ConversationId is { } conversationId && request.TurnId is { } turnId && session is not null
                     ? await unitOfWork.AtomicallyAsync(

@@ -30,7 +30,7 @@ internal sealed class TelemetryCapture
     /// <summary>Flushes metrics and waits for the trace's server span, which ends just after the response is sent.</summary>
     /// <summary>
     /// The spans of one trace, once its server span and every span named in <paramref name="required"/> have ended.
-    /// A turn runs detached from its request (L12), so its own spans (support.turn) can end a moment after the HTTP
+    /// A turn runs detached from its request, so its own spans (support.turn) can end a moment after the HTTP
     /// response: a test that reads them must name them, or it races the turn (seen as a CI flake in PR #113).
     /// </summary>
     public async Task<IReadOnlyList<Activity>> TraceAsync(WebApplicationFactory<Program> factory, ActivityTraceId traceId, params string[] required)

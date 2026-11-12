@@ -1,4 +1,4 @@
-"""L40: the Python backend's own telemetry, read from the in-memory exporters installed by the conftest.
+"""The Python backend's own telemetry, read from the in-memory exporters installed by the conftest.
 
 Spans are found by trace id (other tests run in the same process). Checked: one connected trace per turn, a distinct
 service identity, real metric samples with bounded labels, logs on the turn's trace, no message content or customer
@@ -383,7 +383,7 @@ print(telemetry.configure(Settings(), default_service_name={default!r}).service_
 
 
 def test_an_unreachable_collector_never_holds_the_process_on_exit() -> None:
-    # Found in L40: the gRPC exporters retry, and the SDK's own exit hooks have no limit (over a minute). Ours does.
+    # Found while building it: the gRPC exporters retry, and the SDK's own exit hooks have no limit (over a minute). Ours does.
     import time
 
     started = time.monotonic()

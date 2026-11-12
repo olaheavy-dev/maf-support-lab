@@ -1,11 +1,11 @@
 # 0003 - Durable state and idempotent writes
 
-- Status: Accepted (L11, 2026-11-10); the Python port was added in L38 (2026-11-10). Assistant-drafted; the owner reviews it with each PR.
-- Applies to: `src/dotnet/Support.Api` (L11) and `src/python/support_agent` (L38, see "The Python backend" below). Each backend has its own store and file.
+- Status: Accepted (2026-11-10); the Python port was added (2026-11-10). Assistant-drafted; the owner reviews it with each PR.
+- Applies to: `src/dotnet/Support.Api` and `src/python/support_agent` (see "The Python backend" below). Each backend has its own store and file.
 
 ## Context
 
-Up to L10 everything lived in process memory:
+Before this decision everything lived in process memory:
 
 - conversations and their finished turns;
 - operations and approvals;
@@ -92,7 +92,7 @@ The decision resumes them as a new turn (`ResumeAsync`). Checkpoints would add a
   - Expiry is still lazy: it's applied when an approval is touched.
   - There are no retention or cleanup rules yet.
 
-## The Python backend (L38)
+## The Python backend
 
 The same design and guarantees, ported idiomatically. The observable behaviour is the same, and the durable-state test suite is ported case by case (`tests/test_durable_state.py`).
 
@@ -117,7 +117,7 @@ The same design and guarantees, ported idiomatically. The observable behaviour i
 - **Python-specific detail:** MAF Python runs an approved tool on the event loop, inside `approval_scope`. `execute_approved` re-reads the stored status inside the transaction before writing. A run that is stale (the operation was already finished) writes nothing and reports the stored result. If the guarded commit still loses, the business change rolls back with it (`Rollback`).
 - **Same limits** as section 5. Within one process, at most one turn per conversation runs at a time; across processes, only the stored guards apply. A test with two hosts on one file approving at once shows that the guards alone still give one write and one stored turn.
 
-## Connection pooling (L25)
+## Connection pooling
 
 The .NET store originally opened a fresh connection for every call (`Pooling = false`). Under concurrent writes, the load scenarios showed 150–190 ms tail latencies. With pooling, those tails dropped to 18–36 ms and read throughput roughly doubled, with every correctness check unchanged. Transactions are unaffected: a write still runs in one `BEGIN IMMEDIATE` transaction on one connection, and each pooled connection re-applies the pragmas when opened. Evidence: [load results](../evaluations/load.md#the-improvement-pooled-sqlite-connections-net).
 

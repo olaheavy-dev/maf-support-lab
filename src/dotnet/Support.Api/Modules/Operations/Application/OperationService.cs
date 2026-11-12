@@ -76,10 +76,10 @@ public sealed class OperationService(
             return operation.Result is { } done ? Result.Success(done) : Result.Failure<JsonObject>(Error.Conflict("not_approved", "This action is not awaiting execution."));
         }
 
-        // The business change and the operation's "committed" record are one transaction (L11): both are stored or
+        // The business change and the operation's "committed" record are one transaction: both are stored or
         // neither is. The commit is guarded on the stored status still being "running", so if any other run (a retry,
         // a duplicate, another host after a restart) finished this operation first, this write rolls back.
-        // The pre-commit cancellation boundary (L12): a cancel seen here stops the write before anything is applied. Once the
+        // The pre-commit cancellation boundary: a cancel seen here stops the write before anything is applied. Once the
         // transaction below has started, the write runs to its commit; a cancel arriving then is too late, and the
         // committed result stands. So cancellation and the commit can race, and whichever comes first decides.
         cancellationToken.ThrowIfCancellationRequested();

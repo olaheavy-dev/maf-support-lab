@@ -4,7 +4,7 @@ using Microsoft.Extensions.AI;
 namespace Support.Api.Modules.Agents.Application;
 
 /// <summary>
-/// How a specialist remembers a conversation (L09). History lives in each conversation's own <see cref="AgentSession"/>,
+/// How a specialist remembers a conversation. History lives in each conversation's own <see cref="AgentSession"/>,
 /// never in the shared agent object, so one agent instance serves every conversation without mixing them.
 /// </summary>
 public static class ConversationHistory
@@ -28,7 +28,7 @@ public static class ConversationHistory
 
     /// <summary>
     /// Which request messages to save after a run. Setting this filter replaces MAF's default, which skips messages
-    /// that were loaded from history; without that, every turn would save the whole history again (found in L09).
+    /// that were loaded from history; without that, every turn would save the whole history again (a bug found and fixed).
     /// So: skip history-sourced messages, as the default does, and also skip this turn's context note.
     /// </summary>
     public static bool ShouldStore(ChatMessage message) =>

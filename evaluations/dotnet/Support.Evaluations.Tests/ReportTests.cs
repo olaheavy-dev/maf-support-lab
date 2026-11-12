@@ -10,7 +10,7 @@ using Support.Evaluations.Reporting;
 namespace Support.Evaluations.Tests;
 
 /// <summary>
-/// The report (L33): result documents map into Microsoft's reporting store without re-scoring or calling a model, and
+/// The report: result documents map into Microsoft's reporting store without re-scoring or calling a model, and
 /// the report keeps what matters: failures stay failures, errors and skips are not scores, provenance, run ids,
 /// versions, unknown usage and estimates are visible, and judge calls show as fresh, never cached.
 /// </summary>

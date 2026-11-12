@@ -6,7 +6,7 @@ namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 
 /// <summary>
 /// The paused native approval requests (MAF/M.E.AI <see cref="ToolApprovalRequestContent"/>), keyed by our operation id.
-/// Answering one with <c>CreateResponse</c> resumes the framework's function invocation. Stored durably (L11) in the
+/// Answering one with <c>CreateResponse</c> resumes the framework's function invocation. Stored durably in the
 /// framework's own JSON form, so a decision made after a restart still answers the exact paused tool call. A request
 /// stays stored until its operation's resumed run finishes, so a run interrupted by a restart can be resumed again;
 /// the operation's guarded commit, not this store, is what stops a write from applying twice.

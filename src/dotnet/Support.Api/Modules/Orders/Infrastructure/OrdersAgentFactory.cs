@@ -30,7 +30,7 @@ public static class OrdersAgentFactory
             chatClient,
             new ChatClientAgentOptions
             {
-                Id = SupportAgents.OrdersAgentName, // stable across restarts, so a stored session belongs to the same agent (L11)
+                Id = SupportAgents.OrdersAgentName, // stable across restarts, so a stored session belongs to the same agent
                 Name = SupportAgents.OrdersAgentName,
                 Description = "Answers order-status questions for the current customer.",
                 ChatHistoryProvider = ConversationHistory.CreateProvider(),

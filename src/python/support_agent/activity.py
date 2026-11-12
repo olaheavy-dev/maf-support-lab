@@ -1,4 +1,4 @@
-"""What the tools found during one specialist run (L18), recorded in code, never inferred from the model's wording.
+"""What the tools found during one specialist run, recorded in code, never inferred from the model's wording.
 
 The reply kind comes from these facts: anything found is an answer; otherwise a missing record is not_found; a search
 that matched nothing is an escalation offer; no lookup at all means the specialist asked for more information.

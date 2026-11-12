@@ -2,7 +2,7 @@ namespace Support.Api.Modules.Conversations.Domain;
 
 /// <summary>
 /// A claimed client_turn_id (or approval key): the turn id it will have, the message it was claimed with, the turn it
-/// will produce, and, while it runs, what a status lookup or a cancel request needs (L12). Its cancellation belongs to
+/// will produce, and, while it runs, what a status lookup or a cancel request needs. Its cancellation belongs to
 /// the turn, not to any HTTP request: only a cancel request triggers it, so a dropped connection never stops the work.
 /// </summary>
 public sealed class TurnReservation(string turnId, string message) : IDisposable

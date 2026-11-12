@@ -1,4 +1,4 @@
-"""The evaluation contracts (L29): datasets in (evaluations/datasets), run results out (evaluations/results).
+"""The evaluation contracts: datasets in (evaluations/datasets), run results out (evaluations/results).
 
 Both are versioned JSON validated against evaluations/schemas. On top of the schemas, two rules need code:
 - case ids are unique within a dataset, and every `context` reference names a real fixture record;

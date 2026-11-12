@@ -2,7 +2,7 @@ using Support.Api.Modules.Billing.Domain;
 
 namespace Support.Api.Modules.Billing.Application;
 
-/// <summary>Where invoices and payments are read from: the synthetic fixtures, plus simulated refunds stored durably (L11).</summary>
+/// <summary>Where invoices and payments are read from: the synthetic fixtures, plus simulated refunds stored durably.</summary>
 public interface IBillingRepository
 {
     Invoice? FindInvoice(string invoiceId);

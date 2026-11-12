@@ -1,4 +1,4 @@
-"""L29: the evaluation datasets and run results are versioned contracts; malformed or unversioned records are rejected."""
+"""The evaluation datasets and run results are versioned contracts; malformed or unversioned records are rejected."""
 
 from __future__ import annotations
 
@@ -165,7 +165,7 @@ def test_context_references_resolve_against_the_real_fixtures() -> None:
     assert "refund" in ids["policies"]
 
 
-# ---- Schema 1.1 (L16): restart, get_operation, cancel_after_start, operation_result ---------------------------------
+# ---- Schema 1.1: restart, get_operation, cancel_after_start, operation_result ---------------------------------
 
 
 def with_steps(steps: list[dict[str, Any]], **case: Any) -> dict[str, Any]:

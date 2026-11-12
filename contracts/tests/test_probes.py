@@ -1,4 +1,4 @@
-"""Checks the cross-backend probe runner's own logic (L21) without starting any server.
+"""Checks the cross-backend probe runner's own logic without starting any server.
 
 The probes are only useful if their comparison can fail: these tests feed it synthetic observations with a known
 contract or ownership regression and expect it to be reported, and check that what is normalized away (runtime ids,

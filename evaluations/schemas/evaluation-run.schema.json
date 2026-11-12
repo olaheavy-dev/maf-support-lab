@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.maf-support-lab.example/evaluations/v1/evaluation-run.schema.json",
   "title": "Evaluation run",
-  "description": "The normalized result of running one dataset against one backend (L29). Everything needed to reproduce it is in `run`; per-case evidence is observable API facts, never SDK-internal serialization.",
+  "description": "The normalized result of running one dataset against one backend. Everything needed to reproduce it is in `run`; per-case evidence is observable API facts, never SDK-internal serialization.",
   "type": "object",
   "required": [
     "schema_version",
@@ -13,7 +13,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "description": "1.1 (L16): restart and get_operation evidence; 1.2 (L30): an evidence link per case. Older documents stay valid.",
+      "description": "1.1: restart and get_operation evidence; 1.2: an evidence link per case. Older documents stay valid.",
       "enum": [
         "1.0",
         "1.1",
@@ -287,12 +287,12 @@
           }
         },
         "evidence": {
-          "description": "L30: where the evaluated evidence lives (for example a recorded conversation), repository-relative.",
+          "description": "Where the evaluated evidence lives (for example a recorded conversation), repository-relative.",
           "type": "string",
           "pattern": "^[A-Za-z0-9_./-]{1,200}$"
         },
         "checks": {
-          "description": "L30: case-level checks from a native evaluator (no HTTP steps), same shape as step checks.",
+          "description": "Case-level checks from a native evaluator (no HTTP steps), same shape as step checks.",
           "$ref": "#/$defs/step_result/properties/checks"
         }
       },
