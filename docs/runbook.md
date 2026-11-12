@@ -20,9 +20,9 @@ The main application packages (versions as locked; the full list and the reasoni
 | --- | --- | --- |
 | Microsoft Agent Framework | `Microsoft.Agents.AI` 1.28.0 (+ Workflows, Anthropic) | `agent-framework-core` 1.25.0 (+ `-anthropic`, `-devui` 1.0.0b261106) |
 | Web host | ASP.NET Core 11 | FastAPI 0.162.3, Uvicorn 0.54.0 |
-| Model SDK | `Anthropic` 13.7.0 | `anthropic` 1.17.0 |
+| Model SDK | `Anthropic` 13.8.0 | `anthropic` 1.17.0 |
 | Storage | `Microsoft.Data.Sqlite` 11.0.0 (pooled) | `sqlite3` (standard library) |
-| Telemetry | OpenTelemetry 1.20 | OpenTelemetry (locked in `uv.lock`) |
+| Telemetry | OpenTelemetry 1.21 | OpenTelemetry (locked in `uv.lock`) |
 | Evaluation (runner only) | `Microsoft.Extensions.AI.Evaluation` + `.Quality` + `.Reporting` 10.11.0 | `agent-framework-core` 1.25.0 |
 
 NuGet packages are locked (`packages.lock.json`), and Python is locked (`src/python/uv.lock`, `evaluations/python/uv.lock`). Docker isn't needed.
