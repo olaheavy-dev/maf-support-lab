@@ -37,6 +37,7 @@ HTML_ANCHOR = re.compile(r"""<a\s[^>]*\b(?:id|name)\s*=\s*["']([^"']+)["']""", r
 BLOCKQUOTE = re.compile(r"^ {0,3}(?:> ?)+")
 LIST_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)")
 INDENTED = re.compile(r"^(?: {4}|\t)")
+SETEXT_UNDERLINE = re.compile(r"^ {0,3}(?:=+|-+)\s*$")
 HEADING = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
 SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
@@ -52,6 +53,14 @@ class Problem:
         return f"{self.file}:{self.line}: {self.target} -> {self.reason}"
 
 
+HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def without_comments(text: str) -> str:
+    """HTML comments are not rendered, so links in them aren't links. Line breaks are kept so line numbers hold."""
+    return HTML_COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+
+
 def prose_lines(text: str, keep_inline_code: bool = False) -> list[tuple[int, str]]:
     """The lines outside code: fenced blocks, and indented blocks (four spaces or a tab, after a blank line, outside a
     list, where indentation continues the list item instead). Inline code is removed unless kept: links in code are
@@ -61,7 +70,7 @@ def prose_lines(text: str, keep_inline_code: bool = False) -> list[tuple[int, st
     previous_blank = True  # the start of a document counts as after a blank line
     in_list = False
     in_indented_code = False
-    for number, line in enumerate(text.splitlines(), start=1):
+    for number, line in enumerate(without_comments(text).splitlines(), start=1):
         blank = not line.strip()
         # Fences may sit inside a container: a blockquote (">" prefixes) or a list item (indented to its content).
         inner = BLOCKQUOTE.sub("", line)
@@ -107,14 +116,23 @@ def anchors(text: str) -> set[str]:
     """Every anchor a page offers: heading slugs (duplicates get -1, -2, ...) and explicit HTML ids and names."""
     found: set[str] = set()
     seen: dict[str, int] = {}
-    for _, line in prose_lines(text, keep_inline_code=True):
+
+    def add(heading: str) -> None:
+        base = slug(heading)
+        count = seen.get(base, 0)
+        seen[base] = count + 1
+        found.add(base if count == 0 else f"{base}-{count}")
+
+    previous: tuple[int, str] | None = None  # the line before, if it was a plain paragraph line
+    for number, line in prose_lines(text, keep_inline_code=True):
         heading = HEADING.match(line)
         if heading:
-            base = slug(heading.group(2))
-            count = seen.get(base, 0)
-            seen[base] = count + 1
-            found.add(base if count == 0 else f"{base}-{count}")
+            add(heading.group(2))
+        elif SETEXT_UNDERLINE.match(line) and previous is not None and previous[0] == number - 1:
+            add(previous[1].strip())  # Setext: a paragraph line underlined with === or ---
         found.update(name.lower() for name in HTML_ANCHOR.findall(line))
+        plain = line.strip() and not heading and not SETEXT_UNDERLINE.match(line) and not LIST_ITEM.match(line) and not BLOCKQUOTE.match(line)
+        previous = (number, line) if plain and not line.lstrip().startswith("|") else None
     return found
 
 

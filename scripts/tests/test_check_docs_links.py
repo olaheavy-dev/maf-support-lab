@@ -104,6 +104,16 @@ class CheckDocsLinksTests(unittest.TestCase):
         self.write("README.md", "[up](../../etc/passwd)\n")
         self.assertEqual(self.problems(), ["../../etc/passwd -> points outside the repository"])
 
+    def test_setext_headings_are_anchors_but_a_rule_after_a_blank_line_is_not(self) -> None:
+        self.write("docs/setext.md", "Installation\n============\n\nNext steps\n----------\n\nText.\n\n---\n")
+        self.write("README.md", "[a](docs/setext.md#installation) [b](docs/setext.md#next-steps) [c](docs/setext.md#text)\n")
+        self.assertEqual(self.problems(), ["docs/setext.md#text -> no heading or anchor '#text'"])
+
+    def test_links_in_html_comments_are_not_links_and_line_numbers_hold(self) -> None:
+        self.write("README.md", "<!-- [hidden](gone.md)\n[also hidden](gone-too.md) -->\n\n[real](docs/missing.md)\n")
+        problems = check_docs_links.check(self.root)
+        self.assertEqual([(p.target, p.line) for p in problems], [("docs/missing.md", 4)])
+
     def test_github_slugs(self) -> None:
         self.assertEqual(check_docs_links.slug("Contract API (version 1)"), "contract-api-version-1")
         self.assertEqual(check_docs_links.slug("0003 - Durable state"), "0003---durable-state")
