@@ -82,6 +82,7 @@ public sealed class DevUiTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(route, body, StringComparison.Ordinal);
         Assert.DoesNotContain("reply: approval_request", body, StringComparison.Ordinal);
+        Assert.Contains("Changes can't be made from here.", body, StringComparison.Ordinal); // fixed text, not the model's
     }
 
     [Theory]
