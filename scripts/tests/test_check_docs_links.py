@@ -78,6 +78,19 @@ class CheckDocsLinksTests(unittest.TestCase):
         )
         self.assertEqual(self.problems(), ["docs/gone.md -> no such file or folder"])
 
+    def test_an_indented_code_block_is_code_but_an_indented_list_paragraph_is_prose(self) -> None:
+        self.write(
+            "README.md",
+            "Example:\n\n    [example](not-a-real-file.md)\n\n    still code [x](nope.md)\n\nBack to prose.\n\n"
+            "- A list item\n\n    [continued](docs/gone.md)\n",
+        )
+        self.assertEqual(self.problems(), ["docs/gone.md -> no such file or folder"])
+
+    def test_balanced_parentheses_in_a_destination(self) -> None:
+        (self.root / "docs" / "guide(v2).md").write_text("# Guide v2\n", encoding="utf-8")
+        self.write("README.md", "[v2](docs/guide(v2).md) [v2 anchor](docs/guide(v2).md#guide-v2) [gone](docs/gone(v3).md)\n")
+        self.assertEqual(self.problems(), ["docs/gone(v3).md -> no such file or folder"])
+
     def test_a_link_out_of_the_repository_fails(self) -> None:
         self.write("README.md", "[up](../../etc/passwd)\n")
         self.assertEqual(self.problems(), ["../../etc/passwd -> points outside the repository"])

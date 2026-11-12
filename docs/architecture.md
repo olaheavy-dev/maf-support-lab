@@ -43,7 +43,7 @@ flowchart TD
 | State | Where | Survives a restart |
 | --- | --- | --- |
 | Conversations, turns, operations, native approval requests, agent sessions, simulated business changes | One SQLite file per backend and per run (`.data/dotnet/support.db`, `.data/python/support.db`) | Yes |
-| Running turns, cancellation tokens, live stream subscribers | Process memory | No: a turn running at a crash is recovered from its stored record |
+| Running turns, cancellation tokens, live stream subscribers | Process memory | **No.** A turn is stored only when it finishes, so a turn interrupted by a crash is lost: after a restart, `GET …/turns/{id}` returns 404. Retry with the same `client_turn_id`. A write the turn had already committed stays committed, and its operation record says so. |
 
 A write and its "committed" mark are one transaction, and status changes are guarded, so a write is applied at most once. The reasoning and the limits are in [0003 - Durable state and idempotent writes](decisions/0003-state-and-idempotency.md).
 

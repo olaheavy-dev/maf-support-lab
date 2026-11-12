@@ -29,10 +29,13 @@ from urllib.parse import unquote
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 INLINE_CODE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 # [text](target) and ![alt](target); the target may be <wrapped> and may carry a "title".
-INLINE_LINK = re.compile(r"!?\[(?:[^\[\]]|\[[^\[\]]*\])*\]\(\s*(<[^>]*>|[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^)]*\)))?\s*\)")
+# The destination may hold balanced parentheses, as Markdown allows: guide(v2).md.
+INLINE_LINK = re.compile(r"!?\[(?:[^\[\]]|\[[^\[\]]*\])*\]\(\s*(<[^>]*>|(?:[^()\s]|\([^()\s]*\))+)(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^)]*\)))?\s*\)")
 REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[[^\]]+\]:\s*(<[^>]*>|\S+)")
 HTML_ATTRIBUTE = re.compile(r"""\b(?:href|src)\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
 HTML_ANCHOR = re.compile(r"""<a\s[^>]*\b(?:id|name)\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
+LIST_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)")
+INDENTED = re.compile(r"^(?: {4}|\t)")
 HEADING = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
 SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
@@ -49,11 +52,30 @@ class Problem:
 
 
 def prose_lines(text: str, keep_inline_code: bool = False) -> list[tuple[int, str]]:
-    """The lines outside fenced code blocks. Inline code is removed unless kept: links in code are examples, not
-    links, but a heading's code text is part of its anchor."""
+    """The lines outside code: fenced blocks, and indented blocks (four spaces or a tab, after a blank line, outside a
+    list, where indentation continues the list item instead). Inline code is removed unless kept: links in code are
+    examples, not links, but a heading's code text is part of its anchor."""
     lines: list[tuple[int, str]] = []
     fence: str | None = None
+    previous_blank = True  # the start of a document counts as after a blank line
+    in_list = False
+    in_indented_code = False
     for number, line in enumerate(text.splitlines(), start=1):
+        blank = not line.strip()
+        if fence is None and not FENCE.match(line):
+            if in_indented_code and (blank or INDENTED.match(line)):
+                previous_blank = blank
+                continue  # an indented block runs until a non-blank line that isn't indented
+            in_indented_code = False
+            if not blank and INDENTED.match(line) and previous_blank and not in_list:
+                in_indented_code = True
+                previous_blank = False
+                continue
+            if LIST_ITEM.match(line):
+                in_list = True
+            elif not blank and not INDENTED.match(line):
+                in_list = False
+            previous_blank = blank
         match = FENCE.match(line)
         if fence is None and match:
             fence = match.group(1)  # the whole opening run: ```` can wrap a ``` example
