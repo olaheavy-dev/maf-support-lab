@@ -104,6 +104,15 @@ internal sealed class LaunchedBackends(string backend, string root, string workD
     }
 }
 
+/// <summary>
+/// Live model settings for a launched backend (L32's quality lane only). The key is passed to the child process's
+/// environment and never logged; the per-turn cap bounds what one turn may cost.
+/// </summary>
+internal sealed record LiveModel(string Model, string ApiKey, int MaxModelCallsPerTurn)
+{
+    public override string ToString() => $"LiveModel {{ Model = {Model}, MaxModelCallsPerTurn = {MaxModelCallsPerTurn} }}"; // never the key
+}
+
 /// <summary>One backend's processes (one per customer) on one store.</summary>
 internal sealed class ProcessSession : IBackendSession
 {
@@ -112,21 +121,24 @@ internal sealed class ProcessSession : IBackendSession
     private readonly string backend;
     private readonly string root;
     private readonly string store;
+    private readonly LiveModel? live;
     private readonly List<Process> processes = [];
     private Dictionary<string, Uri> principals = [];
 
-    private ProcessSession(string backend, string root, string store)
+    private ProcessSession(string backend, string root, string store, LiveModel? live)
     {
         this.backend = backend;
         this.root = root;
         this.store = store;
+        this.live = live;
     }
 
     public IReadOnlyDictionary<string, Uri> Principals => principals;
 
-    public static async Task<ProcessSession> StartAsync(string backend, string root, string store, CancellationToken cancellationToken)
+    /// <summary>Starts one process per customer. Fake model mode unless <paramref name="live"/> is given.</summary>
+    public static async Task<ProcessSession> StartAsync(string backend, string root, string store, CancellationToken cancellationToken, LiveModel? live = null)
     {
-        var session = new ProcessSession(backend, root, store);
+        var session = new ProcessSession(backend, root, store, live);
         try
         {
             await session.StartProcessesAsync(cancellationToken).ConfigureAwait(false);
@@ -189,14 +201,26 @@ internal sealed class ProcessSession : IBackendSession
             info.Environment["ASPNETCORE_URLS"] = $"http://127.0.0.1:{port}";
             info.Environment["Identity__DevelopmentCustomerId"] = customer;
             info.Environment["Storage__Path"] = store;
-            info.Environment["ModelProvider__Mode"] = "Fake"; // overrides local user-secrets that select Live
+            info.Environment["ModelProvider__Mode"] = live is null ? "Fake" : "Live"; // overrides local user-secrets
+            if (live is not null)
+            {
+                info.Environment["ModelProvider__Anthropic__Model"] = live.Model;
+                info.Environment["ANTHROPIC_API_KEY"] = live.ApiKey;
+                info.Environment["Resilience__MaxModelCallsPerTurn"] = live.MaxModelCallsPerTurn.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
         }
         else
         {
             info.Environment["APP_ENVIRONMENT"] = "development";
             info.Environment["IDENTITY__DEVELOPMENT_CUSTOMER_ID"] = customer;
             info.Environment["STORAGE__PATH"] = store;
-            info.Environment["MODEL_PROVIDER__MODE"] = "fake";
+            info.Environment["MODEL_PROVIDER__MODE"] = live is null ? "fake" : "live";
+            if (live is not null)
+            {
+                info.Environment["MODEL_PROVIDER__ANTHROPIC__MODEL"] = live.Model;
+                info.Environment["ANTHROPIC_API_KEY"] = live.ApiKey;
+                info.Environment["RESILIENCE__MAX_MODEL_CALLS_PER_TURN"] = live.MaxModelCallsPerTurn.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
         }
 
         return info;

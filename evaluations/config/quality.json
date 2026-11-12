@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "judge": {
+    "provider": "anthropic",
+    "model": "claude-haiku-5-5",
+    "max_output_tokens": 1024
+  },
+  "backends": {
+    "names": ["dotnet", "python"],
+    "model": "claude-haiku-5-5",
+    "max_model_calls_per_turn": 4
+  },
+  "metrics": ["relevance", "groundedness"],
+  "cases": [
+    { "dataset": "support-success", "case_id": "order-status" },
+    { "dataset": "support-success", "case_id": "invoice" },
+    { "dataset": "support-success", "case_id": "knowledge-base" },
+    { "dataset": "support-denial", "case_id": "refund-outside-window" }
+  ],
+  "budget": {
+    "max_model_calls": 60,
+    "repetitions": 1,
+    "concurrency": 2
+  },
+  "calibration": [
+    {
+      "id": "good",
+      "purpose": "A correct, grounded, on-topic answer: should score high on both metrics.",
+      "question": "Where is my order ORD-1002?",
+      "context": ["orders:ORD-1002"],
+      "answer": "Your order ORD-1002 (a Smart Speaker and a USB-C Cable) has shipped. It left on 30 October 2026 and has not been delivered yet.",
+      "expect": "high",
+      "metrics": ["relevance", "groundedness"]
+    },
+    {
+      "id": "ungrounded",
+      "purpose": "On topic but contradicts the record (delivered, refunded): groundedness should be low.",
+      "question": "Where is my order ORD-1002?",
+      "context": ["orders:ORD-1002"],
+      "answer": "Your order ORD-1002 was delivered yesterday, and we have already refunded the full amount to your card.",
+      "expect": "low",
+      "metrics": ["groundedness"]
+    },
+    {
+      "id": "off-topic",
+      "purpose": "Ignores the question: relevance should be low.",
+      "question": "Where is my order ORD-1002?",
+      "context": ["orders:ORD-1002"],
+      "answer": "Our smart speakers can be set up over Wi-Fi from the mobile app. Let me know if you need help connecting one.",
+      "expect": "low",
+      "metrics": ["relevance"]
+    },
+    {
+      "id": "changed-context",
+      "purpose": "Stretch: the good answer, unchanged, judged against a different order's record (ORD-1001, delivered headphones). Nothing in the answer is supported any more, so groundedness should drop.",
+      "question": "Where is my order ORD-1002?",
+      "context": ["orders:ORD-1001"],
+      "answer": "Your order ORD-1002 (a Smart Speaker and a USB-C Cable) has shipped. It left on 30 October 2026 and has not been delivered yet.",
+      "expect": "low",
+      "metrics": ["groundedness"]
+    }
+  ]
+}
