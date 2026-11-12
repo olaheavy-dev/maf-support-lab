@@ -104,3 +104,4 @@ def test_a_devui_workflow_chat_cannot_request_a_change(devui: TestClient, messag
     text = ask(devui, listed(devui)["support-routing"]["id"], message)
     assert route in text
     assert "reply: approval_request" not in text
+    assert "Changes can't be made from here." in text  # fixed text, not the model's

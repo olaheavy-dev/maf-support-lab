@@ -20,6 +20,11 @@ from support_agent.routing import TriageOutcome
 
 MAX_ROUNDS = 3
 
+# A write asked for outside a support conversation (DevUI chats only): there is nothing to bind an approval to.
+NOT_IN_CONVERSATION = "not_in_conversation"
+# Its reply, written by code: the model, told only that it was declined, may ask again for details it was given.
+NOT_IN_CONVERSATION_REPLY = "Changes can't be made from here. Ask for it in a support conversation, where you can approve it. Nothing has been changed."
+
 
 @dataclass(frozen=True, slots=True)
 class GateResult:
@@ -98,7 +103,7 @@ async def gate(
         if len(pending) == 1 and pending[0].function_call is not None:
             call = pending[0].function_call
             if outcome.conversation_id is None or outcome.turn_id is None or session is None:
-                declined_code, reason = "invalid_arguments", "Changes can only be requested in a support conversation."
+                declined_code, reason = NOT_IN_CONVERSATION, "Changes can only be requested in a support conversation."
             else:
                 try:
                     arguments: dict[str, Any] = dict(call.parse_arguments() or {})

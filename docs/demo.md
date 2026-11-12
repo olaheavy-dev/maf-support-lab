@@ -99,7 +99,7 @@ Microsoft Agent Framework's DevUI runs the same `support-routing` workflow (deve
 
 ![DevUI running the support-routing workflow on live Claude Haiku](assets/devui-demo.gif)
 
-This recording was made on 2026-11-12 against the .NET backend in live mode (`claude-haiku-5-5`), so the wording is the model's and varies between runs. It shows read questions only. DevUI chats have no support conversation, so the approval gate declines every write there; writes and approvals go through the API, as in the sections above. DevUI lists only the workflow, never a specialist on its own, because a direct agent chat would skip triage and the gate.
+This recording was made on 2026-11-12 against the .NET backend in live mode (`claude-haiku-5-5`), so the wording is the model's and varies between runs. It shows read questions only. DevUI chats have no support conversation, so the approval gate declines every write there, with a fixed reply saying changes can't be made from DevUI; writes and approvals go through the API, as in the sections above. DevUI lists only the workflow, never a specialist on its own, because a direct agent chat would skip triage and the gate.
 
 ## Implemented, simulated, and not done
 

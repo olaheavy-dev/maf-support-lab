@@ -30,7 +30,7 @@ from agent_framework import (
 
 from support_agent.activity import begin_activity
 from support_agent.agents import SPECIALISTS, SupportAgents
-from support_agent.approval_gate import gate
+from support_agent.approval_gate import NOT_IN_CONVERSATION, NOT_IN_CONVERSATION_REPLY, gate
 from support_agent.operations import OperationService
 from support_agent.routing import TriageDecision, TriageOutcome, TurnRoute, UnroutedReason, parse, route
 from support_agent.sessions import ConversationContext, ConversationSessions, context_note
@@ -193,6 +193,9 @@ class SpecialistExecutor(Executor):
                 else "I couldn't find that order on your account, so nothing has been changed."
             )
             await ctx.send_message(SupportReply(outcome.route, gated.declined_code, text, verified))
+            return
+        if gated.declined_code == NOT_IN_CONVERSATION:
+            await ctx.send_message(SupportReply(outcome.route, "clarification", NOT_IN_CONVERSATION_REPLY, verified))
             return
         reply = gated.response.text.strip() or FALLBACK
         # The reply kind comes from what the tools recorded, not from the model's wording.

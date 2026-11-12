@@ -151,7 +151,7 @@ DevUI runs as its own process on loopback (port 5290 by default, or `PORT`), and
 - **Why a separate process:** DevUI's UI calls `/v1/...` at the root, and a mounted sub-app's lifespan doesn't run.
 - **Its customer:** DevUI has no request identity, so this process serves the one configured development customer (`set_process_principal`). The API process never uses that fallback: every API turn pins the caller, and anything unpinned fails closed.
 - **Its guards:** it refuses to start outside development, and rejects requests not addressed to loopback (DevUI's own guard).
-- **Only the workflow:** a specialist listed on its own would skip triage and the approval gate. In the workflow, a DevUI chat has no support conversation, so every write is declined before any approval exists.
+- **Only the workflow:** a specialist listed on its own would skip triage and the approval gate. In the workflow, a DevUI chat has no support conversation, so every write is declined before any approval exists (code `not_in_conversation`), with a fixed reply saying changes can't be made from here.
 
 ## Configuration
 

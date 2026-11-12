@@ -293,7 +293,7 @@ Everything a conversation needs survives a restart. It lives in one local SQLite
 
 Run the API (or the AppHost, where the `support-api-dotnet` resource shows a **DevUI** link) and open `http://localhost:5180/devui/`. DevUI lists one entity, the **`support-routing` workflow**: chat through the whole pipeline, exactly like an API turn (triage, the routing switch, one specialist). Each reply starts with the routing result, for example `[route: billing | reply: answer]`, and the graph lights up the route taken.
 
-The specialists are not listed on their own. A direct agent chat would skip triage and the approval gate, so the model could offer a write the API never would (an ineligible cancel, or a refund of another customer's order). In the workflow, a DevUI chat has no support conversation, so the gate declines every write before any approval exists: writes and approvals go through the contract API only.
+The specialists are not listed on their own. A direct agent chat would skip triage and the approval gate, so the model could offer a write the API never would (an ineligible cancel, or a refund of another customer's order). In the workflow, a DevUI chat has no support conversation, so the gate declines every write before any approval exists (code `not_in_conversation`), and the reply is fixed text saying changes can't be made from here: writes and approvals go through the contract API only.
 
 DevUI and its OpenAI-compatible `/v1/responses` and `/v1/entities` endpoints are mapped only in Development. They use the same agent instances and the same executors as the API, so the same ownership checks apply. The DevUI workflow differs only at its two ends:
 - a `chat-input` entrance that speaks MAF's chat protocol and forwards the text to triage;

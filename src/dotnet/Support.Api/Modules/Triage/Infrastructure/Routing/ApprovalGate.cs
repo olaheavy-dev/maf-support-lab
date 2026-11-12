@@ -51,7 +51,7 @@ internal sealed class ApprovalGate(OperationService operations, PendingNativeApp
                             return proposed;
                         },
                         cancellationToken).ConfigureAwait(false)
-                    : Common.Domain.Result.Failure<Operation>(WriteErrors.InvalidArguments("Changes can only be requested in a support conversation."));
+                    : Common.Domain.Result.Failure<Operation>(WriteErrors.NotInConversation);
 
                 if (proposal.IsSuccess)
                 {

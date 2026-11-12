@@ -3,6 +3,7 @@ using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
 using Support.Api.Common.Application.Streaming;
 using Support.Api.Modules.Agents.Application;
+using Support.Api.Modules.Operations.Application;
 using Support.Api.Modules.Triage.Application;
 using Support.Api.Modules.Triage.Domain;
 
@@ -72,6 +73,8 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
             },
             { DeclinedCode: "not_eligible" } => new SupportReply(request.Route, ReplyKind.NotEligible, ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
             { DeclinedCode: "not_found" } => new SupportReply(request.Route, ReplyKind.NotFound, ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
+            // DevUI chats only: fixed text, because the model, told only that it was declined, may ask again for details it was given.
+            { DeclinedCode: "not_in_conversation" } => new SupportReply(request.Route, ReplyKind.Clarification, WriteErrors.NotInConversationReply, activity.Activity.VerifiedOrderId),
             { DeclinedCode: not null } => new SupportReply(request.Route, ReplyKind.Clarification, ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
             _ => new SupportReply(request.Route, ReplyKindFrom(activity.Activity), ReplyText(gated.Response.Text), activity.Activity.VerifiedOrderId),
         };
