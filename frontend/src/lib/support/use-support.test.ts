@@ -215,6 +215,37 @@ describe("useSupport", () => {
     });
   });
 
+  it("treats a recovering reply as the running one, so it can be stopped (#139)", async () => {
+    sessionStorage.setItem(
+      "voltcart-conversation",
+      JSON.stringify({
+        conversationId: conversation.conversation_id,
+        entries: [
+          {
+            kind: "assistant",
+            id: "a1",
+            turnId: finalResult.turn_id,
+            status: "streaming",
+            text: "",
+            steps: [],
+          },
+        ],
+        approvals: {},
+        operations: {},
+      }),
+    );
+    mocked.getConversation.mockResolvedValue({
+      ...conversation,
+      active_turn_id: finalResult.turn_id,
+    });
+    mocked.getTurn.mockResolvedValue({ ...(finalResult as TurnResult), state: "running" });
+    const { result } = renderHook(() => useSupport());
+    await waitFor(() => expect(result.current.state.activeId).toBe("a1"));
+    expect(result.current.state.entries.filter((entry) => entry.kind === "assistant")).toHaveLength(
+      1,
+    );
+  });
+
   it("reports a stop that wasn't accepted, so Stop can be tried again", async () => {
     mocked.streamTurn.mockImplementation(async function* () {
       yield completed[0]!; // turn.started: the turn has an id, so it can be stopped

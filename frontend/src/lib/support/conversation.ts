@@ -66,6 +66,8 @@ export type Action =
   | { type: "sent"; customerId: string; text: string; assistantId: string }
   | { type: "deciding"; approval: Approval; decision: "approve" | "reject"; assistantId: string }
   | { type: "resuming"; assistantId: string; turnId: string }
+  /** A saved entry whose turn is being recovered after a reload: it is the running one meanwhile. */
+  | { type: "recovering"; assistantId: string }
   | { type: "event"; assistantId: string; event: StreamEvent }
   /** The server's current view of a turn, after the stream ended early. */
   | { type: "polled"; assistantId: string; result: TurnResult }
@@ -178,6 +180,8 @@ export function reduce(state: State, action: Action): State {
           },
         ],
       };
+    case "recovering":
+      return { ...state, activeId: action.assistantId };
     case "event":
       return applyEvent(state, action.assistantId, action.event);
     case "polled":

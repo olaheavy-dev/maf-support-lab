@@ -90,6 +90,8 @@ export function useSupport() {
       }
       const recovering = entries.filter(unfinished) as Extract<Entry, { kind: "assistant" }>[];
       for (const entry of recovering) {
+        // Active while it recovers, so the composer offers Stop for a reply that is still running.
+        dispatch({ type: "recovering", assistantId: entry.id });
         await poll(dispatch, entry.id, conversation.conversation_id, entry.turnId!);
       }
       const active = conversation.active_turn_id;

@@ -71,6 +71,19 @@ curl -s $B/operations/$O | jq '{status, result}'       # status: committed
 
 The model is `claude-haiku-5-5`. In Live mode with a missing key or model, a backend refuses to start and names the missing setting, never its value. Each turn is capped in model calls ([budgets](observability.md#failures-retries-and-budgets)).
 
+## The chat page against live Claude (opt-in, billed)
+
+The chat page's end-to-end flows also run against live Claude Haiku. They start the backend themselves, in live mode, with a fresh store:
+
+```bash
+cd frontend && pnpm build
+BACKEND=dotnet MODEL=live pnpm e2e:flows                            # .NET reads its key from user secrets
+ANTHROPIC_API_KEY=... BACKEND=python MODEL=live pnpm e2e:flows      # Python reads ANTHROPIC_API_KEY
+BACKEND=dotnet MODEL=live DEMO=1 RECORD=1 pnpm e2e:flows demo.spec.ts   # re-record the README's video (test-results/)
+```
+
+A full live run is roughly 50 model calls per backend, a few cents on `claude-haiku-5-5`.
+
 ## Checks (as CI runs them)
 
 ```bash
@@ -79,6 +92,7 @@ dotnet build maf-support-lab.slnx -warnaserror && dotnet test --solution maf-sup
 (cd src/python && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest)
 (cd evaluations/python && uv run --locked pytest)
 (cd frontend && pnpm install --frozen-lockfile && pnpm peers check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm e2e:docker)
+(cd frontend && BACKEND=dotnet pnpm e2e:flows && BACKEND=python pnpm e2e:flows)   # the chat page against each backend (after pnpm build)
 ```
 
 The cross-backend probes, the evaluations and the report are in [testing](testing.md) and [evaluation reports](evaluations/reports.md#reproduce). Opt-in live tests are `dotnet test … -- --filter-trait "Category=Live" --explicit only` and `uv run pytest -m live`. The model-judged quality lane is `quality --live` ([quality](evaluations/quality.md)).
