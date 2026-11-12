@@ -227,7 +227,7 @@ internal static class ReportAdapter
     private static BooleanMetric CheckMetric(string prefix, JsonObject check)
     {
         var passed = check["passed"]!.GetValue<bool>();
-        var reason = check.ContainsKey("expected") ? $"expected {Json(check["expected"])}, got {Json(check["actual"])}" : Text(check["actual"]);
+        var reason = check.TryGetPropertyValue("expected", out var expected) ? $"expected {Json(expected)}, got {Json(check["actual"])}" : Text(check["actual"]);
         return new BooleanMetric($"{prefix}{Text(check["name"])}", passed, reason)
         {
             Interpretation = new EvaluationMetricInterpretation(passed ? EvaluationRating.Good : EvaluationRating.Unacceptable, failed: !passed),

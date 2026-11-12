@@ -38,6 +38,7 @@ internal sealed class FakeReplies(Func<string, BackendReply>? answer = null, Tim
     private int asked;
     private int active;
     private int maxConcurrent;
+    private readonly Lock gate = new();
 
     public int Asked => Volatile.Read(ref asked);
 
@@ -47,7 +48,7 @@ internal sealed class FakeReplies(Func<string, BackendReply>? answer = null, Tim
     {
         var count = Interlocked.Increment(ref asked);
         var now = Interlocked.Increment(ref active);
-        lock (this)
+        lock (gate)
         {
             maxConcurrent = Math.Max(maxConcurrent, now);
         }

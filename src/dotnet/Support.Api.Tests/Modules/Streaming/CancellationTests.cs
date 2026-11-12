@@ -161,6 +161,7 @@ public sealed class CancellationTests
             string? line;
             while ((line = await reader.ReadLineAsync(disconnect.Token)) is not null && !line.StartsWith("data: ", StringComparison.Ordinal))
             {
+                // Skip the event and id lines until the first data line.
             }
 
             turnId = JsonElement.Parse(line![6..]).GetProperty("turn_id").GetString()!;

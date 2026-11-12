@@ -100,13 +100,10 @@ public sealed partial class FakeChatClient : IChatClient
         {
             if (update.Contents is [TextContent { Text: { Length: > 0 } text }])
             {
-                foreach (var word in System.Text.RegularExpressions.Regex.Split(text, @"(?<=\s)"))
+                foreach (var word in System.Text.RegularExpressions.Regex.Split(text, @"(?<=\s)").Where(word => word.Length > 0))
                 {
-                    if (word.Length > 0)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        yield return new ChatResponseUpdate(update.Role, word) { MessageId = update.MessageId, ResponseId = update.ResponseId, ModelId = update.ModelId };
-                    }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    yield return new ChatResponseUpdate(update.Role, word) { MessageId = update.MessageId, ResponseId = update.ResponseId, ModelId = update.ModelId };
                 }
 
                 continue;
