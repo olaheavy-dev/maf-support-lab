@@ -208,9 +208,20 @@
       "support.evaluations": {
         "type": "Project",
         "dependencies": {
+          "Anthropic": "[13.7.0, )",
           "JsonSchema.Net": "[9.6.0, )",
           "Microsoft.Agents.AI": "[1.28.0, )",
-          "Microsoft.Extensions.AI.Evaluation": "[10.11.0, )"
+          "Microsoft.Extensions.AI.Evaluation": "[10.11.0, )",
+          "Microsoft.Extensions.AI.Evaluation.Quality": "[10.11.0, )"
+        }
+      },
+      "Anthropic": {
+        "type": "CentralTransitive",
+        "requested": "[13.7.0, )",
+        "resolved": "13.7.0",
+        "contentHash": "GIYN2Nvl8ovNTHMSVrHf8HnmLU7EfG8ZFX6855HQfwVoxgIf6GrQjgbgte0NT8zTparLMur5+07R2MfVNw2p1g==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.5.1"
         }
       },
       "JsonSchema.Net": {
@@ -255,6 +266,15 @@
         "contentHash": "bCGBQzk+8HtfwKx8prJUloncDonqNWBIijhoieArgSg0WzJAgGNoDhG1f698mvEdNd7DFoZEoSjZz7PKxB8Evg==",
         "dependencies": {
           "Microsoft.Extensions.AI.Abstractions": "10.11.0"
+        }
+      },
+      "Microsoft.Extensions.AI.Evaluation.Quality": {
+        "type": "CentralTransitive",
+        "requested": "[10.11.0, )",
+        "resolved": "10.11.0",
+        "contentHash": "n78G6Oyj2dsQJ9QQUCLY4xX+iluo7YZr0AzwFKXKL9nwliw7BlDku06w6wrE6QW4Ai5s/goYTRIsxKw3qs4tmw==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Evaluation": "10.11.0"
         }
       }
     }

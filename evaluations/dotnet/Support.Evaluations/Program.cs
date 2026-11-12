@@ -18,6 +18,9 @@ using Support.Evaluations;
 //   native record|evaluate [--recordings DIR] [--out DIR]
 //                                    native MAF evaluation (L30): record the fake agent's conversations, or score the
 //                                    saved recordings without re-running the agent
+//   quality --live [--config FILE] [--out DIR] [--source-commit SHA]
+//                                    the budgeted, model-judged quality lane (L32): live replies from both backends
+//                                    judged for relevance and groundedness. Billed, so it never runs without --live.
 //
 // Exit codes: 0 everything selected passed, 1 a case failed or errored, 2 invalid input.
 return await Cli.MainAsync(args).ConfigureAwait(false);
@@ -34,6 +37,7 @@ internal static class Cli
                 "run" => await RunAsync(Options.Parse(args[1..])).ConfigureAwait(false),
                 "compare" => await Comparison.WriteAsync(args[1..]).ConfigureAwait(false),
                 "native" => await Support.Evaluations.Native.NativeEvaluation.MainAsync(args[1..]).ConfigureAwait(false),
+                "quality" => await Support.Evaluations.Quality.QualityCommand.MainAsync(args[1..]).ConfigureAwait(false),
                 _ => Usage(),
             };
         }
@@ -46,7 +50,7 @@ internal static class Cli
 
     private static int Usage()
     {
-        Console.Error.WriteLine("Usage: validate | run --backend dotnet|python (--launch | --principal CUST-1001=URL) [options] | compare --results DIR --out FILE");
+        Console.Error.WriteLine("Usage: validate | run --backend dotnet|python (--launch | --principal CUST-1001=URL) [options] | compare --results DIR --out FILE | native record|evaluate | quality --live");
         return 2;
     }
 

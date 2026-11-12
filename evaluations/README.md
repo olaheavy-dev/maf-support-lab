@@ -12,6 +12,8 @@ Evaluation of the two support backends, kept apart from the application: nothing
 | `recordings/*.json`, `recordings/python/*.json` | Captured conversations for native evaluation (L30 .NET, L31 Python), schema `evaluation-capture`: the query, the agent's messages with tool calls, results and paused approvals, the tools it had, and its case. Re-record with `native record` after a dataset version changes. |
 | `dotnet/Support.Evaluations.Tests/` | Dataset and result contract tests, and the runner over a fake backend. |
 | `python/` | The Python evaluation package (its own locked uv project): the same contract checks; native evaluations from L31. |
+| `schemas/evaluation-quality.schema.json` | What the model-judged quality lane produces (L32): judge, models, packages, metrics, rubric, context, answers, budget, judge usage, uncertainty. |
+| `config/quality.json` | The quality lane's pinned settings: judge, backend live model and per-turn cap, metrics, sampled cases, budget, calibration answers. |
 | `results/` | Generated run documents. Git ignores them; CI uploads them as the `evaluation-results` artifact. The curated baseline is [docs/evaluations/baseline.md](../docs/evaluations/baseline.md). |
 
 ## Native .NET evaluation (L30)
@@ -32,6 +34,10 @@ Microsoft Agent Framework 1.28.0 has local evaluation built in: `EvalItem`, `Exp
 | `cites_found_record` | A record a lookup found is named in the reply |
 
 None of them can show that a write was *authorized*. That's the backend's gate, checked through its API by the behaviour runner (L16), and the native scores sit alongside those assertions, never instead of them. Expected arguments are written once in canonical snake_case in the datasets, and the .NET adapter maps them to the tools' C# names (`order_id` → `orderId`).
+
+## Model-judged quality (L32)
+
+`quality --live` asks both backends the same read-only questions in live mode, then an AI judge (`claude-haiku-5-5`) scores each reply with `Microsoft.Extensions.AI.Evaluation.Quality`'s `RelevanceEvaluator` and `GroundednessEvaluator`. Groundedness is judged against the case's fixture records. Every backend and judge call comes from one budget (60 calls; the committed worst case is 53), samples run two at a time, and Ctrl+C stops new work. A judge error, malformed judge output, missing context or failed turn is an error, never a score. Calibration answers check that the judge separates good from bad. It is billed, so it never runs without `--live`, and CI runs only its fake-judge tests. Method, results and limitations: [docs/evaluations/quality.md](../docs/evaluations/quality.md).
 
 ## Native Python evaluation (L31)
 
