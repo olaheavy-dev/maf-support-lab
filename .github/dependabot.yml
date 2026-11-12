@@ -95,6 +95,8 @@ updates:
         versions: [">=10.0.0"]
       # @vercel/otel 2.3.0 requires the OpenTelemetry SDK packages below these versions, and sdk-trace-base has
       # no 3.x yet. Remove when @vercel/otel's peer ranges include them.
+      - dependency-name: "@opentelemetry/api"
+        versions: [">=1.10.0"] # the 2.x SDK packages require api <1.10.0; it moves with SDK 3
       - dependency-name: "@opentelemetry/resources"
         versions: [">=3.0.0"]
       - dependency-name: "@opentelemetry/sdk-metrics"
