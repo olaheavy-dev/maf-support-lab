@@ -31,7 +31,7 @@ The latest-stable rule yields to compatibility: an upgrade waits while a tool or
 | Microsoft.Extensions.AI family | 10.x | Microsoft Agent Framework to depend on 11.x; then both move together (the owner's decision) | 2026-11-12 |
 | TypeScript | 6.0.x | `typescript-eslint` to accept TypeScript 7 | 2026-11-12 |
 | ESLint | 9.x | `eslint-config-next`'s plugins (`eslint-plugin-react`, `jsx-a11y`, `import`) to accept ESLint 10 | 2026-11-12 |
-| OpenTelemetry JS SDK (frontend) | 2.x / 0.2xx | `@vercel/otel` to accept 3.x / 0.3xx (and `sdk-trace-base` 3.x to exist) | 2026-11-12 |
+| OpenTelemetry JS SDK (frontend) | SDK 2.x / 0.2xx, API 1.9.x | `@vercel/otel` to accept 3.x / 0.3xx (and `sdk-trace-base` 3.x to exist). The API moves with them: the 2.x SDK requires `@opentelemetry/api <1.10.0` | 2026-11-12 |
 
 Pinned around upstream gaps, rather than held:
 
