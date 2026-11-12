@@ -4,6 +4,7 @@ This folder is the single specification both backends implement: the .NET API an
 
 - `schemas/`: JSON Schema (draft 2020-12) for every request, response, stream event, and error, plus two internal shapes (triage decision, routed request).
 - `examples/valid/`: examples that must pass. `examples/invalid/`: examples that must be rejected. `examples/index.json` maps each example to its schema.
+- `openapi.json`: the same routes as an OpenAPI 3.1 description that references these schemas, for generating clients. The demo frontend's TypeScript types come from it (`pnpm api-types` in `frontend/`). The schemas stay the specification; a test keeps its routes equal to the table below.
 - `tests/`: offline checks run in CI (see [Running the checks](#running-the-checks)).
 
 Current revision: **1.0** (see [Revision history](#revision-history)).

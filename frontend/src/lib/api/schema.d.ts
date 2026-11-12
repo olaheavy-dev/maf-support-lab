@@ -3,15 +3,537 @@
  * Do not make direct changes to the file.
  */
 
-export type paths = Record<string, never>;
+export interface paths {
+    "/v1/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+            };
+            cookie?: never;
+        };
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/conversations/{conversation_id}/turns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sendTurn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/conversations/{conversation_id}/turns/{turn_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+                turn_id: components["parameters"]["turn_id"];
+            };
+            cookie?: never;
+        };
+        get: operations["getTurn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/conversations/{conversation_id}/turns/{turn_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+                turn_id: components["parameters"]["turn_id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelTurn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/conversations/{conversation_id}/approvals/{approval_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["decideApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/operations/{operation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["getOperation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
-    responses: never;
-    parameters: never;
+    schemas: {
+        /**
+         * Create conversation request
+         * @description POST /api/v1/conversations body. Empty by design: the owner is the server-side principal and the backend is fixed by the server alias.
+         */
+        "create-conversation-request.schema": Record<string, never>;
+        /** @description Major.minor contract revision. Version-1 payloads always use major 1. */
+        contract_version: string;
+        /** @description W3C trace id used as a sanitized diagnostic reference. */
+        trace_id: string;
+        /**
+         * HTTP error (RFC 9457 problem details)
+         * @description Returned with Content-Type application/problem+json when a request is rejected before or instead of running a turn. A turn that runs and fails returns a turn result with outcome failed instead.
+         */
+        "problem.schema": {
+            contract_version: components["schemas"]["contract_version"];
+            type: string;
+            title: string;
+            status: number;
+            detail?: string;
+            instance?: string;
+            /** @enum {unknown} */
+            code: "invalid_request" | "not_found" | "turn_in_progress" | "turn_already_finished" | "client_turn_id_reused" | "approval_already_decided" | "approval_mismatch" | "approval_expired" | "rate_limited" | "service_unavailable" | "internal_error";
+            trace_id?: components["schemas"]["trace_id"];
+            retry_after_seconds?: number;
+            /** @description Field-level validation failures for invalid_request. */
+            errors?: {
+                /** @description JSON Pointer into the request body. */
+                pointer: string;
+                message: string;
+            }[];
+        } & (unknown & unknown & unknown & unknown & unknown & unknown & unknown);
+        conversation_id: string;
+        /**
+         * @description Server-controlled backend alias. Never a URL.
+         * @enum {unknown}
+         */
+        backend: "dotnet" | "python";
+        /** @description RFC 3339 timestamp in UTC with a Z suffix. */
+        timestamp: string;
+        turn_id: string;
+        order_id: string;
+        cancel_order_arguments: {
+            order_id: components["schemas"]["order_id"];
+        };
+        refund_order_arguments: {
+            order_id: components["schemas"]["order_id"];
+            reason: string;
+        };
+        create_ticket_arguments: {
+            subject: string;
+            description: string;
+            /** @enum {unknown} */
+            priority: "low" | "normal" | "high";
+            related_order_id?: components["schemas"]["order_id"];
+        };
+        /** @description Binds the arguments shape to the operation kind. */
+        kind_matches_arguments: unknown & unknown & unknown;
+        approval_id: string;
+        operation_id: string;
+        /** @enum {unknown} */
+        operation_kind: "cancel_order" | "refund_order" | "create_ticket";
+        /** @description A pending, server-bound approval request. The server binds it to the principal, conversation, operation, kind, and exact arguments. */
+        approval: {
+            approval_id: components["schemas"]["approval_id"];
+            operation_id: components["schemas"]["operation_id"];
+            kind: components["schemas"]["operation_kind"];
+            arguments: Record<string, never>;
+            /** @description Human-readable description of the exact action. */
+            summary: string;
+            expires_at: components["schemas"]["timestamp"];
+        } & components["schemas"]["kind_matches_arguments"];
+        /**
+         * Conversation
+         * @description A conversation owned by the server-side principal and bound to one backend for its lifetime. Used to recover pending approvals and an active turn after a refresh.
+         */
+        "conversation.schema": {
+            contract_version: components["schemas"]["contract_version"];
+            conversation_id: components["schemas"]["conversation_id"];
+            backend: components["schemas"]["backend"];
+            created_at: components["schemas"]["timestamp"];
+            active_turn_id: components["schemas"]["turn_id"] | null;
+            pending_approvals: components["schemas"]["approval"][];
+        };
+        /** @description Client-generated UUID that makes turn submission idempotent. */
+        client_turn_id: string;
+        /**
+         * Turn request
+         * @description POST /api/v1/conversations/{conversation_id}/turns body. There is deliberately no customer, identity, or confirmation field.
+         */
+        "turn-request.schema": {
+            client_turn_id: components["schemas"]["client_turn_id"];
+            message: string;
+        };
+        /** @enum {unknown} */
+        route_target: "orders" | "billing" | "technical";
+        /** @description Validated routing result. Model confidence is never part of authorization. */
+        route: {
+            /** @enum {unknown} */
+            status: "routed" | "unrouted";
+            target: components["schemas"]["route_target"] | null;
+            /** @enum {unknown} */
+            unrouted_reason?: "invalid_model_output" | "ambiguous_request";
+        } & (unknown & unknown);
+        reply: {
+            /**
+             * @description What the reply does. not_found covers unknown records and records owned by another customer alike.
+             * @enum {unknown}
+             */
+            kind: "answer" | "clarification" | "not_found" | "not_eligible" | "escalation_offer" | "approval_request" | "approval_result" | "refusal";
+            text: string;
+        };
+        /**
+         * @description Authoritative business-operation state, independent of any stream or connection.
+         * @enum {unknown}
+         */
+        operation_status: "awaiting_approval" | "rejected" | "expired" | "running" | "committed" | "failed";
+        operation_summary: {
+            operation_id: components["schemas"]["operation_id"];
+            kind: components["schemas"]["operation_kind"];
+            status: components["schemas"]["operation_status"];
+        };
+        /** @description Why a turn finished with outcome failed. This is a turn outcome, not an HTTP error. */
+        turn_error: {
+            /** @enum {unknown} */
+            code: "model_unavailable" | "tool_unavailable" | "invalid_model_output" | "rate_limited" | "timeout" | "budget_exhausted" | "internal_error";
+            /** @description Safe, user-presentable text. No secrets, stack traces, or raw provider payloads. */
+            detail: string;
+            retry_after_seconds?: number;
+        };
+        /**
+         * Turn result
+         * @description Result of one conversation turn. A finished turn has exactly one outcome: completed, awaiting_approval, failed, or cancelled.
+         */
+        "turn-result.schema": {
+            contract_version: components["schemas"]["contract_version"];
+            conversation_id: components["schemas"]["conversation_id"];
+            turn_id: components["schemas"]["turn_id"];
+            /** @description Echo of the submitted client_turn_id; null for turns resumed by an approval decision. */
+            client_turn_id: components["schemas"]["client_turn_id"] | null;
+            resumed_from_turn_id?: components["schemas"]["turn_id"];
+            /** @enum {unknown} */
+            state: "running" | "finished";
+            /** @enum {unknown} */
+            outcome?: "completed" | "awaiting_approval" | "failed" | "cancelled";
+            route?: components["schemas"]["route"];
+            reply?: components["schemas"]["reply"];
+            pending_approval?: components["schemas"]["approval"];
+            /** @description Business operations created or changed during this turn, with their factual status. */
+            operations?: components["schemas"]["operation_summary"][];
+            error?: components["schemas"]["turn_error"];
+            trace_id: components["schemas"]["trace_id"];
+            created_at: components["schemas"]["timestamp"];
+            finished_at?: components["schemas"]["timestamp"];
+        } & (unknown & unknown & unknown & unknown & unknown);
+        /**
+         * Turn stream event
+         * @description One Server-Sent Event payload. The SSE 'event' field equals type and the SSE 'id' field equals sequence. turn.final is the only terminal event. reply.reset (1.1) tells the client to discard the reply text streamed so far.
+         */
+        "stream-event.schema": {
+            contract_version: components["schemas"]["contract_version"];
+            /** @enum {unknown} */
+            type: "turn.started" | "turn.progress" | "reply.delta" | "reply.reset" | "turn.final";
+            conversation_id: components["schemas"]["conversation_id"];
+            turn_id: components["schemas"]["turn_id"];
+            sequence: number;
+            data: Record<string, never>;
+        } & (unknown & unknown & unknown & unknown & unknown);
+        /**
+         * Cancel turn response
+         * @description 202 response to POST /api/v1/conversations/{conversation_id}/turns/{turn_id}/cancel. Cancellation is cooperative; the turn's final outcome reports what actually happened.
+         */
+        "cancel-turn-response.schema": {
+            contract_version: components["schemas"]["contract_version"];
+            turn_id: components["schemas"]["turn_id"];
+            /** @constant */
+            cancel_requested: true;
+        };
+        /**
+         * Approval decision request
+         * @description POST /api/v1/conversations/{conversation_id}/approvals/{approval_id} body. The decision applies only to the server-bound operation; arguments cannot be changed here.
+         */
+        "approval-decision-request.schema": {
+            operation_id: components["schemas"]["operation_id"];
+            /** @enum {unknown} */
+            decision: "approve" | "reject";
+            reason?: string;
+        };
+        refund_id: string;
+        money: {
+            /** @description Amount in minor units (cents). */
+            amount_minor: number;
+            /** @enum {unknown} */
+            currency: "USD";
+        };
+        ticket_id: string;
+        /**
+         * Business operation status
+         * @description Authoritative state of a simulated write (refund, cancellation, ticket creation). Retrievable after a dropped stream or restart.
+         */
+        "operation.schema": {
+            contract_version: components["schemas"]["contract_version"];
+            operation_id: components["schemas"]["operation_id"];
+            conversation_id: components["schemas"]["conversation_id"];
+            approval_id?: components["schemas"]["approval_id"];
+            kind: components["schemas"]["operation_kind"];
+            arguments: Record<string, never>;
+            status: components["schemas"]["operation_status"];
+            created_at: components["schemas"]["timestamp"];
+            updated_at: components["schemas"]["timestamp"];
+            expires_at?: components["schemas"]["timestamp"];
+            result?: Record<string, never>;
+            failure?: {
+                /** @enum {unknown} */
+                code: "not_eligible" | "not_found" | "timeout" | "cancelled" | "internal_error";
+                detail: string;
+            };
+        } & (components["schemas"]["kind_matches_arguments"] & unknown & unknown & unknown & unknown & unknown & unknown);
+    };
+    responses: {
+        /** @description A conversation. */
+        Conversation: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["conversation.schema"];
+            };
+        };
+        /** @description A turn's result. */
+        TurnResult: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["turn-result.schema"];
+            };
+        };
+        /** @description A turn's result as JSON, or, with `Accept text/event-stream`, its Server-Sent Events. */
+        TurnResultOrStream: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["turn-result.schema"];
+                "text/event-stream": components["schemas"]["stream-event.schema"];
+            };
+        };
+        /** @description An RFC 9457 problem. */
+        Problem: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["problem.schema"];
+            };
+        };
+    };
+    parameters: {
+        conversation_id: string;
+        turn_id: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
 }
 export type $defs = Record<string, never>;
-export type operations = Record<string, never>;
+export interface operations {
+    createConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["create-conversation-request.schema"];
+            };
+        };
+        responses: {
+            201: components["responses"]["Conversation"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["Conversation"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    sendTurn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["turn-request.schema"];
+            };
+        };
+        responses: {
+            200: components["responses"]["TurnResultOrStream"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTurn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+                turn_id: components["parameters"]["turn_id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["TurnResult"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelTurn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+                turn_id: components["parameters"]["turn_id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The cancellation was requested. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["cancel-turn-response.schema"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    decideApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: components["parameters"]["conversation_id"];
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["approval-decision-request.schema"];
+            };
+        };
+        responses: {
+            200: components["responses"]["TurnResultOrStream"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOperation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The operation's authoritative state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["operation.schema"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+}

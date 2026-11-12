@@ -250,6 +250,8 @@ jobs:
         run: pnpm lint
       - name: Format check
         run: pnpm format:check
+      - name: Contract types are current (generated from contracts/openapi.json)
+        run: pnpm api-types && git diff --exit-code -- src/lib/api/schema.d.ts
       - name: Type check
         run: pnpm typecheck
       - name: Unit tests

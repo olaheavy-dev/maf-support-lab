@@ -1,0 +1,266 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Support API",
+    "version": "1.1",
+    "description": "Version 1 of the support API that both backends implement (see contracts/README.md), as an OpenAPI 3.1 description for generating clients: the demo frontend's TypeScript types come from it (pnpm api-types in frontend/). The JSON Schemas in schemas/ stay the specification; this file only says which schema each route takes and returns, by reference. contracts/tests checks that it lists exactly the routes in README.md and that every reference resolves."
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "paths": {
+    "/v1/conversations": {
+      "post": {
+        "operationId": "createConversation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/create-conversation-request.schema.json"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Conversation"
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversation_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/conversation_id"
+        }
+      ],
+      "get": {
+        "operationId": "getConversation",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Conversation"
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversation_id}/turns": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/conversation_id"
+        }
+      ],
+      "post": {
+        "operationId": "sendTurn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/turn-request.schema.json"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/TurnResultOrStream"
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversation_id}/turns/{turn_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/conversation_id"
+        },
+        {
+          "$ref": "#/components/parameters/turn_id"
+        }
+      ],
+      "get": {
+        "operationId": "getTurn",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/TurnResult"
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversation_id}/turns/{turn_id}/cancel": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/conversation_id"
+        },
+        {
+          "$ref": "#/components/parameters/turn_id"
+        }
+      ],
+      "post": {
+        "operationId": "cancelTurn",
+        "responses": {
+          "202": {
+            "description": "The cancellation was requested.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./schemas/cancel-turn-response.schema.json"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/conversations/{conversation_id}/approvals/{approval_id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/conversation_id"
+        },
+        {
+          "name": "approval_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "decideApproval",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "./schemas/approval-decision-request.schema.json"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/TurnResultOrStream"
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/operations/{operation_id}": {
+      "parameters": [
+        {
+          "name": "operation_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getOperation",
+        "responses": {
+          "200": {
+            "description": "The operation's authoritative state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "./schemas/operation.schema.json"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "conversation_id": {
+        "name": "conversation_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "turn_id": {
+        "name": "turn_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "Conversation": {
+        "description": "A conversation.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/conversation.schema.json"
+            }
+          }
+        }
+      },
+      "TurnResult": {
+        "description": "A turn's result.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/turn-result.schema.json"
+            }
+          }
+        }
+      },
+      "TurnResultOrStream": {
+        "description": "A turn's result as JSON, or, with `Accept text/event-stream`, its Server-Sent Events.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./schemas/turn-result.schema.json"
+            }
+          },
+          "text/event-stream": {
+            "schema": {
+              "$ref": "./schemas/stream-event.schema.json"
+            }
+          }
+        }
+      },
+      "Problem": {
+        "description": "An RFC 9457 problem.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "./schemas/problem.schema.json"
+            }
+          }
+        }
+      }
+    }
+  }
+}
