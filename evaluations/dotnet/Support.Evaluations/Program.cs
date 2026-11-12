@@ -22,6 +22,8 @@ using Support.Evaluations;
 //   report [--results DIR] [--store DIR] [--execution NAME]
 //                                    write the result documents in DIR (default evaluations/results) to a disk result
 //                                    store for `dotnet aieval report` (L33). Reads files only: no model, no backend.
+//   load --backend dotnet|python [--levels 1,4,16] [--turns-per-level 96] [--out DIR] [--source-commit SHA]
+//                                    fault and bounded-load scenarios (L25) on a backend the runner launches (fake mode)
 //   quality --live [--config FILE] [--out DIR] [--source-commit SHA]
 //                                    the budgeted, model-judged quality lane (L32): live replies from both backends
 //                                    judged for relevance and groundedness. Billed, so it never runs without --live.
@@ -42,6 +44,7 @@ internal static class Cli
                 "compare" => await Comparison.WriteAsync(args[1..]).ConfigureAwait(false),
                 "native" => await Support.Evaluations.Native.NativeEvaluation.MainAsync(args[1..]).ConfigureAwait(false),
                 "report" => await Support.Evaluations.Reporting.ReportCommand.MainAsync(args[1..]).ConfigureAwait(false),
+                "load" => await Support.Evaluations.Load.LoadCommand.MainAsync(args[1..]).ConfigureAwait(false),
                 "quality" => await Support.Evaluations.Quality.QualityCommand.MainAsync(args[1..]).ConfigureAwait(false),
                 _ => Usage(),
             };
@@ -62,7 +65,7 @@ internal static class Cli
 
     private static int Usage()
     {
-        Console.Error.WriteLine("Usage: validate | run --backend dotnet|python (--launch | --principal CUST-1001=URL) [options] | compare --results DIR --out FILE | native record|evaluate | report | quality --live");
+        Console.Error.WriteLine("Usage: validate | run --backend dotnet|python (--launch | --principal CUST-1001=URL) [options] | compare --results DIR --out FILE | native record|evaluate | report | load --backend dotnet|python | quality --live");
         return 2;
     }
 

@@ -13,6 +13,7 @@ internal static class EvaluationSchemas
     public const string Dataset = "evaluation-dataset";
     public const string Run = "evaluation-run";
     public const string Quality = "evaluation-quality";
+    public const string LoadRun = "evaluation-load";
 
     private static readonly Lazy<Dictionary<string, JsonSchema>> Loaded = new(Load);
 
@@ -42,6 +43,7 @@ internal static class EvaluationSchemas
             [Dataset] = JsonSchema.FromFile(Path.Combine(directory, $"{Dataset}.schema.json")),
             [Run] = JsonSchema.FromFile(Path.Combine(directory, $"{Run}.schema.json")),
             [Quality] = JsonSchema.FromFile(Path.Combine(directory, $"{Quality}.schema.json")),
+            [LoadRun] = JsonSchema.FromFile(Path.Combine(directory, $"{LoadRun}.schema.json")),
         };
     }
 }

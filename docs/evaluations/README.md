@@ -7,6 +7,7 @@ Curated, sanitized evaluation summaries. Raw run documents are never committed: 
 | Native .NET evaluation (L30) | `native evaluate` scores `evaluations/recordings` with MAF's local evaluator in CI (`cross-backend`); its run documents are in the `evaluation-results` artifact. |
 | [quality.md](quality.md) | The model-judged quality lane (L32): method, live results with calibration, and limitations. |
 | [reports.md](reports.md) | The Microsoft evaluation report and CI lanes (L33): what gates a merge, what the report keeps, how to reproduce it, and the curated summary. |
+| [load.md](load.md) | Fault and bounded load (L25): isolation, duplicate submissions and approvals, decision races and contained failures under concurrency on both backends; latency and throughput; the bottlenecks; the pooled-connection improvement. |
 | [baseline.md](baseline.md) | The deterministic behaviour baseline (L16): every dataset on both backends in fake mode, with each run's identity, each case side by side, agreement, and latency. |
 
 ## Regenerating the baseline

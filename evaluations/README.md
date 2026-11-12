@@ -36,6 +36,10 @@ Microsoft Agent Framework 1.28.0 has local evaluation built in: `EvalItem`, `Exp
 
 None of them can show that a write was *authorized*. That's the backend's gate, checked through its API by the behaviour runner (L16), and the native scores sit alongside those assertions, never instead of them. Expected arguments are written once in canonical snake_case in the datasets, and the .NET adapter maps them to the tools' C# names (`order_id` → `orderId`).
 
+## Fault and bounded load (L25)
+
+`load --backend dotnet|python` launches a backend in fake mode and runs concurrency and fault scenarios. They check that conversations stay isolated, that one `client_turn_id` makes one turn, that a running turn refuses others, that a write approved 16 times runs once, that a race between approve and reject has one winner, and that model failures stay in their conversations. The checks gate CI; latency and throughput are recorded in `load-<backend>.json` (schema `evaluation-load`) and never gated. Results and bottlenecks: [docs/evaluations/load.md](../docs/evaluations/load.md).
+
 ## Reports (L33)
 
 `report` writes the result documents in `results/` to a Microsoft.Extensions.AI.Evaluation disk result store under one execution name. `dotnet tool run aieval report` (pinned in `.config/dotnet-tools.json`) then renders HTML and JSON. Failed checks stay failed, errors and skips are never scores, and tags carry run ids, versions, provenance (fake, recorded or live), unknown usage, and estimates. CI builds the report after every evaluation and uploads it with the results. Lanes, commands and the curated summary: [docs/evaluations/reports.md](../docs/evaluations/reports.md).

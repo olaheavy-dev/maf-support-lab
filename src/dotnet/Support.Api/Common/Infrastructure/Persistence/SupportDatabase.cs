@@ -19,7 +19,10 @@ public sealed class SupportDatabase : IUnitOfWork
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         Path = System.IO.Path.GetFullPath(path);
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-        connectionString = new SqliteConnectionStringBuilder { DataSource = Path, Pooling = false }.ToString();
+        // Pooled (L25): with a fresh connection for every call (open + pragmas), concurrent writers showed 150-190 ms
+        // tail latencies under load; reusing connections removed them and doubled read throughput, with every
+        // correctness check unchanged (docs/evaluations/load.md). Pragmas are per connection and re-applied on open.
+        connectionString = new SqliteConnectionStringBuilder { DataSource = Path, Pooling = true }.ToString();
         CreateSchema();
     }
 

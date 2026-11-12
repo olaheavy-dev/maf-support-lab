@@ -33,6 +33,11 @@ internal static class Comparison
         foreach (var file in Directory.GetFiles(results, "*.json").Order(StringComparer.Ordinal))
         {
             var run = JsonNode.Parse(await File.ReadAllTextAsync(file).ConfigureAwait(false))!.AsObject();
+            if (!run.ContainsKey("results"))
+            {
+                continue; // another result kind in the same folder (quality, load, the report's JSON): not a run document
+            }
+
             var problems = EvaluationSchemas.Errors(EvaluationSchemas.Run, run);
             if (problems.Count > 0)
             {

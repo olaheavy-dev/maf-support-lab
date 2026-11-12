@@ -103,7 +103,7 @@ jobs:
   cross-backend:
     name: cross-backend
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       ContinuousIntegrationBuild: "true"
     steps:
@@ -149,6 +149,15 @@ jobs:
       - name: Native .NET evaluation of the recorded conversations (L30, no model calls)
         if: always()
         run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- native evaluate
+      # L25: fault and bounded-load scenarios on both backends (fake mode). The checks are correctness only (no cross-
+      # conversation leakage, one turn per client_turn_id, 409 while a turn runs, one write per approval, one winner per
+      # decision race, failures contained), so they gate; the latency and throughput numbers are recorded, never gated.
+      - name: Fault and bounded-load scenarios (.NET)
+        if: always()
+        run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- load --backend dotnet --source-commit "$GITHUB_SHA"
+      - name: Fault and bounded-load scenarios (Python)
+        if: always()
+        run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- load --backend python --source-commit "$GITHUB_SHA"
       - name: Compare the backends
         if: always()
         run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- compare --results evaluations/results --out evaluations/results/comparison.md

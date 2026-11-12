@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.maf-support-lab.example/evaluations/v1/evaluation-load.schema.json",
+  "title": "Evaluation load run",
+  "description": "The result of the fault and bounded-load scenarios (L25) against one backend in fake model mode: the target and workload, and per scenario its concurrency, request count, throughput, latency distribution, HTTP status and outcome counts, and checks. Cost is stated as unavailable, never zero.",
+  "type": "object",
+  "required": ["schema_version", "run", "scenarios", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "run": {
+      "type": "object",
+      "required": ["run_id", "started_at", "finished_at", "backend", "source_commit", "model", "target", "workload", "cost", "runner"],
+      "additionalProperties": false,
+      "properties": {
+        "run_id": { "type": "string", "pattern": "^load_[0-9a-f]{32}$" },
+        "started_at": { "$ref": "#/$defs/timestamp" },
+        "finished_at": { "$ref": "#/$defs/timestamp" },
+        "backend": { "enum": ["dotnet", "python"] },
+        "source_commit": { "type": "string", "pattern": "^([0-9a-f]{7,40}|unknown)$" },
+        "model": { "type": "object", "required": ["mode"], "additionalProperties": false, "properties": { "mode": { "const": "fake" } } },
+        "target": {
+          "type": "object",
+          "required": ["launch", "os", "architecture", "processors"],
+          "additionalProperties": false,
+          "properties": {
+            "launch": { "type": "string", "minLength": 1 },
+            "os": { "type": "string" },
+            "architecture": { "type": "string" },
+            "processors": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "workload": {
+          "type": "object",
+          "required": ["isolation_levels", "turns_per_level", "warm_up"],
+          "additionalProperties": false,
+          "properties": {
+            "isolation_levels": { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1 } },
+            "turns_per_level": { "type": "integer", "minimum": 1 },
+            "warm_up": { "type": "string" }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "required": ["available", "reason"],
+          "additionalProperties": false,
+          "properties": { "available": { "const": false }, "reason": { "type": "string", "minLength": 1 } }
+        },
+        "runner": {
+          "type": "object",
+          "required": ["name", "version"],
+          "additionalProperties": false,
+          "properties": { "name": { "type": "string" }, "version": { "type": "string" } }
+        }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "purpose", "concurrency", "requests", "wall_ms", "throughput_rps", "latency_ms", "http_status", "outcomes", "status", "checks"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string", "minLength": 1 },
+          "concurrency": { "type": "integer", "minimum": 1 },
+          "requests": { "type": "integer", "minimum": 0 },
+          "wall_ms": { "type": "number", "minimum": 0 },
+          "throughput_rps": { "type": "number", "minimum": 0 },
+          "latency_ms": {
+            "type": "object",
+            "required": ["p50", "p95", "p99", "max", "mean"],
+            "additionalProperties": false,
+            "properties": {
+              "p50": { "type": "number", "minimum": 0 },
+              "p95": { "type": "number", "minimum": 0 },
+              "p99": { "type": "number", "minimum": 0 },
+              "max": { "type": "number", "minimum": 0 },
+              "mean": { "type": "number", "minimum": 0 }
+            }
+          },
+          "http_status": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+          "outcomes": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+          "status": { "enum": ["passed", "failed"] },
+          "checks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["name", "passed", "detail"],
+              "additionalProperties": false,
+              "properties": { "name": { "type": "string" }, "passed": { "type": "boolean" }, "detail": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["scenarios", "passed", "failed"],
+      "additionalProperties": false,
+      "properties": {
+        "scenarios": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "timestamp": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$" }
+  }
+}

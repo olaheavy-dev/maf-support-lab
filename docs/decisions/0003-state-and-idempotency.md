@@ -117,6 +117,10 @@ The same design and guarantees, ported idiomatically. The observable behaviour i
 - **Python-specific detail:** MAF Python runs an approved tool on the event loop, inside `approval_scope`. `execute_approved` re-reads the stored status inside the transaction before writing. A run that is stale (the operation was already finished) writes nothing and reports the stored result. If the guarded commit still loses, the business change rolls back with it (`Rollback`).
 - **Same limits** as section 5. Within one process, at most one turn per conversation runs at a time; across processes, only the stored guards apply. A test with two hosts on one file approving at once shows that the guards alone still give one write and one stored turn.
 
+## Connection pooling (L25)
+
+The .NET store originally opened a fresh connection for every call (`Pooling = false`). Under concurrent writes, the load scenarios showed 150–190 ms tail latencies. With pooling, those tails dropped to 18–36 ms and read throughput roughly doubled, with every correctness check unchanged. Transactions are unaffected: a write still runs in one `BEGIN IMMEDIATE` transaction on one connection, and each pooled connection re-applies the pragmas when opened. Evidence: [load results](../evaluations/load.md#the-improvement-pooled-sqlite-connections-net).
+
 ## Consequences
 
 - A restart between request and approval loses nothing. Wrong owner, mismatch, rejection and expiry behave exactly as before the restart.
