@@ -11,3 +11,10 @@ allowBuilds:
 # patched major; lint and the type check pass with it. Remove when typescript-eslint depends on >=11.0.1.
 overrides:
   "minimatch@>=7.0.0 <11.0.1": "11.0.8"
+
+# openapi-typescript 7.13.0 (its latest) still declares typescript ^5. On TypeScript 6 it generates
+# src/lib/api/schema.d.ts byte-identically, and CI regenerates and diffs that file on every run, so a real
+# incompatibility can't slip through. Remove when openapi-typescript's range includes 6.
+peerDependencyRules:
+  allowedVersions:
+    "openapi-typescript>typescript": "6"
