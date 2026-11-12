@@ -23,14 +23,14 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
         var name = Names.Of(target);
         var agent = agents.Get(name);
 
-        // The conversation's own native session for this specialist (L09): its bounded history comes back each turn.
+        // The conversation's own native session for this specialist: its bounded history comes back each turn.
         AgentSession? session = request.ConversationId is { } conversationId
             ? await sessions.GetOrCreateAsync(conversationId, name, agent, cancellationToken).ConfigureAwait(false)
             : null;
 
         // A follow-up that names no order gets the order a tool verified earlier, as a trusted note for this turn only.
         // The note comes right after the customer's message: Anthropic accepts a mid-conversation system message only
-        // after a user message (a note placed after the previous assistant reply was rejected with HTTP 400 in L09).
+        // after a user message (a note placed after the previous assistant reply was rejected with HTTP 400).
         List<ChatMessage> input = [new ChatMessage(ChatRole.User, request.OriginalMessage)];
         if (request.Triage?.OrderId is null && request.Context.VerifiedOrderId is { } verified)
         {
@@ -40,7 +40,7 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
         using var activity = TurnActivity.Begin();
         await context.AddEventAsync(new SupportProgressEvent(new TurnProgress(TurnStage.Specialist, Names.Of(target))), cancellationToken).ConfigureAwait(false);
 
-        // Streamed (L12): the model's text goes out as it arrives, and each tool call as a progress step. The collected
+        // Streamed: the model's text goes out as it arrives, and each tool call as a progress step. The collected
         // updates are the same response a non-streaming run returns, so everything below is unchanged.
         List<AgentResponseUpdate> updates = [];
         await foreach (var update in agent.RunStreamingAsync(input, session, cancellationToken: cancellationToken).ConfigureAwait(false))
@@ -51,7 +51,7 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
 
         var response = updates.ToAgentResponse();
 
-        // A write tool pauses natively for approval; the gate binds it to an operation or declines it (L10).
+        // A write tool pauses natively for approval; the gate binds it to an operation or declines it.
         var gated = await gate.AfterRunAsync(agent, session, response, request, target, cancellationToken).ConfigureAwait(false);
         if (gated.Proposed is not null)
         {
@@ -82,7 +82,7 @@ internal sealed partial class SpecialistExecutor(SupportAgents agents, Conversat
     internal static async ValueTask ForwardAsync(AgentResponseUpdate update, Func<WorkflowEvent, CancellationToken, ValueTask> raise, CancellationToken cancellationToken)
     {
         // A write tool the model asks for arrives wrapped in an approval request (it has not run yet). It is still a tool
-        // call, as in Python's stream, so it is reported too (found by the L29 evaluation datasets).
+        // call, as in Python's stream, so it is reported too (found by the evaluation datasets).
         var calls = update.Contents.OfType<FunctionCallContent>()
             .Concat(update.Contents.OfType<ToolApprovalRequestContent>().Select(request => request.ToolCall).OfType<FunctionCallContent>());
         foreach (var call in calls)

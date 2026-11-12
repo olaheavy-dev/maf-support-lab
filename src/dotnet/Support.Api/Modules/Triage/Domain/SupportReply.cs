@@ -10,13 +10,13 @@ public enum ReplyKind
     /// <summary>Unresolved (no documented fix): offer a human instead of guessing.</summary>
     EscalationOffer,
 
-    /// <summary>A write was requested but the business rules do not allow it; nothing was proposed (L10).</summary>
+    /// <summary>A write was requested but the business rules do not allow it; nothing was proposed.</summary>
     NotEligible,
 
-    /// <summary>A bound write is waiting for the customer's decision (L10).</summary>
+    /// <summary>A bound write is waiting for the customer's decision.</summary>
     ApprovalRequest,
 
-    /// <summary>The outcome of the customer's decision: committed, failed, or rejected (L10).</summary>
+    /// <summary>The outcome of the customer's decision: committed, failed, or rejected.</summary>
     ApprovalResult,
 }
 

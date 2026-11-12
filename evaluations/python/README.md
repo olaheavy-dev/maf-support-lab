@@ -1,6 +1,6 @@
 # Python evaluation tooling (`support_evaluations`)
 
-Evaluation-only Python code for the support backends, kept out of `src/python`'s manifest (L29). It validates the shared evaluation contracts the same way the .NET runner does, and runs native Python agent and workflow evaluation with MAF 1.25.0 (L31).
+Evaluation-only Python code for the support backends, kept out of `src/python`'s manifest. It validates the shared evaluation contracts the same way the .NET runner does, and runs native Python agent and workflow evaluation with MAF 1.25.0.
 
 ```bash
 cd evaluations/python

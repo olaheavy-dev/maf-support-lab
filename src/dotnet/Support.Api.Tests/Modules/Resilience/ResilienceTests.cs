@@ -14,7 +14,7 @@ using Support.Api.Modules.Orders.Domain;
 namespace Support.Api.Tests.Modules.Resilience;
 
 /// <summary>
-/// L15: every fault has a bounded number of attempts, a bounded time, and a safe contract outcome. Model calls have
+/// Every fault has a bounded number of attempts, a bounded time, and a safe contract outcome. Model calls have
 /// exactly one retry owner (the Anthropic SDK: MaxRetries = 2, so at most 3 HTTP attempts per call); the application
 /// never retries a turn; loops and slow tools hit per-turn limits; cancellation stops new attempts.
 /// </summary>

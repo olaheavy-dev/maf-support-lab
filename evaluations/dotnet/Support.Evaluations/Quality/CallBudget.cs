@@ -3,7 +3,7 @@ using Microsoft.Extensions.AI;
 namespace Support.Evaluations.Quality;
 
 /// <summary>
-/// The lane's model-call budget (L32). Work is admitted by reserving its worst case up front: a backend turn reserves
+/// The lane's model-call budget. Work is admitted by reserving its worst case up front: a backend turn reserves
 /// the backend's per-turn cap (the contract doesn't report how many calls a turn really made), a judge metric
 /// reserves one call. Admission happens in plan order, so which samples a small budget skips is deterministic.
 /// </summary>

@@ -9,13 +9,13 @@ using Microsoft.Extensions.AI;
 namespace Support.Evaluations.Native;
 
 /// <summary>
-/// The agent native evaluation runs (L30): a MAF <see cref="ChatClientAgent"/> over a scripted chat client, with tools
+/// The agent native evaluation runs: a MAF <see cref="ChatClientAgent"/> over a scripted chat client, with tools
 /// that have the .NET backend's names and parameters and read the shared fixtures for one customer. Reads check
 /// ownership; writes are approval-required and never run here. No credentials, no network.
 /// </summary>
 /// <remarks>
 /// It stands in for the support agent's model, so MAF's evaluation orchestration can be exercised end to end. It is not
-/// the backend: the backend's business gates are evaluated through its API (L16).
+/// the backend: the backend's business gates are evaluated through its API.
 /// </remarks>
 internal sealed partial class FakeSupportAgent
 {

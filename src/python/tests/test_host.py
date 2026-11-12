@@ -1,4 +1,4 @@
-"""L17: the host serves health without credentials, identity comes only from the server, and resources are closed."""
+"""The host serves health without credentials, identity comes only from the server, and resources are closed."""
 
 from __future__ import annotations
 

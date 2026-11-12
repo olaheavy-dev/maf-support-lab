@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.maf-support-lab.example/evaluations/v1/evaluation-load.schema.json",
   "title": "Evaluation load run",
-  "description": "The result of the fault and bounded-load scenarios (L25) against one backend in fake model mode: the target and workload, and per scenario its concurrency, request count, throughput, latency distribution, HTTP status and outcome counts, and checks. Cost is stated as unavailable, never zero.",
+  "description": "The result of the fault and bounded-load scenarios against one backend in fake model mode: the target and workload, and per scenario its concurrency, request count, throughput, latency distribution, HTTP status and outcome counts, and checks. Cost is stated as unavailable, never zero.",
   "type": "object",
   "required": ["schema_version", "run", "scenarios", "summary"],
   "additionalProperties": false,

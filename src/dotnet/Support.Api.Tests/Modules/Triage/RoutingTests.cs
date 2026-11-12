@@ -4,7 +4,7 @@ using Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 namespace Support.Api.Tests.Modules.Triage;
 
 /// <summary>
-/// L07 acceptance through the API: every message is triaged, and code decides the route. Responses are validated
+/// Routing through the API: every message is triaged, and code decides the route. Responses are validated
 /// against the contract by ApiClient. The counting model counts specialist calls only (triage is separate).
 /// </summary>
 public sealed class RoutingTests

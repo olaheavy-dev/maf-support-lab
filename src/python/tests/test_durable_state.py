@@ -1,4 +1,4 @@
-"""L38: state survives a restart, and every write applies at most once (porting .NET L11's DurableStateTests).
+"""State survives a restart, and every write applies at most once (porting .NET the DurableStateTests).
 
 A "restart" is a new host on the same SQLite file after the first host stopped (or, for the crash cases, while the
 first host is stuck mid-turn). Simulated failures use SQLite triggers, so the real code path fails at the real write.

@@ -1,4 +1,4 @@
-# Fault and bounded load (L25)
+# Fault and bounded load
 
 What happens to each backend under concurrency, and whether its guarantees still hold: no conversation sees another's data, no write runs twice, one failure stays in its own conversation. Fake model mode throughout, so this measures **our code** (HTTP, routing, MAF orchestration, storage), not a model provider. There is no cost to report: no provider call is made.
 
@@ -64,7 +64,7 @@ The before/after write rows come from the pooling experiment (concurrency 16 onl
 - **Fake model.** A real model adds seconds per turn and dominates latency. These numbers bound our own overhead, not end-to-end response time.
 - **One machine.** The load generator and the backend share CPUs. Absolute numbers are machine-specific; compare them only within one table.
 - **Small, bounded samples.** Each table row comes from 3 runs of 16–112 requests per scenario. The ranges show run-to-run spread; they aren't confidence intervals.
-- **No live load.** A live run would mostly measure the provider and cost money per turn. The per-turn model-call cap already bounds one turn's cost ([observability](../observability.md#failures-retries-and-budgets-l15)).
+- **No live load.** A live run would mostly measure the provider and cost money per turn. The per-turn model-call cap already bounds one turn's cost ([observability](../observability.md#failures-retries-and-budgets)).
 - **One process per database file.** Neither backend supports several processes on one store, so horizontal scaling isn't measured.
 
 Reproduce:

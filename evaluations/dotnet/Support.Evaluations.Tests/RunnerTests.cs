@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 namespace Support.Evaluations.Tests;
 
 /// <summary>
-/// The data-to-result flow over a fake backend (L29): cases pass on matching facts, fail naming the fact that differed,
+/// The data-to-result flow over a fake backend: cases pass on matching facts, fail naming the fact that differed,
 /// are skipped when they can't run safely, and every run document matches its schema. The real backends are covered by
 /// launch mode in CI (cross-backend job): every dataset on both backends.
 /// </summary>

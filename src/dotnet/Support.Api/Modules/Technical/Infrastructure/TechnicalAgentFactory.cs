@@ -26,7 +26,7 @@ public static class TechnicalAgentFactory
             chatClient,
             new ChatClientAgentOptions
             {
-                Id = SupportAgents.TechnicalAgentName, // stable across restarts, so a stored session belongs to the same agent (L11)
+                Id = SupportAgents.TechnicalAgentName, // stable across restarts, so a stored session belongs to the same agent
                 Name = SupportAgents.TechnicalAgentName,
                 Description = "Answers troubleshooting questions from the knowledge base; tickets need the customer's approval.",
                 ChatHistoryProvider = ConversationHistory.CreateProvider(),

@@ -19,7 +19,7 @@ using Support.Api.Modules.Triage.Infrastructure.Routing;
 namespace Support.Api.Tests.Modules.Streaming;
 
 /// <summary>
-/// L12: cancellation is cooperative and only a cancel request triggers it. Seen before a write commits, nothing changes
+/// Cancellation is cooperative and only a cancel request triggers it. Seen before a write commits, nothing changes
 /// and the turn ends cancelled; arriving after the commit, the committed result stands. A dropped connection is not a
 /// cancellation: the turn finishes, and a status lookup plus duplicate protection recover its result.
 /// </summary>

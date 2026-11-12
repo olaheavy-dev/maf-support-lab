@@ -52,7 +52,7 @@ internal sealed class FixedBackends(IReadOnlyDictionary<string, Uri> principals,
 }
 
 /// <summary>
-/// Backends the runner starts itself (launch mode, L16): each customer gets its own process (a backend serves one
+/// Backends the runner starts itself (launch mode): each customer gets its own process (a backend serves one
 /// development customer per process), all on one SQLite file. Read-only cases share one store; every write case gets a
 /// fresh store and fresh processes, so writes never repeat on shared state. Fake model mode only; no credentials.
 /// </summary>
@@ -105,7 +105,7 @@ internal sealed class LaunchedBackends(string backend, string root, string workD
 }
 
 /// <summary>
-/// Live model settings for a launched backend (L32's quality lane only). The key is passed to the child process's
+/// Live model settings for a launched backend (the quality lane only). The key is passed to the child process's
 /// environment and never logged; the per-turn cap bounds what one turn may cost.
 /// </summary>
 internal sealed record LiveModel(string Model, string ApiKey, int MaxModelCallsPerTurn)

@@ -6,7 +6,7 @@ using Support.Api.Common.Application.Observability;
 namespace Support.Api.Common.Application.Safety;
 
 /// <summary>
-/// A <b>diagnostic</b> prompt-injection heuristic (L14), in the spirit of the course's phrase matcher. It looks for
+/// A <b>diagnostic</b> prompt-injection heuristic, in the spirit of the course's phrase matcher. It looks for
 /// well-known attack phrasings in customer text and tool results and records what it found on the current span and as
 /// a metric, so attacks can be studied. It never blocks, rewrites, or decides anything: it has false positives
 /// ("please ignore my previous message") and is bypassed by any paraphrase. What keeps customers safe is enforced in

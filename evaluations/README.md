@@ -1,6 +1,6 @@
 # Evaluations
 
-Evaluation of the two support backends, kept apart from the application: nothing here is referenced by `src/`, and no backend manifest gains an evaluation dependency. It started in L29 (datasets, result contracts, project shells, and the data-to-result flow). L16 made the runner launch the backends itself, so every case runs (fresh stores, restarts, cancellation), and added the baseline. L30/L31 add Microsoft's native .NET and Python evaluators, L32 adds budgeted model-based scoring, and L33 adds reports.
+Evaluation of the two support backends, kept apart from the application: nothing here is referenced by `src/`, and no backend manifest gains an evaluation dependency. It has versioned datasets and result contracts; a runner that launches the backends itself, so every case runs (fresh stores, restarts, cancellation); Microsoft's native .NET and Python evaluators; budgeted model-based scoring; fault and load scenarios; and reports.
 
 | Path | What it holds |
 | --- | --- |
@@ -9,15 +9,15 @@ Evaluation of the two support backends, kept apart from the application: nothing
 | `datasets/*.json` | Five versioned datasets (31 cases, schema 1.1): `support-success`, `support-ambiguity`, `support-denial`, `support-failure`, `support-adversarial`. |
 | `tools/build_datasets.py` | Generates the datasets from `fixtures/scenarios` plus evaluation-only cases. Rerun it after changing either, then commit the output. |
 | `dotnet/Support.Evaluations/` | The runner (.NET console app): `validate`; `run`, either launching the backends itself (`--launch`) or against URLs you give it (`--principal`); and `compare`, which writes the baseline. |
-| `recordings/*.json`, `recordings/python/*.json` | Captured conversations for native evaluation (L30 .NET, L31 Python), schema `evaluation-capture`: the query, the agent's messages with tool calls, results and paused approvals, the tools it had, and its case. Re-record with `native record` after a dataset version changes. |
+| `recordings/*.json`, `recordings/python/*.json` | Captured conversations for native evaluation (.NET and Python), schema `evaluation-capture`: the query, the agent's messages with tool calls, results and paused approvals, the tools it had, and its case. Re-record with `native record` after a dataset version changes. |
 | `dotnet/Support.Evaluations.Tests/` | Dataset and result contract tests, and the runner over a fake backend. |
-| `python/` | The Python evaluation package (its own locked uv project): the same contract checks; native evaluations from L31. |
-| `schemas/evaluation-quality.schema.json` | What the model-judged quality lane produces (L32): judge, models, packages, metrics, rubric, context, answers, budget, judge usage, uncertainty. |
+| `python/` | The Python evaluation package (its own locked uv project): the same contract checks, and native Python evaluations. |
+| `schemas/evaluation-quality.schema.json` | What the model-judged quality lane produces: judge, models, packages, metrics, rubric, context, answers, budget, judge usage, uncertainty. |
 | `config/quality.json` | The quality lane's pinned settings: judge, backend live model and per-turn cap, metrics, sampled cases, budget, calibration answers. |
-| `dotnet/Support.Evaluations/Reporting/` | `report` (L33): maps run and quality documents into Microsoft's reporting store for `dotnet aieval report` (HTML and JSON). It reads files only. See [docs/evaluations/reports.md](../docs/evaluations/reports.md). |
+| `dotnet/Support.Evaluations/Reporting/` | `report`: maps run and quality documents into Microsoft's reporting store for `dotnet aieval report` (HTML and JSON). It reads files only. See [docs/evaluations/reports.md](../docs/evaluations/reports.md). |
 | `results/` | Generated run documents. Git ignores them; CI uploads them as the `evaluation-results` artifact. The curated baseline is [docs/evaluations/baseline.md](../docs/evaluations/baseline.md). |
 
-## Native .NET evaluation (L30)
+## Native .NET evaluation
 
 Microsoft Agent Framework 1.28.0 has local evaluation built in: `EvalItem`, `ExpectedToolCall`, `EvalChecks`, `FunctionEvaluator`, `LocalEvaluator`, and `agent.EvaluateAsync(...)`, all on the Microsoft.Extensions.AI.Evaluation abstractions. The runner uses it in two ways, with no judge model and no credentials:
 
@@ -34,21 +34,21 @@ Microsoft Agent Framework 1.28.0 has local evaluation built in: `EvalItem`, `Exp
 | `record_ids_are_grounded` | Every record id in the reply came from the query or a tool result; format examples like `ORD-1234` excepted |
 | `cites_found_record` | A record a lookup found is named in the reply |
 
-None of them can show that a write was *authorized*. That's the backend's gate, checked through its API by the behaviour runner (L16), and the native scores sit alongside those assertions, never instead of them. Expected arguments are written once in canonical snake_case in the datasets, and the .NET adapter maps them to the tools' C# names (`order_id` → `orderId`).
+None of them can show that a write was *authorized*. That's the backend's gate, checked through its API by the behaviour runner, and the native scores sit alongside those assertions, never instead of them. Expected arguments are written once in canonical snake_case in the datasets, and the .NET adapter maps them to the tools' C# names (`order_id` → `orderId`).
 
-## Fault and bounded load (L25)
+## Fault and bounded load
 
 `load --backend dotnet|python` launches a backend in fake mode and runs concurrency and fault scenarios. They check that conversations stay isolated, that one `client_turn_id` makes one turn, that a running turn refuses others, that a write approved 16 times runs once, that a race between approve and reject has one winner, and that model failures stay in their conversations. The checks gate CI; latency and throughput are recorded in `load-<backend>.json` (schema `evaluation-load`) and never gated. Results and bottlenecks: [docs/evaluations/load.md](../docs/evaluations/load.md).
 
-## Reports (L33)
+## Reports
 
 `report` writes the result documents in `results/` to a Microsoft.Extensions.AI.Evaluation disk result store under one execution name. `dotnet tool run aieval report` (pinned in `.config/dotnet-tools.json`) then renders HTML and JSON. Failed checks stay failed, errors and skips are never scores, and tags carry run ids, versions, provenance (fake, recorded or live), unknown usage, and estimates. CI builds the report after every evaluation and uploads it with the results. Lanes, commands and the curated summary: [docs/evaluations/reports.md](../docs/evaluations/reports.md).
 
-## Model-judged quality (L32)
+## Model-judged quality
 
 `quality --live` asks both backends the same read-only questions in live mode, then an AI judge (`claude-haiku-5-5`) scores each reply with `Microsoft.Extensions.AI.Evaluation.Quality`'s `RelevanceEvaluator` and `GroundednessEvaluator`. Groundedness is judged against the case's fixture records. Every backend and judge call comes from one budget (60 calls; the committed worst case is 53), samples run two at a time, and Ctrl+C stops new work. A judge error, malformed judge output, missing context or failed turn is an error, never a score. Calibration answers check that the judge separates good from bad. It is billed, so it never runs without `--live`, and CI runs only its fake-judge tests. Method, results and limitations: [docs/evaluations/quality.md](../docs/evaluations/quality.md).
 
-## Native Python evaluation (L31)
+## Native Python evaluation
 
 The same evaluation with MAF Python 1.25.0 (`evaluations/python/support_evaluations/native.py`), run with `python -m support_evaluations native …`:
 - **`record`:** `evaluate_agent(agent=…, queries=…)` runs a fake support agent (a scripted model on MAF's real tool loop, with the Python backend's snake_case tools over the fixtures and approval-required writes). The conversations are saved to `recordings/python/`.
@@ -86,7 +86,7 @@ dataset (validated) ──▶ runner ──HTTP──▶ backend (fake mode)
                  checks (contract facts) ──▶ run document (validated) ──▶ evaluations/results/<backend>-<dataset>.json
 ```
 
-- **Launch mode** (`--launch`, L16): the runner starts the backend itself, in fake mode, with one process per customer (a backend serves one development customer per process) on one SQLite file.
+- **Launch mode** (`--launch`): the runner starts the backend itself, in fake mode, with one process per customer (a backend serves one development customer per process) on one SQLite file.
   - Read-only cases share one store.
   - **Every write case gets a fresh store and fresh processes**, so a write never repeats on shared state.
   - A `restart` step kills the processes and starts them again on the same file (a realistic crash).

@@ -1,4 +1,4 @@
-"""Python-owned OpenTelemetry (L40): one set of providers per process, exported to Aspire over OTLP/gRPC.
+"""Python-owned OpenTelemetry: one set of providers per process, exported to Aspire over OTLP/gRPC.
 
 Who owns what:
 - **This module** builds the trace, metric, and log providers once per process and installs them globally. It reads
@@ -42,7 +42,7 @@ from support_agent.settings import Settings
 
 SCOPE = "support_agent"  # the tracer, meter, and logger name for our own signals
 DEFAULT_SERVICE_NAME = "support-api-python"
-SUPPORTED_PROTOCOL = "grpc"  # the owner's choice (L40); the AppHost requests it explicitly
+SUPPORTED_PROTOCOL = "grpc"  # the owner's choice; the AppHost requests it explicitly
 FLUSH_TIMEOUT_MILLIS = 2000
 SHUTDOWN_TIMEOUT_SECONDS = 5.0
 
@@ -73,7 +73,7 @@ class Telemetry:
         """Flushes and closes the providers at process exit, never for longer than ``timeout_seconds``.
 
         With an unreachable collector the gRPC exporters keep retrying; without a limit the process hung on exit for
-        over a minute (found by L40's tests). Telemetry not sent by then is dropped, and the process exits."""
+        over a minute (found by the tests). Telemetry not sent by then is dropped, and the process exits."""
 
         def close() -> None:
             self.flush()
@@ -239,7 +239,7 @@ triage_decisions = meter.create_counter(
     "support.triage.decisions", unit="{decision}", description="Triage decisions, by outcome, target, reason."
 )
 first_delta = meter.create_histogram(
-    "support.stream.first_delta", unit="s", description="Time from turn start to the first streamed reply text (L20)."
+    "support.stream.first_delta", unit="s", description="Time from turn start to the first streamed reply text."
 )
 
 

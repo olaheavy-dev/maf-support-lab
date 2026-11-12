@@ -1,4 +1,4 @@
-"""L42: bounded retries, timeouts, and execution budgets (porting .NET L15's ResilienceTests).
+"""Bounded retries, timeouts, and execution budgets (porting .NET the ResilienceTests).
 
 The SDK-level tests run the **real Anthropic SDK** in live mode over a fake HTTP API (``tests/fake_anthropic.py``), so
 its actual retry loop, backoff, ``retry-after`` handling and attempt timeouts are what's tested. The rest use the fake
@@ -468,7 +468,7 @@ def test_limits_are_read_from_the_environment(monkeypatch: pytest.MonkeyPatch) -
         model_max_retries=2,
         model_attempt_timeout_seconds=30,
         max_output_tokens=1024,
-    )  # the same defaults as .NET's L15
+    )  # the same defaults as .NET's
 
 
 def test_every_agent_is_bounded_the_same_way() -> None:

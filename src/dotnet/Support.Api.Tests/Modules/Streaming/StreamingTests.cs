@@ -6,7 +6,7 @@ using Support.Api.Modules.Agents.Infrastructure.ModelProvider;
 namespace Support.Api.Tests.Modules.Streaming;
 
 /// <summary>
-/// L12: a turn can be streamed as Server-Sent Events (contract 1.1). Every event matches the schema, the stream starts
+/// A turn can be streamed as Server-Sent Events (contract 1.1). Every event matches the schema, the stream starts
 /// with turn.started and ends with exactly one turn.final, the reply text after the last reset equals the final reply,
 /// and the final result is the same stored turn a status lookup returns.
 /// </summary>
@@ -66,7 +66,7 @@ public sealed class StreamingTests
 
     /// <summary>
     /// A write tool the model asks for pauses for approval before it runs, but it is still a tool call, and the stream
-    /// says so, as Python's does (found by the L29 evaluation datasets: .NET used to show no tool_call here).
+    /// says so, as Python's does (found by the evaluation datasets: .NET used to show no tool_call here).
     /// </summary>
     [Fact]
     public async Task A_write_the_model_asks_for_shows_as_a_tool_call_before_the_pause()

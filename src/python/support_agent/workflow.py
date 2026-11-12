@@ -1,4 +1,4 @@
-"""The support workflow (MAF Workflows, L18, porting L07/L08): triage, then a deterministic switch to one executor.
+"""The support workflow (MAF Workflows, the Python counterpart of .NET's routing): triage, then a deterministic switch to one executor.
 
     triage ─┬─ orders, no order id     ─▶ ask-for-order-id
             ├─ orders                  ─▶ orders-specialist
@@ -68,7 +68,7 @@ def progress(stage: str, route: dict[str, Any] | None = None, tool: str | None =
 
 
 def delta(text: str) -> WorkflowEvent[Delta]:
-    """Reply text as it arrives, as a native workflow ``data`` event (L20). Display only."""
+    """Reply text as it arrives, as a native workflow ``data`` event. Display only."""
     return WorkflowEvent("data", data=Delta(text))
 
 
@@ -148,7 +148,7 @@ class SpecialistExecutor(Executor):
     async def answer(self, outcome: TriageOutcome, ctx: WorkflowContext[SupportReply]) -> None:
         await ctx.add_event(progress("specialist", route={"status": "routed", "target": self._target}))
         agent = self._agents.specialist(self._target)
-        # The conversation's own native session for this specialist (L19): its bounded history comes back each turn.
+        # The conversation's own native session for this specialist: its bounded history comes back each turn.
         session = outcome.sessions.for_agent(self._target, agent) if outcome.sessions is not None else None
         messages = [Message(role="user", contents=[outcome.original_message])]
         if outcome.order_id is None and (verified := outcome.context.verified_order_id) is not None:
@@ -160,7 +160,7 @@ class SpecialistExecutor(Executor):
                 )
             )
         with begin_activity() as activity:
-            # Streamed (L20): the model's text goes out as it arrives; tool calls show as progress. The stream is
+            # Streamed: the model's text goes out as it arrives; tool calls show as progress. The stream is
             # closed deterministically, also when the turn is cancelled mid-stream.
             async with agent.run(messages, session=session, stream=True) as stream:
                 async for update in stream:
@@ -170,10 +170,10 @@ class SpecialistExecutor(Executor):
                     if update.text:
                         await ctx.add_event(delta(update.text))
                 response = await stream.get_final_response()
-            # A write tool pauses natively for approval; the gate binds it to an operation or declines it (L37).
+            # A write tool pauses natively for approval; the gate binds it to an operation or declines it.
             gated = await gate(agent, session, response, outcome, self._target, self._operations)
         if outcome.sessions is not None:
-            outcome.sessions.save(self._target)  # durable history (L38); a failure here fails the turn
+            outcome.sessions.save(self._target)  # durable history; a failure here fails the turn
         verified = activity.verified_order_id
         if gated.proposed is not None:
             operation = gated.proposed

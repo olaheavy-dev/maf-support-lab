@@ -1,4 +1,4 @@
-"""L17: the Python backend is its own program. It never imports .NET code for its telemetry or authorization."""
+"""The Python backend is its own program. It never imports .NET code for its telemetry or authorization."""
 
 from __future__ import annotations
 

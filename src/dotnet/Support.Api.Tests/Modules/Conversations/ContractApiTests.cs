@@ -20,7 +20,7 @@ public sealed class ContractApiTests
     }
 
     /// <summary>
-    /// L21 (found by the cross-backend probes): an invalid create body lists what is wrong as a JSON pointer, as the
+    /// Found by the cross-backend probes: an invalid create body lists what is wrong as a JSON pointer, as the
     /// contract requires for invalid_request; "" is the whole body, and a key is escaped (RFC 6901).
     /// </summary>
     [Theory]

@@ -8,7 +8,7 @@ namespace Support.Api.Modules.Conversations.Application.CancelTurn;
 public sealed record CancelTurnCommand(string ConversationId, string TurnId) : ICommand<string>;
 
 /// <summary>
-/// Cooperative cancellation (L12): this only signals the turn. The turn stops at its next boundary and starts nothing
+/// Cooperative cancellation: this only signals the turn. The turn stops at its next boundary and starts nothing
 /// new; a write that already committed stays committed, and the turn's final outcome reports what actually happened.
 /// Someone else's conversation or an unknown turn is not_found; a finished turn is turn_already_finished.
 /// </summary>

@@ -4,7 +4,7 @@ using Support.Api.Modules.Conversations.Domain;
 namespace Support.Api.Modules.Conversations.Application;
 
 /// <summary>
-/// Maps a turn's failure to the contract's turn_error (L12, classified in L15). The detail is fixed, user-safe text:
+/// Maps a turn's failure to the contract's turn_error. The detail is fixed, user-safe text:
 /// never the exception message, which may hold provider payloads or internals. The full exception goes to the logs and
 /// the trace instead. Transient faults were already retried by their one retry owner (the provider SDK) before they
 /// get here; nothing in the application retries a turn.

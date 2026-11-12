@@ -4,7 +4,7 @@ using Support.Api.Modules.Triage.Domain;
 
 namespace Support.Api.Modules.Conversations.Application;
 
-/// <summary>Where conversations are kept: durably since L11, so a restart loses no finished turn or verified context.</summary>
+/// <summary>Where conversations are kept: durably, so a restart loses no finished turn or verified context.</summary>
 public interface IConversationStore
 {
     void Add(Conversation conversation);

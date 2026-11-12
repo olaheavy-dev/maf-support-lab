@@ -1,4 +1,4 @@
-# Model-judged quality (L32)
+# Model-judged quality
 
 The quality lane asks both backends the same questions live, then has an AI judge score each reply for **relevance** and **groundedness** with Microsoft's `Microsoft.Extensions.AI.Evaluation.Quality` evaluators. It is a measurement of reply quality, opt-in and budgeted. It is not a gate.
 
@@ -15,7 +15,7 @@ The quality lane asks both backends the same questions live, then has an AI judg
 | Budget | Every model call, backend or judge, comes out of one budget. A backend turn reserves its per-turn cap up front, because the contract doesn't report how many calls a turn made. Each judge metric reserves 1. Samples are admitted in plan order, and whatever doesn't fit is recorded as `skipped: budget`. The judge client refuses any call that no reservation covers. The worst case for the committed configuration is 4 × 2 × 4 + 8 × 2 + 5 = **53 of 60**. |
 | Statuses | A metric is `scored` only with a value and no error diagnostic. A judge exception, malformed judge output, missing context, or a backend turn that didn't complete is `error`. Budget or cancellation is `skipped`. None of these turns into a score. |
 | Calibration | Fixed answers with known quality: a good answer, a contradicting one, an off-topic one, and (the stretch) the good answer judged against a different order's record. For each metric, every "high" answer must score above every "low" one. |
-| Result | `evaluations/results/quality-live.json`, schema `evaluations/schemas/evaluation-quality.schema.json` (1.1 since L33: each metric keeps the evaluator's per-call metadata, and the run states that no response cache is used; 1.0 documents are still read). It records the judge, models, package versions, metrics, rubric, context, answers, repetitions, budget, judge token usage, and an uncertainty statement. It is ignored by Git. |
+| Result | `evaluations/results/quality-live.json`, schema `evaluations/schemas/evaluation-quality.schema.json` (1.1: each metric keeps the evaluator's per-call metadata, and the run states that no response cache is used; 1.0 documents are still read). It records the judge, models, package versions, metrics, rubric, context, answers, repetitions, budget, judge token usage, and an uncertainty statement. It is ignored by Git. |
 
 Run it (it is billed; `ANTHROPIC_API_KEY` must be set, and is passed to the backends and the judge, never printed):
 
@@ -31,7 +31,7 @@ The fake-judge tests (`Support.Evaluations.Tests/QualityTests.cs`) run in CI and
 
 ## Results: live run on 2026-11-12 (assistant-run)
 
-Source commit `3e61ec3` (main after L44) plus the L32 working tree. Judge and backends on `claude-haiku-5-5`. Packages: Quality 10.11.0, Evaluation 10.11.0, Anthropic 13.7.0. 1 repetition, concurrency 2. **12 of 12 samples scored**, 0 errors, 0 skipped. 53 of 60 calls reserved, 21 of them judge calls. Judge usage: 39,021 input and 6,555 output tokens. The run took 44 s.
+Source commit `3e61ec3` plus the working tree of this change. Judge and backends on `claude-haiku-5-5`. Packages: Quality 10.11.0, Evaluation 10.11.0, Anthropic 13.7.0. 1 repetition, concurrency 2. **12 of 12 samples scored**, 0 errors, 0 skipped. 53 of 60 calls reserved, 21 of them judge calls. Judge usage: 39,021 input and 6,555 output tokens. The run took 44 s.
 
 | Case | .NET relevance | .NET groundedness | Python relevance | Python groundedness |
 | --- | --- | --- | --- | --- |

@@ -32,7 +32,7 @@ internal sealed record QualitySample(
     string? FixedAnswer);
 
 /// <summary>
-/// The model-judged quality lane (L32). It asks each configured backend the same questions (live), then judges every
+/// The model-judged quality lane. It asks each configured backend the same questions (live), then judges every
 /// reply with the same evaluators, judge model, and grounding context, plus fixed calibration answers. Every model
 /// call, backend or judge, comes out of one budget; work is admitted in plan order until the budget is spent, at most
 /// <see cref="BudgetSettings.Concurrency"/> samples run at once, and cancellation stops new work. The scores describe

@@ -1,6 +1,6 @@
 {
   "fixture_version": "1.0",
-  "description": "Feature-test scenario inputs shared by both backends. These are not formal evaluation datasets (introduced in L29).",
+  "description": "Feature-test scenario inputs shared by both backends. These are not formal evaluation datasets (introduced).",
   "scenarios": [
     {
       "scenario_id": "S01-order-status",

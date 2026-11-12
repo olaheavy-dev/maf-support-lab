@@ -1,4 +1,4 @@
-"""Cross-backend contract probes (L21): the same requests against the real .NET and Python servers, compared.
+"""Cross-backend contract probes: the same requests against the real .NET and Python servers, compared.
 
 Each backend runs as real processes in fake model mode (no key, no network): one as CUST-1001 and one as CUST-1002,
 on the same SQLite file, so ownership is checked by the server that reads the other customer's stored record. Every

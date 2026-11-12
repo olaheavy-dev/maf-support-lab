@@ -1,4 +1,4 @@
-"""The version-1 contract API (L18; approvals and operations since L37; streaming and cancellation since L20).
+"""The version-1 contract API (approvals and operations; streaming and cancellation).
 
 Every request body is validated against the shared contract schema before anything runs. Another customer's
 conversation, turn, approval, or operation is 404, exactly like a missing one. A turn that runs and fails is a result
@@ -6,7 +6,7 @@ conversation, turn, approval, or operation is 404, exactly like a missing one. A
 stops it, and only ``POST …/turns/{id}/cancel`` does (cooperatively). ``Accept: text/event-stream`` on the turn and
 approval routes streams the turn as Server-Sent Events. Approval decisions are bound to the customer, the
 conversation, the operation, and one decision; repeating the same decision returns the same turn and never runs the
-write twice, also after a restart (L38).
+write twice, also after a restart.
 """
 
 from __future__ import annotations
@@ -327,7 +327,7 @@ def observed_turn(
             labels = {"support.agent": agent, "support.turn.outcome": turn.outcome}
             span.set_attributes({**labels, "support.reply_kind": turn.reply_kind or "none"})
             if (budget := current_budget()) is not None:
-                # L42: model calls (including one refused over budget) and HTTP attempts (including SDK retries).
+                # Model calls (including one refused over budget) and HTTP attempts (including SDK retries).
                 span.set_attributes(
                     {
                         "support.turn.model_calls": budget.model_calls,
@@ -374,10 +374,10 @@ async def complete_turn(
     limits: ResilienceSettings | None = None,
 ) -> None:
     """Runs the claimed turn to its stored result; whatever happens, the claim is completed exactly once. The turn has
-    its own model-call budget and deadline (L42)."""
+    its own model-call budget and deadline."""
     limits = limits or ResilienceSettings()
     with budgeting(limits.max_model_calls_per_turn), observed_turn(conversation, claim) as observe:
-        injection.inspect("message", message)  # diagnostic only (L41): the turn runs exactly the same either way
+        injection.inspect("message", message)  # diagnostic only: the turn runs exactly the same either way
         await _complete_turn(agents, operations, conversation, claim, message, principal, observe, limits)
 
 
@@ -507,13 +507,13 @@ async def run_turn(
             if reply is None:
                 raise RuntimeError("The workflow finished without a reply.")
         except Exception as error:
-            # Classified (L42): the code tells the client what happened; the detail is fixed, safe text. The full error
+            # Classified: the code tells the client what happened; the detail is fixed, safe text. The full error
             # goes to the log and the trace, never into the result.
             failure = classify(error)
             log.exception(
                 "Turn %s failed in conversation %s (%s)", claim.turn_id, conversation.conversation_id, failure.code
             )
-            # A turn that failed after triage still reports where it was routed (as .NET does; found by L21's probes).
+            # A turn that failed after triage still reports where it was routed (as .NET does; found by the probes).
             return failed_turn(conversation, claim, started, error=turn_error(failure), route=routed), None
     outcome = "awaiting_approval" if reply.pending_operation_id else "completed"
     turn = Turn(
@@ -564,14 +564,14 @@ async def complete_decision(
 
     Cancelled before the write commits: the turn is cancelled, and an approved operation fails with code ``cancelled``.
     Cancelled after it committed: the committed result stands, and the turn completes from the record.
-    Bounded like any turn (L42): past its deadline before the commit, the operation fails with code ``timeout`` and
+    Bounded like any turn: past its deadline before the commit, the operation fails with code ``timeout`` and
     nothing changed; past it after the commit, the committed result stands."""
     limits = limits or ResilienceSettings()
     with (
         budgeting(limits.max_model_calls_per_turn),
         observed_turn(conversation, claim, resumed_from=operation.source_turn_id) as observe,
     ):
-        # Diagnostic only. In Python the reason never reaches the model (MAF's approval response carries none, L37).
+        # Diagnostic only. In Python the reason never reaches the model (MAF's approval response carries none).
         injection.inspect("decision_reason", operation.decision_reason)
         await _complete_decision(agents, operations, conversation, claim, operation, principal, observe, limits)
 

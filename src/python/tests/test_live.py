@@ -1,4 +1,4 @@
-"""Opt-in live checks against Claude (L18): never in CI or a normal run. `uv run pytest -m live` with ANTHROPIC_API_KEY.
+"""Opt-in live checks against Claude: never in CI or a normal run. `uv run pytest -m live` with ANTHROPIC_API_KEY.
 
 The shared read-only scenarios run through the Python API with the real model (claude-haiku-5-5), so the same tools,
 guards, triage validation, and routing hold with a real model, not only with the fake.
@@ -143,7 +143,7 @@ def test_claude_pauses_a_write_for_approval_and_completes_it_only_when_approved(
 
 
 def test_claude_resumes_an_approval_in_a_host_restarted_on_the_same_file(tmp_path: Path) -> None:
-    """L38: the request is made in one host; the approval is answered by a new host on the same SQLite file."""
+    """The request is made in one host; the approval is answered by a new host on the same SQLite file."""
     key = LIVE_KEY
     if not key:
         pytest.skip("Set ANTHROPIC_API_KEY to run live checks.")
@@ -195,7 +195,7 @@ LEAKS = ("laptop stand", "std-300", "53.99", "49.99", "is processing", "status: 
 
 
 def test_claude_cannot_be_talked_or_headered_into_another_customers_order(tmp_path: Path) -> None:
-    """L39: CUST-1002 claims to be CUST-1001 in a header and in the message, and asks about and to cancel ORD-1003."""
+    """CUST-1002 claims to be CUST-1001 in a header and in the message, and asks about and to cancel ORD-1003."""
     key = LIVE_KEY
     if not key:
         pytest.skip("Set ANTHROPIC_API_KEY to run live checks.")
@@ -222,14 +222,14 @@ def test_claude_cannot_be_talked_or_headered_into_another_customers_order(tmp_pa
             assert turn["reply"]["kind"] == "not_found", turn["reply"]
             assert "pending_approval" not in turn
             # No detail of the owner's order. (Not the bare word "processing": Claude may say "if it's still
-            # processing" generically, which reveals nothing; found live in L20.)
+            # processing" generically, which reveals nothing; found live.)
             assert not any(detail in turn["reply"]["text"].lower() for detail in LEAKS), turn["reply"]
         assert app.state.operations.store.for_conversation(conversation) == []
         assert app.state.services.state.order("ORD-1003").status == "processing"
 
 
 def test_claude_streams_tokens_before_the_final_event(tmp_path: Path) -> None:
-    """L20: Claude's words arrive as reply.delta events before turn.final, and they add up to the stored reply.
+    """Claude's words arrive as reply.delta events before turn.final, and they add up to the stored reply.
 
     Measures time to the first delta and to the final event (one run: indicative only)."""
     import time
@@ -273,7 +273,7 @@ def test_claude_streams_tokens_before_the_final_event(tmp_path: Path) -> None:
 
 
 def test_claude_under_direct_and_indirect_injection_cannot_cross_the_gates(tmp_path: Path) -> None:
-    """L41: a direct attack in the message, and a poisoned knowledge-base article. Whatever Claude does, nothing of
+    """A direct attack in the message, and a poisoned knowledge-base article. Whatever Claude does, nothing of
     another customer's is read or changed, and nothing changes without an approval."""
     import dataclasses
 
@@ -333,7 +333,7 @@ def test_claude_under_direct_and_indirect_injection_cannot_cross_the_gates(tmp_p
 
 
 def test_claude_turns_stop_at_their_budget_with_a_contract_failure(tmp_path: Path) -> None:
-    """L42: with a budget of one model call, triage runs (a real Claude call), then the specialist's call is refused
+    """With a budget of one model call, triage runs (a real Claude call), then the specialist's call is refused
     before it reaches the provider. The turn fails with budget_exhausted; nothing is retried. Through the real SDK, built
     with our retry and attempt limits."""
     key = LIVE_KEY

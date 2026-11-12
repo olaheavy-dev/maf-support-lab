@@ -1,4 +1,4 @@
-"""A fake Anthropic HTTP API under the real Anthropic SDK (L42, like .NET's FakeAnthropicHttp).
+"""A fake Anthropic HTTP API under the real Anthropic SDK (like .NET's FakeAnthropicHttp).
 
 Tests script what each HTTP attempt gets (a status, headers, a delay, a connection failure), so the SDK's real retry
 loop, backoff, ``retry-after`` handling and attempt timeouts run deterministically, with no network and no key. Every

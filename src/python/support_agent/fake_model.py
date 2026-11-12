@@ -1,4 +1,4 @@
-"""A deterministic stand-in for Claude (fake mode, L18), ported from the .NET fake model's behaviour.
+"""A deterministic stand-in for Claude (fake mode), ported from the .NET fake model's behaviour.
 
 It is composed from MAF's real chat-client layers (function invocation, middleware, telemetry), so tool calls run
 through the framework's actual tool loop. Triage calls (those asking for structured output) get keyword triage; other
@@ -32,7 +32,7 @@ from support_agent import tools as names
 FAILURE_TRIGGER = "[fake:model-error]"
 MALFORMED_TRIAGE_TRIGGER = "[fake:triage-malformed]"
 UNKNOWN_ROUTE_TRIGGER = "[fake:triage-unknown-route]"
-# Keeps the specialist's model call busy (cancellably), so a running turn can be cancelled from outside (L16). The
+# Keeps the specialist's model call busy (cancellably), so a running turn can be cancelled from outside. The
 # same marker and delay as the .NET fake.
 SLOW_TRIGGER = "[fake:slow-model]"
 SLOW_SECONDS = 8.0
@@ -209,7 +209,7 @@ def default_script(messages: Sequence[Message], options: Mapping[str, Any]) -> C
     invoice_id = INVOICE_ID.search(user_text)
     upper = user_text.upper()
 
-    # Write requests first, like a model that does what was asked: the framework then pauses for approval (L37).
+    # Write requests first, like a model that does what was asked: the framework then pauses for approval.
     if "cancel_order" in tools and "CANCEL" in upper and order_id:
         return tool_call("cancel_order", {"order_id": order_id.group(0).upper()})
     if "refund_order" in tools and "REFUND" in upper and order_id:
@@ -269,9 +269,9 @@ class ScriptedChatClient(BaseChatClient[Any]):
         self.calls = 0
         # Tests may hold a call here (for example to observe a running turn); awaited before the script runs.
         self.before_call: Callable[[], Awaitable[None]] | None = None
-        # Tests may hold a stream between its updates (L20), to see text arrive before the turn ends.
+        # Tests may hold a stream between its updates, to see text arrive before the turn ends.
         self.between_updates: Callable[[], Awaitable[None]] | None = None
-        # Like a real provider, every response reports token usage (L40), so token metrics have real samples. A test may
+        # Like a real provider, every response reports token usage, so token metrics have real samples. A test may
         # turn it off to see that usage a provider didn't report is recorded as nothing, never as zero.
         self.report_usage = True
 
@@ -299,7 +299,7 @@ class ScriptedChatClient(BaseChatClient[Any]):
             return self._respond(messages, options)
 
         async def updates() -> AsyncGenerator[ChatResponseUpdate]:
-            # Like a real model: text arrives word by word, then any tool calls (L20).
+            # Like a real model: text arrives word by word, then any tool calls.
             response = await self._respond(messages, options)
             message_id = f"msg_{self.calls:04d}"  # like a real provider: every update of one response has its id
             for message in response.messages:

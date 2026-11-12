@@ -1,4 +1,4 @@
-"""The shared feature scenarios (fixtures/scenarios/feature-scenarios.json), all of them since L37.
+"""The shared feature scenarios (fixtures/scenarios/feature-scenarios.json), all of them.
 
 The same file drives the .NET backend, so both implementations are held to one description of behaviour. Steps send
 a message, resend the previous one, or decide the pending approval (optionally as another customer); every response

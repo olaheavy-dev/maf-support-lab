@@ -1,11 +1,11 @@
 # 0006 - Browser integration with the version-1 contract
 
-- Status: **Superseded** (2026-11-11). Accepted in L22, then retired the same day when the owner dropped the frontend: the browser probes, their CI job, and the AppHost resource were removed. Kept as a record of what was verified; nothing in the repository implements it now. The contract is verified by L21's cross-backend probes.
+- Status: **Superseded** (2026-11-11). Accepted, then retired the same day when the owner dropped the frontend: the browser probes, their CI job, and the AppHost resource were removed. Kept as a record of what was verified; nothing in the repository implements it now. The contract is verified by the cross-backend probes.
 - Versions: Node 26.13.1 (LTS "Lithium"; 26.13.0 used locally), `@playwright/test` 1.65.0 with Chromium (headless shell 158), and `Aspire.Hosting.JavaScript` 13.6.5, with every Aspire pin raised to 13.6.5 for advisory GHSA-f7vh-h5g3-7jrh.
 
 ## Decision
 
-The version-1 contract works from a browser **unchanged**. L22's probes found no breaking change, so the schemas and adapters stay as they are. The browser-side rules, chosen by the owner, are:
+The version-1 contract works from a browser **unchanged**. The probes found no breaking change, so the schemas and adapters stay as they are. The browser-side rules, chosen by the owner, are:
 
 1. **Relative URLs only.**
    - The page calls `/api/{alias}/v1/...` on its own origin. A server-side proxy maps the alias to a backend.
@@ -56,5 +56,5 @@ The version-1 contract works from a browser **unchanged**. L22's probes found no
 
 ## Not decided here
 
-- **The product UI** and its framework (L23), and authentication (out of scope).
-- **The proxy itself** is a disposable probe. L23 decides whether its server or dev proxy follows the same rules.
+- **The product UI** and its framework, and authentication (out of scope).
+- **The proxy itself** is a disposable probe. A real frontend would have had to decide whether its server or dev proxy follows the same rules.

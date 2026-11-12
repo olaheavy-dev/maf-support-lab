@@ -1,7 +1,7 @@
 namespace Support.Api.Common.Application.Resilience;
 
 /// <summary>
-/// One turn's running budget (L15): how many model calls it has made and, if the provider rate-limited it, the retry
+/// One turn's running budget: how many model calls it has made and, if the provider rate-limited it, the retry
 /// hint it gave. It is set for the detached run of a turn and flows to every model call within it. Model calls made
 /// outside a turn (DevUI, tests) are not budgeted here; they keep the per-call limits.
 /// </summary>

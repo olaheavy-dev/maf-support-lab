@@ -6,7 +6,7 @@ using Microsoft.Extensions.AI.Evaluation.Quality;
 namespace Support.Evaluations.Quality;
 
 /// <summary>One metric's outcome. Only <c>scored</c> carries a score; an error or skip never becomes one.</summary>
-/// <param name="Metadata">The evaluator's per-call metadata (judge model, duration, tokens), as reported; L33 turns it into report chat details.</param>
+/// <param name="Metadata">The evaluator's per-call metadata (judge model, duration, tokens), as reported; the report turns it into chat details.</param>
 internal sealed record MetricOutcome(string Name, string Status, double? Score = null, string? Rating = null, bool? Failed = null, string? Reason = null, string? Error = null, IReadOnlyDictionary<string, string>? Metadata = null)
 {
     public JsonObject ToJson()
@@ -53,7 +53,7 @@ internal sealed record MetricOutcome(string Name, string Status, double? Score =
 }
 
 /// <summary>
-/// Scores one answer with Microsoft.Extensions.AI.Evaluation.Quality's AI-judged evaluators (L32). The evaluators own
+/// Scores one answer with Microsoft.Extensions.AI.Evaluation.Quality's AI-judged evaluators. The evaluators own
 /// the rubric (their built-in prompts, 1-5 scale); this class only supplies the query, the answer, the grounding
 /// context, and the judge, and turns the evaluator's metric into a status that can't be mistaken for a pass:
 /// a missing value or any error diagnostic is an error.

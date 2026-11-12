@@ -1,4 +1,4 @@
-"""L17: configuration is validated at startup.
+"""Configuration is validated at startup.
 
 Fake mode needs no credentials; live mode refuses to start without them.
 """

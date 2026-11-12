@@ -1,6 +1,6 @@
 # Observability
 
-What each support backend sends to Aspire, where each signal comes from, and how to read it. The .NET API was introduced in L06; the Python backend's own telemetry, in L40 (see "The Python backend" below).
+What each support backend sends to Aspire, where each signal comes from, and how to read it. Each backend configures its own OpenTelemetry; the Python backend's is described in "The Python backend" below.
 
 ## Run it and look
 
@@ -77,7 +77,7 @@ There is **one** OpenTelemetry pipeline and **one** OTLP exporter, both in `Supp
 | `Support.Api` | `Common/Infrastructure/Observability/SupportTelemetryRegistration` | `SubmitTurnCommandHandler`, `OrderStatusTool`, `TriageExecutor` | `support.turn` span and `support.triage.*` tags; `support.turns`, `support.turn.duration`, `support.tool.calls`, `support.triage.decisions` metrics |
 | `Support.Agents` | `Modules/Agents/Infrastructure/Observability/AgentTelemetryRegistration` | MAF `OpenTelemetryAgent`, applied to **every** agent by `SupportAgents` | `invoke_agent` and `execute_tool` spans; whole-run `gen_ai.client.operation.duration` |
 | `Support.Model` | same | M.E.AI `OpenTelemetryChatClient`, wrapped around the provider client in `ModelProviderRegistration` | `chat` spans; per-call `gen_ai.client.operation.duration` and `gen_ai.client.token.usage` |
-| `Support.Workflows` | same | MAF Workflows `WithOpenTelemetry`, in `SupportWorkflowRouter` (L07) | `invoke_workflow`, `executor.process`, edge and message spans; `workflow.build` per turn |
+| `Support.Workflows` | same | MAF Workflows `WithOpenTelemetry`, in `SupportWorkflowRouter` | `invoke_workflow`, `executor.process`, edge and message spans; `workflow.build` per turn |
 | Logs (`ILogger`) | `Support.ServiceDefaults` | the handler (turn completed or failed), the tool (lookup outcome), framework categories | structured logs, automatically stamped with the trace and span id |
 
 **Workflow notes (MAF 1.28.0):**
@@ -94,7 +94,7 @@ Because the model client is already instrumented, MAF does not auto-wire a secon
 
 ## Token usage is counted once
 
-The agent layer re-records the whole run's tokens in `gen_ai.client.token.usage`, and the model layer has already recorded the same tokens call by call. Summed over meters, every token would count twice. The L06 test proved this: 400 input tokens instead of 200 for two 100-token calls.
+The agent layer re-records the whole run's tokens in `gen_ai.client.token.usage`, and the model layer has already recorded the same tokens call by call. Summed over meters, every token would count twice. The test proved this: 400 input tokens instead of 200 for two 100-token calls.
 
 **Fix:**
 - An OpenTelemetry **View** drops `gen_ai.client.token.usage` from the `Support.Agents` meter.
@@ -146,7 +146,7 @@ Markers, all in fake mode only:
 
 The last two both produce `unrouted / invalid_model_output`. None of the markers affect Live mode.
 
-## Failures, retries and budgets (L15)
+## Failures, retries and budgets
 
 A turn that runs and fails is a result, not an HTTP error: `200` with `outcome: failed`, an `error.code`, safe text, and the turn's `trace_id`. The `support.turn` span carries `support.turn.error_code`, `support.turn.model_calls` and `support.turn.model_attempts`, and its status is Error.
 
@@ -159,7 +159,7 @@ A turn that runs and fails is a result, not an HTTP error: `200` with `outcome: 
 | Model calls in a turn | No retries; a budget | `MaxModelCallsPerTurn` = 10 (triage, specialist steps, declines, resume). Over budget → `budget_exhausted`. |
 | Tool loop (MAF function invocation) | No retries | `MaxToolIterations` = 4 steps per agent run; `ToolTimeoutSeconds` = 10 per call → `tool_unavailable`; a tool that throws ends the turn (`MaximumConsecutiveErrorsPerRequest` = 0), so the model can't retry it in a loop. |
 | The turn | **No** | `TurnTimeoutSeconds` = 90, on the turn's own deadline (the server's `TimeProvider`) → `timeout`. The client may retry with a **new** `client_turn_id`; repeating the same one replays the stored result. |
-| Writes | **Never** retried blindly | Only the L11 operation state machine resumes a write, and its guarded, atomic commit means it can't apply twice. |
+| Writes | **Never** retried blindly | Only the operation state machine resumes a write, and its guarded, atomic commit means it can't apply twice. |
 
 **Worst case per turn:** at most 10 model calls × 3 attempts = **30 HTTP attempts**, and never longer than the 90-second deadline, whichever comes first. Without the single-owner rule, the SDK (3) × a standard resilience handler (up to 4) would be 12 attempts per call, 120 per turn.
 
@@ -176,11 +176,11 @@ A turn that runs and fails is a result, not an HTTP error: `200` with `outcome: 
 | Model-call budget used up (for example, a tool loop) | `budget_exhausted` |
 | Permanent provider error (4xx) or anything unexpected | `internal_error` |
 
-Invalid triage output is not a failure: the turn completes `unrouted` with a clarification (L07).
+Invalid triage output is not a failure: the turn completes `unrouted` with a clarification.
 
 All limits live in configuration (`Resilience` section, `ResilienceOptions`).
 
-## The Python backend (L40)
+## The Python backend
 
 The Python processes send their own telemetry to the same dashboard, under their own service names. Nothing is inherited from .NET: Aspire only tells Python where to send. **Instrumentation** creates spans and measurements, **providers** collect them, **exporters** send them over **OTLP**, and the **dashboard** receives them. The Python code owns the first three.
 
@@ -214,7 +214,7 @@ POST /api/v1/conversations/{conversation_id}/turns   fastapi           HTTP serv
       └─ executor.process reply
 ```
 
-- The turn runs as its own task (L12/L20), and it inherits the request's trace when it is started, so everything above is **one trace**.
+- The turn runs as its own task, and it inherits the request's trace when it is started, so everything above is **one trace**.
 - The contract's `trace_id`, in turn results and problem responses, is that trace's id.
 - `/health` and `/alive` are not traced.
 - A failed turn: `support.turn` has error status and `error.type`, and a "Turn failed" log record sits on the same trace with its traceback.
@@ -261,7 +261,7 @@ Same names and labels as .NET, wherever the concept is shared:
 | `support.tool.calls` | `support.tool.name` (the four read tools), `support.tool.outcome` (`found`, `not_found`, `invalid_input`, `no_match`) |
 | `support.operations` | `support.operation.kind`, `support.operation.outcome` (`awaiting_approval`, `committed`, `failed`, `not_eligible`, `not_found`, `invalid_arguments`) |
 | `support.triage.decisions` | `support.triage.outcome`, `support.triage.target`, `support.triage.unrouted_reason` |
-| `support.stream.first_delta` (s) | none: time from turn start to the first streamed reply text (L20's latency, now measured continuously) |
+| `support.stream.first_delta` (s) | none: time from turn start to the first streamed reply text (the latency, now measured continuously) |
 
 Ids are never labels; a test scans every metric data point for id-shaped values. **Usage a provider didn't report is recorded as nothing, not zero:** with usage off, a turn adds no `gen_ai.client.token.usage` samples and no usage attributes on its `chat` spans.
 
@@ -279,9 +279,9 @@ Off by default: no prompts, replies, tool arguments or results, customer ids, or
 - **Opting in** takes `TELEMETRY__CAPTURE_SENSITIVE_DATA=true` (local debugging only).
 - MAF's own `ENABLE_SENSITIVE_DATA=true` can't switch it on: `telemetry.py` always passes the setting explicitly (tested in a fresh process).
 
-### Failures, retries and budgets (Python, L42)
+### Failures, retries and budgets (Python)
 
-The same rules, limits and error codes as .NET's L15 above, in `support_agent/resilience.py`. The limits are `RESILIENCE__*` settings, with the same defaults, and are validated at startup. The `support.turn` span carries `support.turn.model_calls`, `support.turn.model_attempts` and, for a failed turn, `support.turn.error_code`.
+The same rules, limits and error codes as .NET's above, in `support_agent/resilience.py`. The limits are `RESILIENCE__*` settings, with the same defaults, and are validated at startup. The `support.turn` span carries `support.turn.model_calls`, `support.turn.model_attempts` and, for a failed turn, `support.turn.error_code`.
 
 **One retry owner per layer:**
 
@@ -293,7 +293,7 @@ The same rules, limits and error codes as .NET's L15 above, in `support_agent/re
 | Model calls in a turn | No retries; a budget | `ModelCallBudget`, a chat middleware on every agent: the 11th call is refused **before** it reaches the provider → `budget_exhausted`. |
 | Tool loop (MAF function invocation) | No retries | `max_iterations` = `MAX_TOOL_ITERATIONS` (4; MAF's default is 40), then one final answer without tools. `ToolLimits`, a function middleware, sets `TOOL_TIMEOUT_SECONDS` (10 s) per call and turns any tool fault into MAF's fail-closed `MiddlewareFailure` → `tool_unavailable`, so the model never retries a broken tool. Argument validation errors still go back to the model to correct, bounded by the loop and the budget. |
 | The turn | **No** | `asyncio.timeout(TURN_TIMEOUT_SECONDS)` (90 s) around every turn and every resumed decision → `timeout`. |
-| Writes | **Never** retried blindly | Only the L37/L38 operation state machine resumes a write. A deadline before the commit fails the operation with code `timeout`, and nothing changed. After the commit, the committed result stands: a timeout never rolls a write back. |
+| Writes | **Never** retried blindly | Only the operation state machine resumes a write. A deadline before the commit fails the operation with code `timeout`, and nothing changed. After the commit, the committed result stands: a timeout never rolls a write back. |
 
 **Python-specific details:**
 - **Sync tools run in a worker thread** (MAF uses `asyncio.to_thread`). A tool timeout stops the turn from waiting, but the thread finishes on its own. All such tools are read-only lookups, so that's harmless. The write tools are async, so a deadline stops them at an await, and the pre-commit boundary refuses to start a transaction.

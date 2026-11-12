@@ -1,7 +1,7 @@
 namespace Support.Api.Common.Application.Streaming;
 
 /// <summary>
-/// Receives a running turn's live events (L12): that it started, its progress, and the reply text as it is produced.
+/// Receives a running turn's live events: that it started, its progress, and the reply text as it is produced.
 /// The streaming endpoint turns these into Server-Sent Events; a plain JSON request uses <see cref="TurnObserver.None"/>.
 /// Events are display-only: nothing here drives routing, approval, or any decision, and the finished turn stays the
 /// authoritative result. Implementations must be cheap and must not throw.

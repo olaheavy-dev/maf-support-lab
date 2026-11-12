@@ -13,7 +13,7 @@ namespace Support.Api.Modules.Billing.Presentation;
 
 /// <summary>
 /// The billing agent's only capabilities: two reads. The model passes an invoice or order id, or nothing; never a
-/// customer id. Ownership is decided by the query handlers. There is deliberately no refund or payment tool (L10).
+/// customer id. Ownership is decided by the query handlers. There is deliberately no refund or payment tool.
 /// </summary>
 public sealed partial class BillingTools(
     IQueryHandler<GetInvoiceQuery, Invoice> getInvoice,

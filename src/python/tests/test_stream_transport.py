@@ -1,4 +1,4 @@
-"""L20: what a real HTTP connection sees. These tests run the app in Uvicorn on a loopback port, because an in-process
+"""What a real HTTP connection sees. These tests run the app in Uvicorn on a loopback port, because an in-process
 ASGI test transport collects the whole body first and so could neither show buffering nor really disconnect.
 
 - Reply text reaches the client while the turn is still running (the stream is not buffered).

@@ -5,7 +5,7 @@ using System.Text;
 namespace Support.Api.Tests.Modules.Resilience;
 
 /// <summary>
-/// A fake of Anthropic's HTTP API under the real Anthropic SDK (L15). Each attempt gets the scripted response for its
+/// A fake of Anthropic's HTTP API under the real Anthropic SDK. Each attempt gets the scripted response for its
 /// number, so the SDK's real retries, backoff, and retry-after handling run deterministically, with no network.
 /// Successful answers are a valid triage decision (for the triage call) or a short reply.
 /// </summary>

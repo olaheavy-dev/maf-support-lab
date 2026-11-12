@@ -8,7 +8,7 @@ using Microsoft.Extensions.AI.Evaluation;
 namespace Support.Evaluations.Native;
 
 /// <summary>
-/// Native .NET evaluation with Microsoft Agent Framework (L30). Two commands:
+/// Native .NET evaluation with Microsoft Agent Framework. Two commands:
 /// <list type="bullet">
 /// <item><c>native record</c>: MAF runs the fake support agent on each case's query (<c>agent.EvaluateAsync(queries, …)</c>),
 /// scores it, and saves each conversation as a capture in evaluations/recordings.</item>

@@ -36,17 +36,17 @@ class ModelProviderSettings(BaseModel):
 
 
 class StorageSettings(BaseModel):
-    # One SQLite file per backend and per run (L38); relative paths are resolved from the working directory.
+    # One SQLite file per backend and per run; relative paths are resolved from the working directory.
     path: Path = Path(".data") / "python" / "support.db"
 
 
 class TelemetrySettings(BaseModel):
-    # L40: off by default. When on, prompts, replies, and tool arguments/results go into spans: local debugging only.
+    # Off by default. When on, prompts, replies, and tool arguments/results go into spans: local debugging only.
     capture_sensitive_data: bool = False
 
 
 class ResilienceSettings(BaseModel):
-    """Every limit that bounds a turn (L42, the same defaults as .NET's L15 ``Resilience`` section). Out-of-range values
+    """Every limit that bounds a turn (the same defaults as .NET's ``Resilience`` section). Out-of-range values
     refuse to start, so a deadline or budget can always be created. Timeouts are seconds and may be fractional."""
 
     # Wall-clock limit for one turn (or one resumed approval), from start to its result. Then: failed/timeout.

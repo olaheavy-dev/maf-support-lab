@@ -3,8 +3,8 @@ using Support.Api.Modules.Triage.Domain;
 namespace Support.Api.Modules.Conversations.Domain;
 
 /// <summary>
-/// A finished turn. It completed, paused awaiting the customer's approval of one operation (L10), failed, or was
-/// cancelled on request (L12). A turn that resumes after a decision has no client_turn_id and names the turn it resumed
+/// A finished turn. It completed, paused awaiting the customer's approval of one operation, failed, or was
+/// cancelled on request. A turn that resumes after a decision has no client_turn_id and names the turn it resumed
 /// from. A turn that failed or was cancelled before routing has no route.
 /// </summary>
 public sealed record Turn(

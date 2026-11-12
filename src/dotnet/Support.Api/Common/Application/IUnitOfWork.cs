@@ -1,7 +1,7 @@
 namespace Support.Api.Common.Application;
 
 /// <summary>
-/// Runs work atomically against the durable store: every write made inside commits together, or none does (L11).
+/// Runs work atomically against the durable store: every write made inside commits together, or none does.
 /// Used where a business change and its operation record must never be split, e.g. a refund and "committed".
 /// </summary>
 public interface IUnitOfWork

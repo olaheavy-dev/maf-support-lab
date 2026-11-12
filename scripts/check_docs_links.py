@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check every relative link, anchor, and image in the repository's Markdown (L34).
+"""Check every relative link, anchor, and image in the repository's Markdown.
 
 The documentation is plain GitHub-rendered Markdown, so a broken relative link only shows up when someone clicks
 it. This checker reads the Markdown files Git tracks (generated, ignored output is never checked), finds inline

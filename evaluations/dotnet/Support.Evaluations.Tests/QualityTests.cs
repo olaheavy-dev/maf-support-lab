@@ -6,7 +6,7 @@ using Support.Evaluations.Quality;
 namespace Support.Evaluations.Tests;
 
 /// <summary>
-/// The model-judged quality lane (L32) with a fake judge and fake backends: no model, no credentials. These prove the
+/// The model-judged quality lane with a fake judge and fake backends: no model, no credentials. These prove the
 /// orchestration around the real Microsoft evaluators: the budget is never exceeded, a judge error, malformed judge
 /// output, missing context, or a failed backend turn is an error and never a score, concurrency stays bounded, and
 /// cancellation stops new work.

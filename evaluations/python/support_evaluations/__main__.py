@@ -1,4 +1,4 @@
-"""python -m support_evaluations validate [RESULTS_DIR] | native record|evaluate|workflow (L31)."""
+"""python -m support_evaluations validate [RESULTS_DIR] | native record|evaluate|workflow."""
 
 from __future__ import annotations
 

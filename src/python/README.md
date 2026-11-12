@@ -2,13 +2,13 @@
 
 The VoltCart support backend in Python. It serves the same version-1 contract as the .NET backend (`contracts/README.md`), built with Microsoft Agent Framework for Python. Its logic is its own: nothing here imports .NET code for telemetry, identity, or authorization. A lint rule and a test enforce that.
 
-Status (L42): the host, agents, per-conversation sessions, approval-gated writes, durable state, a tested cross-customer access matrix, streaming with cooperative cancellation, its own telemetry in Aspire, and bounded retries, timeouts and budgets. It now matches the .NET backend's behaviour.
+Status: the host, agents, per-conversation sessions, approval-gated writes, durable state, a tested cross-customer access matrix, streaming with cooperative cancellation, its own telemetry in Aspire, and bounded retries, timeouts and budgets. It now matches the .NET backend's behaviour.
 - **Read-only agents:** triage plus the orders, billing and technical specialists.
 - **The routing workflow:** `support-routing`.
 - **The version-1 contract API** for conversations and turns (JSON).
 - **Python DevUI** (development only).
 
-Each specialist has one write tool (cancel, refund, ticket) that needs the customer's approval of the exact action. Everything a pending approval needs survives a restart, and each write applies at most once (L38).
+Each specialist has one write tool (cancel, refund, ticket) that needs the customer's approval of the exact action. Everything a pending approval needs survives a restart, and each write applies at most once.
 
 ## How it fits together
 
@@ -25,13 +25,13 @@ Each specialist has one write tool (cancel, refund, ticket) that needs the custo
 | `fake_model.py`, `model_provider.py` | A deterministic fake model on MAF's real chat-client layers; Claude in live mode |
 | `devui.py` | Development-only DevUI process over the same agents and services |
 | `operations.py`, `write_tools.py`, `approval_gate.py`, `policy.py`, `state.py` | Bound approvals: operations, the approval-required write tools, the gate that turns a native approval request into an operation (or declines it), the eligibility rules, and the simulated state the writes change |
-| `telemetry.py` | This process's OpenTelemetry providers and OTLP/gRPC exporters, the `support.*` metrics, and the log handler (L40) |
-| `resilience.py`, `model_provider.py` | Bounded turns (L42): the per-turn model-call budget, tool time limits, the SDK attempt counter, and failure classification; the Anthropic SDK client built with our retry and timeout limits |
-| `streaming.py`, `turn_control.py` | Server-Sent Events for a turn; per-turn cooperative cancellation and live events (L20) |
-| `database.py` | The local SQLite store (L38): one file per backend and run, `atomically()` transactions |
+| `telemetry.py` | This process's OpenTelemetry providers and OTLP/gRPC exporters, the `support.*` metrics, and the log handler |
+| `resilience.py`, `model_provider.py` | Bounded turns: the per-turn model-call budget, tool time limits, the SDK attempt counter, and failure classification; the Anthropic SDK client built with our retry and timeout limits |
+| `streaming.py`, `turn_control.py` | Server-Sent Events for a turn; per-turn cooperative cancellation and live events |
+| `database.py` | The local SQLite store: one file per backend and run, `atomically()` transactions |
 | `sessions.py` | Per-conversation native `AgentSession`s (stored after each run), `BoundedHistory` (12 plain messages; no tool traffic or notes), and the verified `ConversationContext` |
 
-## Conversation memory (L19)
+## Conversation memory
 
 - **The agents are shared definitions; each conversation owns its state.** That means one native MAF `AgentSession` per specialist (created on first use and reused on later turns) and a `ConversationContext`. Nothing is global.
 - **Bounded history:** a session stores only plain user and assistant messages, at most 12. Tool calls and results are dropped, so trimming never orphans them; context notes are never stored. MAF keeps them under the provider's source id in the session state.
@@ -59,7 +59,7 @@ APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run p
 
 `aspire start --apphost apphost/Support.AppHost.csproj` starts both backends. The AppHost runs `uv sync --locked` for this project, then starts Uvicorn with `support_agent.app:app`. It sets `APP_ENVIRONMENT=development` and the development customer, and checks `/health`.
 
-## Approvals (L37)
+## Approvals
 
 1. "Please cancel order ORD-1003." The model calls `cancel_order`. MAF does **not** run it: it pauses with a `function_approval_request`.
 2. The gate checks the arguments, ownership and eligibility *before* asking. Then it creates an `Operation` bound to the customer, conversation, kind and exact arguments (15-minute expiry). The turn ends `awaiting_approval` with `pending_approval`.
@@ -76,7 +76,7 @@ APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run p
 
 The tool call is re-sent before each native answer: stored history is plain text, and Anthropic rejects a tool result that doesn't follow its call. No note may sit between them. Both rules were found live; the fake model now enforces Anthropic's pairing rule.
 
-## Telemetry (L40)
+## Telemetry
 
 Under the AppHost, both Python processes send traces, logs and metrics to the Aspire dashboard over OTLP/gRPC, as `support-api-python` and `support-devui-python`. Each turn is one trace (HTTP → `support.turn` → workflow → agents → model calls → tools), and the contract's `trace_id` is that trace's id. Run on its own, nothing is exported unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 - **Off by default:** message text, tool data and customer ids; opting in takes `TELEMETRY__CAPTURE_SENSITIVE_DATA=true`.
@@ -85,9 +85,9 @@ Under the AppHost, both Python processes send traces, logs and metrics to the As
 
 Ownership, names, labels and the live check are in `docs/observability.md` ("The Python backend").
 
-## Retries, timeouts and budgets (L42)
+## Retries, timeouts and budgets
 
-Every turn is bounded, with the same limits and error codes as .NET (L15). The full retry inventory is in `docs/observability.md` ("Failures, retries and budgets (Python, L42)").
+Every turn is bounded, with the same limits and error codes as .NET. The full retry inventory is in `docs/observability.md` ("Failures, retries and budgets (Python)").
 
 - **One retry owner:** the Anthropic SDK, which we build with `max_retries` (2) and a 30 s limit per attempt. Nothing else retries a model call, a tool, a turn or a write.
 - **Budgets per turn:** at most 10 model calls (refused before reaching the provider), 4 tool rounds per agent run, 10 s per tool call, and 1024 output tokens per call. A turn or resumed decision has a 90 s deadline.
@@ -95,7 +95,7 @@ Every turn is bounded, with the same limits and error codes as .NET (L15). The f
 - **Writes:** a deadline before the commit fails the operation (`timeout`) and nothing changes. After the commit, the result stands. Retrying the decision replays the stored turn.
 - **Tested without a network:** `tests/fake_anthropic.py` is a fake Anthropic HTTP API under the real SDK, so its real retries, backoff, `retry-after` handling and attempt timeouts run in the tests.
 
-## Streaming and cancellation (L20)
+## Streaming and cancellation
 
 Send `Accept: text/event-stream` to `POST …/turns` or `POST …/approvals/{id}` to get the turn as Server-Sent Events (contract 1.1). Without that header the response is one JSON `turn-result`, as before.
 
@@ -118,7 +118,7 @@ Send `Accept: text/event-stream` to `POST …/turns` or `POST …/approvals/{id}
 - **A disconnect is not a cancellation.** The stream detaches; the turn runs on and is stored. Recover with `GET …/turns/{id}` and `GET /api/v1/operations/{id}`. Deltas are not replayed.
 - **Shutdown** cancels running turns and waits for them to be stored before the database and clients close.
 
-## Durable state (L38)
+## Durable state
 
 One SQLite file per backend and run (`STORAGE__PATH`, default `.data/python/support.db`, ignored by Git; never the .NET file). The design and its limits are in `docs/decisions/0003-state-and-idempotency.md`.
 
@@ -166,18 +166,18 @@ Read from the environment, validated before serving (`support_agent/settings.py`
 | `OTEL_*` | Set by the AppHost (endpoint, gRPC, headers with the dashboard key, service name). Never commit them. |
 | `ANTHROPIC_API_KEY` | Required in live mode. Secret: environment or Aspire parameter only; never committed, logged, or returned. |
 | `STORAGE__PATH` | The SQLite file (default `.data/python/support.db`). Give each run or evaluation its own file. |
-| `RESILIENCE__*` | Turn limits (L42), validated at startup: `TURN_TIMEOUT_SECONDS` (90), `MAX_MODEL_CALLS_PER_TURN` (10), `MAX_TOOL_ITERATIONS` (4), `TOOL_TIMEOUT_SECONDS` (10), `MODEL_MAX_RETRIES` (2), `MODEL_ATTEMPT_TIMEOUT_SECONDS` (30), `MAX_OUTPUT_TOKENS` (1024). |
+| `RESILIENCE__*` | Turn limits, validated at startup: `TURN_TIMEOUT_SECONDS` (90), `MAX_MODEL_CALLS_PER_TURN` (10), `MAX_TOOL_ITERATIONS` (4), `TOOL_TIMEOUT_SECONDS` (10), `MODEL_MAX_RETRIES` (2), `MODEL_ATTEMPT_TIMEOUT_SECONDS` (30), `MAX_OUTPUT_TOKENS` (1024). |
 
 ## Identity
 
 The app learns the customer only through `get_principal` → `PrincipalSource`.
 - Headers, query strings, bodies, and model output are never consulted.
 - Tests run as another customer through `app.dependency_overrides[get_principal_source]`, a server-side injection point no client can reach.
-- **Access matrix (L39):** `tests/test_access_matrix.py` proves, in both directions, that every route, tool, service, write, DevUI entry, and restored record denies the other customer exactly like a missing one, with zero mutation. See `docs/threat-model.md`.
+- **Access matrix:** `tests/test_access_matrix.py` proves, in both directions, that every route, tool, service, write, DevUI entry, and restored record denies the other customer exactly like a missing one, with zero mutation. See `docs/threat-model.md`.
 
 ## Clients and credentials: who cleans up
 
-The FastAPI **lifespan owns every long-lived resource**. A client (the model client, and the database since L38) is created once, registered with `app.state.resources.own(name, close)`, and closed exactly once, newest first, at shutdown. No request creates its own long-lived client. The API key lives only in validated settings (`SecretStr`), and is passed to the client that needs it.
+The FastAPI **lifespan owns every long-lived resource**. A client (the model client, and the database) is created once, registered with `app.state.resources.own(name, close)`, and closed exactly once, newest first, at shutdown. No request creates its own long-lived client. The API key lives only in validated settings (`SecretStr`), and is passed to the client that needs it.
 
 ## Live check (opt-in, costs a small amount)
 

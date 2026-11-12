@@ -4,7 +4,7 @@ using Support.Api.Common.Application;
 namespace Support.Api.Common.Infrastructure.Persistence;
 
 /// <summary>
-/// The local durable store (L11): one SQLite file per backend and per run (<c>Storage:Path</c>), so the .NET backend,
+/// The local durable store: one SQLite file per backend and per run (<c>Storage:Path</c>), so the .NET backend,
 /// the Python backend, and each evaluation run never share mutable state. Writes inside
 /// <see cref="AtomicallyAsync{T}"/> share one IMMEDIATE transaction and commit together or not at all; other calls use
 /// their own short-lived connection. Single process only: there is no cross-process locking beyond SQLite's own.
@@ -19,7 +19,7 @@ public sealed class SupportDatabase : IUnitOfWork
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         Path = System.IO.Path.GetFullPath(path);
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-        // Pooled (L25): with a fresh connection for every call (open + pragmas), concurrent writers showed 150-190 ms
+        // Pooled: with a fresh connection for every call (open + pragmas), concurrent writers showed 150-190 ms
         // tail latencies under load; reusing connections removed them and doubled read throughput, with every
         // correctness check unchanged (docs/evaluations/load.md). Pragmas are per connection and re-applied on open.
         connectionString = new SqliteConnectionStringBuilder { DataSource = Path, Pooling = true }.ToString();
@@ -45,7 +45,7 @@ public sealed class SupportDatabase : IUnitOfWork
     }
 
     /// <summary>Runs a statement and returns the number of rows it changed.</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "Reviewed in L26: every caller passes constant SQL, and every value is a bound parameter. No SQL is built from strings anywhere in the API.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "Reviewed: every caller passes constant SQL, and every value is a bound parameter. No SQL is built from strings anywhere in the API.")]
     public int Execute(string sql, params (string Name, object? Value)[] parameters) =>
         Run(command =>
         {
@@ -54,7 +54,7 @@ public sealed class SupportDatabase : IUnitOfWork
             return command.ExecuteNonQuery();
         });
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "Reviewed in L26: every caller passes constant SQL, and every value is a bound parameter. No SQL is built from strings anywhere in the API.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "Reviewed: every caller passes constant SQL, and every value is a bound parameter. No SQL is built from strings anywhere in the API.")]
     public IReadOnlyList<T> Query<T>(string sql, Func<SqliteDataReader, T> map, params (string Name, object? Value)[] parameters) =>
         Run(command =>
         {

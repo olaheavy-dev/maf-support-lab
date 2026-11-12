@@ -8,7 +8,7 @@ using Microsoft.Extensions.AI;
 namespace Support.Evaluations.Quality;
 
 /// <summary>
-/// <c>quality --live [--config FILE] [--out DIR] [--source-commit SHA]</c> (L32): the explicitly invoked, billed lane.
+/// <c>quality --live [--config FILE] [--out DIR] [--source-commit SHA]</c>: the explicitly invoked, billed lane.
 /// Without <c>--live</c> it refuses to start, so no CI job or casual run can spend money. ANTHROPIC_API_KEY comes from
 /// the environment, goes to the judge client and the launched backends, and is never printed.
 /// </summary>

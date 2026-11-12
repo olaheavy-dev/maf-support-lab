@@ -38,7 +38,7 @@ internal sealed class SupportWorkflowRouter(
         ArgumentNullException.ThrowIfNull(observer);
         var workflow = Build();
 
-        // Streamed run (L12): the workflow's native event stream carries our executors' progress and reply-text events
+        // Streamed run: the workflow's native event stream carries our executors' progress and reply-text events
         // as they happen; the single SupportReply output is still the turn's authoritative result.
         await using var run = await InProcessExecution.RunStreamingAsync(workflow, request, cancellationToken: cancellationToken).ConfigureAwait(false);
         SupportReply? reply = null;
@@ -66,7 +66,7 @@ internal sealed class SupportWorkflowRouter(
     }
 
     /// <summary>
-    /// Resumes the paused specialist with the customer's decision (L10), in the conversation's own session. Approve: the
+    /// Resumes the paused specialist with the customer's decision, in the conversation's own session. Approve: the
     /// native gate lets the write tool run, inside an <see cref="ApprovalScope"/> naming exactly this operation. Reject:
     /// the tool never runs. Either way, any new approval request in the resumed run is declined: a decision never chains
     /// into another request (after a rejection, this is the "do not ask again" rule).
@@ -98,7 +98,7 @@ internal sealed class SupportWorkflowRouter(
 
         using (approved ? ApprovalScope.Begin(operation) : null)
         {
-            // Cancellation boundary (L12): a cancel seen before the run resumes starts nothing.
+            // Cancellation boundary: a cancel seen before the run resumes starts nothing.
             cancellationToken.ThrowIfCancellationRequested();
             if (approved)
             {

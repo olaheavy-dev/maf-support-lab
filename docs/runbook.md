@@ -68,7 +68,7 @@ curl -s $B/operations/$O | jq '{status, result}'       # status: committed
 | .NET | Key in user-secrets (`ModelProvider:Anthropic:ApiKey`) or `ANTHROPIC_API_KEY`, then `ModelProvider__Mode=Live` ([details](../src/dotnet/README.md#model-mode)) |
 | Python | `MODEL_PROVIDER__MODE=live`, `ANTHROPIC_API_KEY`, and `MODEL_PROVIDER__ANTHROPIC__MODEL` ([details](../src/python/README.md#configuration)) |
 
-The model is `claude-haiku-5-5`. In Live mode with a missing key or model, a backend refuses to start and names the missing setting, never its value. Each turn is capped in model calls ([budgets](observability.md#failures-retries-and-budgets-l15)).
+The model is `claude-haiku-5-5`. In Live mode with a missing key or model, a backend refuses to start and names the missing setting, never its value. Each turn is capped in model calls ([budgets](observability.md#failures-retries-and-budgets)).
 
 ## Checks (as CI runs them)
 

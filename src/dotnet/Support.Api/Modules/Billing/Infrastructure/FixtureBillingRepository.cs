@@ -8,7 +8,7 @@ namespace Support.Api.Modules.Billing.Infrastructure;
 
 /// <summary>
 /// Invoices and payments from the synthetic fixtures shared with the Python backend (read-only), plus the refund
-/// payments simulated writes recorded, which are stored in the local database with their id counters (L11).
+/// payments simulated writes recorded, which are stored in the local database with their id counters.
 /// </summary>
 internal sealed class FixtureBillingRepository : IBillingRepository
 {

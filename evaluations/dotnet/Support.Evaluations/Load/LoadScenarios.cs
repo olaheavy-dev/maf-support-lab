@@ -55,7 +55,7 @@ internal sealed record ScenarioResult(string Name, string Purpose, int Concurren
 }
 
 /// <summary>
-/// The fault and bounded-load scenarios (L25), run black-box against one backend in fake model mode. Each answers a
+/// The fault and bounded-load scenarios, run black-box against one backend in fake model mode. Each answers a
 /// question the deterministic suite asks one request at a time, but under concurrency: does a conversation ever see
 /// another's data, does a write ever run twice, does one failure spill into other conversations, and how do latency
 /// and throughput behave as concurrency grows. Writes run on a fresh store per scenario.

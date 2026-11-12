@@ -13,7 +13,7 @@ public static class AgentTelemetry
 
     public const string ModelSourceName = "Support.Model";
 
-    /// <summary>Workflow layer: invoke_workflow and executor spans from MAF Workflows (L07).</summary>
+    /// <summary>Workflow layer: invoke_workflow and executor spans from MAF Workflows.</summary>
     public const string WorkflowSourceName = "Support.Workflows";
 
     /// <summary>Handed to MAF's WithOpenTelemetry so workflow spans use our name instead of the library default.</summary>

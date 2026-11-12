@@ -48,7 +48,7 @@ internal static class ModelProviderRegistration
                 return new FakeChatClient();
             }
 
-            // The SDK is the one retry owner for model calls (L15): a bounded number of retries for connection errors,
+            // The SDK is the one retry owner for model calls: a bounded number of retries for connection errors,
             // timeouts, 408/409/429/5xx, honouring the provider's retry-after. Its HttpClient is created here, not by
             // IHttpClientFactory, so the service defaults' standard resilience handler never adds a second retry layer.
             var resilience = provider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
@@ -65,7 +65,7 @@ internal static class ModelProviderRegistration
 
         // Model layer telemetry: one "chat" span and per-call token usage for every model call, on Support.Model.
         // Because the client is already instrumented, MAF's agent telemetry does not auto-wire a second copy.
-        // (execute_tool spans are emitted on the agent source, Support.Agents; observed in L06's telemetry tests.)
+        // (execute_tool spans are emitted on the agent source, Support.Agents; observed in the telemetry tests.)
         services.AddSingleton<IChatClient>(provider =>
         {
             var captureSensitiveData = provider.GetRequiredService<IOptions<AgentTelemetryOptions>>().Value.CaptureSensitiveData;

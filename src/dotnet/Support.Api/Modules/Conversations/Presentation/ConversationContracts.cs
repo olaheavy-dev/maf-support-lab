@@ -110,7 +110,7 @@ public sealed record TurnResult(
         };
     }
 
-    /// <summary>A turn still running (L12): what a status lookup can say before it finishes. No outcome yet.</summary>
+    /// <summary>A turn still running: what a status lookup can say before it finishes. No outcome yet.</summary>
     public static TurnResult Running(string conversationId, TurnReservation reservation)
     {
         ArgumentNullException.ThrowIfNull(reservation);

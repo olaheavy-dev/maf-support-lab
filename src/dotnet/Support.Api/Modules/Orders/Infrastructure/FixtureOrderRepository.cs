@@ -8,7 +8,7 @@ namespace Support.Api.Modules.Orders.Infrastructure;
 
 /// <summary>
 /// Orders from the synthetic fixtures shared with the Python backend. The fixture files are never changed: an order a
-/// simulated write changed is stored in the local database (L11), and that stored copy wins over the fixture.
+/// simulated write changed is stored in the local database, and that stored copy wins over the fixture.
 /// </summary>
 internal sealed class FixtureOrderRepository : IOrderRepository
 {

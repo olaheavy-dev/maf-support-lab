@@ -37,7 +37,7 @@ public static partial class WriteTools
             _ => value.ToString(),
         } : null;
 
-        // Free text from the model must be printable: control characters (other than newline and tab) are rejected (L14).
+        // Free text from the model must be printable: control characters (other than newline and tab) are rejected.
         if (toolArguments.Keys.Select(Text).Any(value => value?.Any(character => char.IsControl(character) && character is not ('\n' or '\t')) == true))
         {
             return Invalid("Arguments must be printable text.");

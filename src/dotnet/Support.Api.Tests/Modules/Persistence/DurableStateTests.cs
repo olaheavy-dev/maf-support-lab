@@ -17,7 +17,7 @@ using Support.Api.Modules.Technical.Application;
 namespace Support.Api.Tests.Modules.Persistence;
 
 /// <summary>
-/// L11: state survives a restart, and every write applies at most once. A "restart" is a new host started on the same
+/// State survives a restart, and every write applies at most once. A "restart" is a new host started on the same
 /// SQLite file after the first host has stopped (or, for the crash cases, while the first host is stuck mid-turn).
 /// </summary>
 public sealed class DurableStateTests
@@ -286,7 +286,7 @@ public sealed class DurableStateTests
                 "CREATE TRIGGER stop_here BEFORE INSERT ON native_approval_requests BEGIN SELECT RAISE(ABORT, 'simulated stop'); END;");
             var api = new ApiClient(host.CreateClient());
             conversation = await api.CreateConversationAsync();
-            // The turn ran and failed (stored as outcome failed since L12), so the client gets a result, not a 500.
+            // The turn ran and failed (stored as outcome failed), so the client gets a result, not a 500.
             var failed = await api.AskAsync(conversation, "Please cancel order ORD-1003.");
             Assert.Equal("failed", failed.GetProperty("outcome").GetString());
             host.Services.GetRequiredService<SupportDatabase>().Execute("DROP TRIGGER stop_here");

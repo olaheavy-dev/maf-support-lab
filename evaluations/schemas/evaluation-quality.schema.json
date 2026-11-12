@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.maf-support-lab.example/evaluations/v1/evaluation-quality.schema.json",
   "title": "Evaluation quality run",
-  "description": "The result of the budgeted, model-judged quality lane (L32; 1.1 in L33 adds per-call metadata and the response-cache statement): live backend replies and fixed calibration answers, each judged by AI evaluators against fixture context. Records everything that affects a score (judge, models, packages, metrics, rubric, context, repetitions, budget, usage) and states its uncertainty. Scores describe reply quality only; the deterministic lanes remain authoritative for authorization, approvals and exactly-once writes.",
+  "description": "The result of the budgeted, model-judged quality lane (1.1 adds per-call metadata and the response-cache statement): live backend replies and fixed calibration answers, each judged by AI evaluators against fixture context. Records everything that affects a score (judge, models, packages, metrics, rubric, context, repetitions, budget, usage) and states its uncertainty. Scores describe reply quality only; the deterministic lanes remain authoritative for authorization, approvals and exactly-once writes.",
   "type": "object",
   "required": [
     "schema_version",
@@ -17,7 +17,7 @@
         "1.0",
         "1.1"
       ],
-      "description": "1.0 (L32); 1.1 (L33) adds run.response_cache and per-metric metadata. Readers accept both."
+      "description": "1.0; 1.1 adds run.response_cache and per-metric metadata. Readers accept both."
     },
     "run": {
       "type": "object",

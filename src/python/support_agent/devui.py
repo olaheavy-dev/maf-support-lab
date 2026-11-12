@@ -1,4 +1,4 @@
-"""Development-only Python DevUI (L18): the read-only specialists and the support workflow, for inspection.
+"""Development-only Python DevUI: the read-only specialists and the support workflow, for inspection.
 
 It runs as its own process on loopback (``uv run python -m support_agent.devui``; the AppHost starts it in
 development). It uses the same agents, tools, and guarded services as the API. DevUI has no request identity, so
@@ -41,7 +41,7 @@ def main() -> None:
 
     port = int(os.environ.get("PORT", "5290"))
     settings = Settings()
-    # Our own providers, under this process's own service name (L40). DevUI's instrumentation switch stays off: it
+    # Our own providers, under this process's own service name. DevUI's instrumentation switch stays off: it
     # would turn on sensitive capture unconditionally, and its own provider setup is marked done by configure().
     configure_telemetry(settings, default_service_name="support-devui-python")
     # Loopback only, so DevUI's own bearer-token auth may stay off (it refuses that on other hosts).

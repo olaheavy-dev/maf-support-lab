@@ -3,7 +3,7 @@ using Support.Api.Modules.Operations.Domain;
 namespace Support.Api.Modules.Operations.Application;
 
 /// <summary>
-/// Where operations are kept: durably (L11), so an approval survives a restart. Every state change is a guarded
+/// Where operations are kept: durably, so an approval survives a restart. Every state change is a guarded
 /// update: it is stored only if the stored status is still the one the change started from.
 /// </summary>
 public interface IOperationStore

@@ -110,7 +110,7 @@ internal static class Captures
 
     /// <summary>
     /// The dataset's expected tool calls, with canonical snake_case argument names mapped to the .NET tools' parameter
-    /// names (MEAI keeps C# names: order_id → orderId). Python's tools use snake_case as is (L31).
+    /// names (MEAI keeps C# names: order_id → orderId). Python's tools use snake_case as is.
     /// </summary>
     public static IReadOnlyList<ExpectedToolCall> ExpectedToolCalls(EvaluationCase item) =>
         [.. (item.ExpectedToolCalls ?? []).Select(call => new ExpectedToolCall(

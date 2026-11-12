@@ -1,4 +1,4 @@
-"""Bounded turns (L42, porting L15): one retry owner, per-turn budgets, tool limits, and classified failures.
+"""Bounded turns (the Python counterpart of .NET's resilience): one retry owner, per-turn budgets, tool limits, and classified failures.
 
 Retry inventory (docs/observability.md, "Failures, retries and budgets"):
 
@@ -9,7 +9,7 @@ Retry inventory (docs/observability.md, "Failures, retries and budgets"):
 - **Tools:** never retried. Each call has a time limit, and a tool fault ends the turn (``ToolLimits``) instead of being
   handed back to the model, which would invite a retry loop. MAF's tool loop is capped at ``max_tool_iterations``.
 - **The turn:** never retried; it has a deadline. A client may retry with a new ``client_turn_id``.
-- **Writes:** never retried blindly. Only the operation state machine (L37/L38) resumes one, and its guarded, atomic
+- **Writes:** never retried blindly. Only the operation state machine resumes one, and its guarded, atomic
   commit means it can't apply twice.
 """
 

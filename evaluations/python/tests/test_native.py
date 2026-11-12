@@ -1,4 +1,4 @@
-"""L31: native Python evaluation with MAF 1.25.0. Local checks pass and fail on real evidence, recorded responses are
+"""Native Python evaluation with MAF 1.25.0. Local checks pass and fail on real evidence, recorded responses are
 scored without a model call, a workflow is evaluated per agent, and results keep their versions and evidence links."""
 
 from __future__ import annotations

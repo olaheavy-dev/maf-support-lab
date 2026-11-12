@@ -1,6 +1,6 @@
 # Support API contract — version 1
 
-This folder is the single specification both backends implement: the .NET API (L03+) and the Python API (L17+). Their internals use each SDK idiomatically; their observable HTTP and stream behavior must match this contract.
+This folder is the single specification both backends implement: the .NET API and the Python API. Their internals use each SDK idiomatically; their observable HTTP and stream behavior must match this contract.
 
 - `schemas/`: JSON Schema (draft 2020-12) for every request, response, stream event, and error, plus two internal shapes (triage decision, routed request).
 - `examples/valid/`: examples that must pass. `examples/invalid/`: examples that must be rejected. `examples/index.json` maps each example to its schema.
@@ -23,7 +23,7 @@ Current revision: **1.0** (see [Revision history](#revision-history)).
 
 ## Identity and ownership
 
-No request carries identity. There is no `customer_id`, user header, or confirmation flag in any request schema, and any such property is rejected. The server-side principal comes from the host: a fixed development principal (L03), or a trusted test-host injection point in tests. Every read and write checks ownership against that principal inside application services, regardless of what the model or client sends.
+No request carries identity. There is no `customer_id`, user header, or confirmation flag in any request schema, and any such property is rejected. The server-side principal comes from the host: a fixed development principal, or a trusted test-host injection point in tests. Every read and write checks ownership against that principal inside application services, regardless of what the model or client sends.
 
 A conversation, turn, operation, or approval owned by someone else returns **404 `not_found`**, exactly like one that doesn't exist. This avoids revealing what exists. Inside a turn, an order owned by another customer gets the same `not_found` reply as an unknown order.
 
@@ -39,7 +39,7 @@ A conversation, turn, operation, or approval owned by someone else returns **404
 | `POST /api/v1/conversations/{conversation_id}/approvals/{approval_id}` | `approval-decision-request` | 200 `turn-result`, or an SSE stream | Resumes the paused work as a new turn with `resumed_from_turn_id`. |
 | `GET /api/v1/operations/{operation_id}` | — | 200 `operation` | Authoritative business state of a write. |
 
-Health endpoints (`/health`, `/alive`) belong to the host (L03), not to this contract.
+Health endpoints (`/health`, `/alive`) belong to the host, not to this contract.
 
 ## Turns
 
@@ -131,12 +131,12 @@ Error text is safe to show to users: no secrets, stack traces, or raw provider p
 
 ## Internal shapes
 
-- `triage-decision`: the structured output the triage model must produce. Both backends validate model output against this **full** schema before routing, and must not loosen it to fit a model (L07/L18). Some providers' structured-output modes accept only a subset of JSON Schema (for example, numeric ranges). The model-facing schema may then be simplified, but the application still validates against this one. Valid shape is not proof of correctness or authorization; `confidence` is uncalibrated and never used for decisions.
+- `triage-decision`: the structured output the triage model must produce. Both backends validate model output against this **full** schema before routing, and must not loosen it to fit a model. Some providers' structured-output modes accept only a subset of JSON Schema (for example, numeric ranges). The model-facing schema may then be simplified, but the application still validates against this one. Valid shape is not proof of correctness or authorization; `confidence` is uncalibrated and never used for decisions.
 - `routed-request`: what a specialist receives. It keeps the customer's `original_message` beside the validated triage fields. The principal is never in this payload; it travels in trusted server-side context.
 
 ## Revision policy
 
-Version 1 is the initial shared specification. The approval and streaming parts are **provisional** until checked against the native SDKs: **L10** (approval) and **L12** (streaming) are the planned refinement checkpoints.
+Version 1 is the initial shared specification. The approval and streaming parts are **provisional** until checked against the native SDKs; approval and then streaming were checked, as the revision history below records.
 
 - **Minor revision (1.x):** backward-compatible additions only, such as new optional response properties or new event types clients may ignore.
 - **Major revision (2.0, `/api/v2`):** any breaking change, such as removing or renaming fields, changing meanings, tightening request rules existing clients follow, or changing status codes.
@@ -150,10 +150,10 @@ Version 1 is the initial shared specification. The approval and streaming parts 
 
 ## Revision history
 
-| Version | Ticket | Change | Compatibility |
+| Version | Change | Compatibility |
 | --- | --- | --- | --- |
-| 1.0 | L02 | Initial specification. Approval and streaming provisional until L10/L12. | — |
-| 1.0 (checked) | L10 | Approval checked against the native .NET SDK (MAF 1.28.0 / M.E.AI 10.11: `ApprovalRequiredAIFunction`, `ToolApprovalRequestContent`, `CreateResponse(approved, reason)`). **No change needed.** The native request carries the exact tool call, which maps to `kind` and `arguments`, and the decision's optional `reason` maps to the native response reason. Native approval has no customer, conversation, operation, or expiry binding and no operation state; the server adds those, exactly as specified here. | None |
+| 1.0 | Initial specification. Approval and streaming provisional until checked against the SDKs. | — |
+| 1.0 (checked) | Approval checked against the native .NET SDK (MAF 1.28.0 / M.E.AI 10.11: `ApprovalRequiredAIFunction`, `ToolApprovalRequestContent`, `CreateResponse(approved, reason)`). **No change needed.** The native request carries the exact tool call, which maps to `kind` and `arguments`, and the decision's optional `reason` maps to the native response reason. Native approval has no customer, conversation, operation, or expiry binding and no operation state; the server adds those, exactly as specified here. | None |
 
 ## Running the checks
 
@@ -164,7 +164,7 @@ python3 -m venv .venv
 .venv/bin/python -m unittest discover -s fixtures/tests
 ```
 
-### Cross-backend probes (L21)
+### Cross-backend probes
 
 `probes/run_probes.py` starts the real .NET and Python servers in fake mode (no credentials), two processes each (one per customer) on one SQLite file. It sends both the same requests, validates every response against these schemas, normalizes ids, timestamps and wording, and requires the two backends to agree. It imports neither backend. It needs the .NET SDK, uv, and the tools below:
 
@@ -175,4 +175,4 @@ python3 -m venv .venv
 The `cross-backend` CI job runs it on every pull request. `tests/test_probes.py` checks the runner's own comparison logic. Why each difference is or isn't allowed: [0004-sdk-comparison](../docs/decisions/0004-sdk-comparison.md).
 
 `requirements.txt` is generated from `requirements.in` with hashes (command at the top of `requirements.in`). These are test tools only, not application dependencies.
-| 1.1 | L12 | **Streaming checked against the native .NET SDK** (MAF 1.28.0: `AIAgent.RunStreamingAsync` → `AgentResponseUpdate`; workflows `InProcessExecution.RunStreamingAsync` + `WatchStreamAsync`). **Added the `reply.reset` event and the operation failure code `cancelled`.** Live model tokens show the model's words before the server knows the final reply. A native stream delivers text *before* a `ToolApprovalRequestContent`, and the server may then replace it (approval request, declined write), so the client needs a way to discard it. The text rule now counts only deltas after the last reset. An approved write stopped by cancellation before it commits needed a truthful status. | Additive (new event type, new enum value). A 1.0 client that ignores `reply.reset` may show stale partial text until `turn.final`, whose `reply.text` stays authoritative; streams without a reset are unchanged. Readers of operation `failure.code` must accept `cancelled`. |
+| 1.1 | **Streaming checked against the native .NET SDK** (MAF 1.28.0: `AIAgent.RunStreamingAsync` → `AgentResponseUpdate`; workflows `InProcessExecution.RunStreamingAsync` + `WatchStreamAsync`). **Added the `reply.reset` event and the operation failure code `cancelled`.** Live model tokens show the model's words before the server knows the final reply. A native stream delivers text *before* a `ToolApprovalRequestContent`, and the server may then replace it (approval request, declined write), so the client needs a way to discard it. The text rule now counts only deltas after the last reset. An approved write stopped by cancellation before it commits needed a truthful status. | Additive (new event type, new enum value). A 1.0 client that ignores `reply.reset` may show stale partial text until `turn.final`, whose `reply.text` stays authoritative; streams without a reset are unchanged. Readers of operation `failure.code` must accept `cancelled`. |

@@ -30,7 +30,7 @@ class SwitchablePrincipal:
 
 
 def new_database_path() -> Path:
-    """A database file of its own (L38): no test ever shares state with another, or with a developer's local file."""
+    """A database file of its own: no test ever shares state with another, or with a developer's local file."""
     return Path(tempfile.mkdtemp(prefix="support-test-")) / "support.db"
 
 
@@ -38,7 +38,7 @@ def host(
     customer: str = "CUST-1001", storage: Path | None = None, resilience: ResilienceSettings | None = None
 ) -> tuple[FastAPI, SwitchablePrincipal]:
     """A host as ``customer``. Pass the same ``storage`` to a second host to simulate a restart on the same file, and
-    ``resilience`` to tighten a turn's limits (L42)."""
+    ``resilience`` to tighten a turn's limits."""
     settings = Settings(
         app_environment=Environment.DEVELOPMENT,
         identity=IdentitySettings(development_customer_id="CUST-1001"),
@@ -91,7 +91,7 @@ def let_expire(app: FastAPI, operation_id: str) -> None:
 
 
 def execute(operations: Any, *arguments: Any) -> dict[str, Any]:
-    """Runs ``OperationService.execute_approved`` (async since L20) from synchronous test code."""
+    """Runs ``OperationService.execute_approved`` (async) from synchronous test code."""
     result: dict[str, Any] = asyncio.run(operations.execute_approved(*arguments))
     return result
 

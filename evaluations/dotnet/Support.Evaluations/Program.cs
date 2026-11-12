@@ -1,7 +1,7 @@
 using System.Text.Json.Nodes;
 using Support.Evaluations;
 
-// The evaluation runner's command line (L29, L16). Three commands:
+// The evaluation runner's command line. Three commands:
 //
 //   validate                         check every dataset in evaluations/datasets against its schema
 //   run --backend dotnet|python      run datasets against a backend and write one result file per dataset
@@ -17,15 +17,15 @@ using Support.Evaluations;
 //       --model-mode fake|recorded|live, --model-id ID
 //   compare --results DIR --out FILE  a Markdown baseline and cross-backend comparison of the run documents in DIR
 //   native record|evaluate [--recordings DIR] [--out DIR]
-//                                    native MAF evaluation (L30): record the fake agent's conversations, or score the
+//                                    native MAF evaluation: record the fake agent's conversations, or score the
 //                                    saved recordings without re-running the agent
 //   report [--results DIR] [--store DIR] [--execution NAME]
 //                                    write the result documents in DIR (default evaluations/results) to a disk result
-//                                    store for `dotnet aieval report` (L33). Reads files only: no model, no backend.
+//                                    store for `dotnet aieval report`. Reads files only: no model, no backend.
 //   load --backend dotnet|python [--levels 1,4,16] [--turns-per-level 96] [--out DIR] [--source-commit SHA]
-//                                    fault and bounded-load scenarios (L25) on a backend the runner launches (fake mode)
+//                                    fault and bounded-load scenarios on a backend the runner launches (fake mode)
 //   quality --live [--config FILE] [--out DIR] [--source-commit SHA]
-//                                    the budgeted, model-judged quality lane (L32): live replies from both backends
+//                                    the budgeted, model-judged quality lane: live replies from both backends
 //                                    judged for relevance and groundedness. Billed, so it never runs without --live.
 //
 // Exit codes: 0 everything selected passed, 1 a case failed or errored, 2 invalid input.
@@ -57,7 +57,7 @@ internal static class Cli
     }
 
     /// <summary>
-    /// The run's exit code, the CI gate (L33): 1 if any case failed or errored, otherwise 0. Skipped cases don't fail
+    /// The run's exit code, the CI gate: 1 if any case failed or errored, otherwise 0. Skipped cases don't fail
     /// the run (they say why), but an error does: a case that couldn't be run is not a pass.
     /// </summary>
     public static int ExitCodeFor(IEnumerable<JsonObject> runs) =>

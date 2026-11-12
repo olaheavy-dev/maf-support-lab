@@ -4,9 +4,9 @@ using Microsoft.Agents.AI;
 namespace Support.Api.Tests.Host;
 
 /// <summary>
-/// L01 risk: Anthropic C# SDK 13.x is a newer major than the 12.x floor declared by
+/// Version risk: Anthropic C# SDK 13.x is a newer major than the 12.x floor declared by
 /// Microsoft.Agents.AI.Anthropic 1.28.0. This loads both together and builds an agent without
-/// calling the network. Agent behavior itself starts in L05.
+/// calling the network. Agent behavior is tested elsewhere.
 /// </summary>
 public sealed class DependencyCompatibilityTests
 {

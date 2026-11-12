@@ -57,11 +57,11 @@ The backends are native to their stacks: MAF Workflows and `ChatClientAgent` in 
 | --- | --- |
 | Traces, metrics and logs per backend into the Aspire dashboard | [observability](observability.md) |
 | Identity, access matrix, prompt injection, operation risk | [threat model](threat-model.md) |
-| Timeouts, retries and per-turn model-call budgets | [observability: failures, retries and budgets](observability.md#failures-retries-and-budgets-l15) |
+| Timeouts, retries and per-turn model-call budgets | [observability: failures, retries and budgets](observability.md#failures-retries-and-budgets) |
 | Offline, live and reproducible checks | [testing](testing.md) |
 | Behaviour, native and model-judged evaluation | [evaluations](evaluations/README.md) |
 | Concurrency, faults, latency and throughput | [fault and load](evaluations/load.md) |
-| Security review, code scanning, production requirements | [threat model: security review](threat-model.md#security-review-l26-2026-11-12) |
+| Security review, code scanning, production requirements | [threat model: security review](threat-model.md#security-review-2026-11-12) |
 | Seeing it work, on both backends | [demonstration](demo.md) |
 
 ## Under load

@@ -18,7 +18,7 @@ namespace Support.Api.Modules.Conversations.Application.SubmitTurn;
 /// <summary>
 /// Runs a turn exactly once per client_turn_id. Idempotency lives here, in application code, not in the endpoint
 /// or the model: a duplicate request (even one arriving while the first still runs) reuses that single run.
-/// Since L12 the run is detached from the HTTP request: it has its own cancellation, which only a cancel request
+/// The run is detached from the HTTP request: it has its own cancellation, which only a cancel request
 /// triggers, so a client that disconnects neither stops nor undoes it, and the finished turn (completed, awaiting
 /// approval, failed, or cancelled) is stored for a status lookup. The request only waits for it.
 /// Each turn is one "support.turn" span (ids as tags), one metric observation (bounded labels), and one log line.
@@ -75,7 +75,7 @@ internal sealed partial class SubmitTurnCommandHandler(
         reservation.ClientTurnId = command.ClientTurnId;
         reservation.StartedAt = clock.GetUtcNow();
         command.Observer.Started(new(command.ConversationId, reservation.TurnId, command.ClientTurnId, null));
-        // The caller's principal is pinned for the whole detached run (L13): identity never changes mid-turn and never
+        // The caller's principal is pinned for the whole detached run: identity never changes mid-turn and never
         // depends on a request that has ended.
         var caller = principal;
         _ = Task.Run(
@@ -111,7 +111,7 @@ internal sealed partial class SubmitTurnCommandHandler(
         var started = clock.GetTimestamp();
         var lastRoute = new RouteCapture(command.Observer);
 
-        // Every turn is bounded (L15): a model-call budget, and a wall-clock deadline that joins the cancel request.
+        // Every turn is bounded: a model-call budget, and a wall-clock deadline that joins the cancel request.
         using var budgetScope = TurnBudget.Begin(resilience.Value.MaxModelCallsPerTurn);
         var budget = TurnBudget.Current!;
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(resilience.Value.TurnTimeoutSeconds), clock);
@@ -121,7 +121,7 @@ internal sealed partial class SubmitTurnCommandHandler(
         SupportReply? reply = null;
         try
         {
-            // This conversation's turn is ours now: close approvals left by a turn that was never stored (L11).
+            // This conversation's turn is ours now: close approvals left by a turn that was never stored.
             OrphanedApprovals.Expire(conversation, operations, clock.GetUtcNow());
             run.Token.ThrowIfCancellationRequested();
             reply = await router.RouteAsync(

@@ -12,8 +12,8 @@ using Support.Api.Modules.Technical.Presentation;
 namespace Support.Api.Tests.Modules.Agents;
 
 /// <summary>
-/// Each agent can do exactly what its job needs (L08), and every tool that can change data requires the customer's
-/// approval through the framework's native gate (L10). The tool lists are read from the agents the app actually built.
+/// Each agent can do exactly what its job needs, and every tool that can change data requires the customer's
+/// approval through the framework's native gate. The tool lists are read from the agents the app actually built.
 /// </summary>
 public sealed partial class AgentCapabilityTests
 {

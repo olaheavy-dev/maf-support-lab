@@ -1,4 +1,4 @@
-"""Per-conversation state for the agents (L19, porting L09).
+"""Per-conversation state for the agents (the Python counterpart of .NET's sessions).
 
 The agents are reusable definitions shared by every conversation; a conversation's history lives only in its own
 native MAF ``AgentSession`` per specialist, created on first use and reused on later turns. There is no global mutable
@@ -75,7 +75,7 @@ class ConversationContext:
 class ConversationSessions:
     """One native session per specialist for one conversation. Reached only through an owned conversation.
 
-    Durable since L38: a session is loaded from the database on first use and saved after each run that changed it,
+    Durable: a session is loaded from the database on first use and saved after each run that changed it,
     so a conversation's history survives a restart. Without a database (unit tests), sessions live in memory only.
     """
 

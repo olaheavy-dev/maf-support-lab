@@ -37,7 +37,7 @@ jobs:
             exit 1
           fi
 
-  # L26: the Python manifests (the backend, the evaluation package, the contract tools), audited from their lock files
+  # The Python manifests (the backend, the evaluation package, the contract tools), audited from their lock files
   # with hashes, so the exact resolved versions are checked; pip-audit queries the PyPI advisory database.
   python:
     name: python-vulnerabilities

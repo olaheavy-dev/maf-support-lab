@@ -4,7 +4,7 @@ namespace Support.Api.Modules.Agents.Application;
 
 /// <summary>
 /// Keeps a specialist's history bounded: the most recent <c>maxMessages</c> messages that carry plain conversation,
-/// dropping tool calls, tool results, native approval requests and responses (L10: approvals are operation state, not
+/// dropping tool calls, tool results, native approval requests and responses (approvals are operation state, not
 /// conversation; a stored request without its response makes the framework refuse to continue), and context notes. Dropping tool traffic means trimming can never separate a
 /// tool result from its call (which providers reject); the specialist re-reads fresh data with its tools instead.
 /// Written here rather than using M.E.AI's MessageCountingChatReducer, which is marked experimental (MEAI001).

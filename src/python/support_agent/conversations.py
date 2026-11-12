@@ -1,8 +1,8 @@
-"""Conversations and their turns (L18): owned by one customer, one turn at a time, each client_turn_id run once.
+"""Conversations and their turns: owned by one customer, one turn at a time, each client_turn_id run once.
 
 Behaviour follows the version-1 contract: a repeated client_turn_id returns the original turn and never runs it again;
 reusing one with a different message is a conflict; a different turn while one runs is rejected (turn_in_progress),
-never queued. Durable since L38: conversations, finished turns, and their context are stored in SQLite. The first
+never queued. Durable: conversations, finished turns, and their context are stored in SQLite. The first
 stored turn for a client key wins, and a turn is stored together with the context it produced, or not at all. Which
 turn is *running* is in-process state: after a restart, nothing is running.
 """
@@ -38,7 +38,7 @@ def now() -> datetime:
 class TurnError:
     code: str
     detail: str
-    retry_after_seconds: int | None = None  # rate_limited only: the provider's hint (L42)
+    retry_after_seconds: int | None = None  # rate_limited only: the provider's hint
 
     def to_contract(self) -> dict[str, Any]:
         body: dict[str, Any] = {"code": self.code, "detail": self.detail}
@@ -163,7 +163,7 @@ class Claim:
     started_at: datetime = field(default_factory=now)
     trace_id: str = ""
     key: str = ""  # the client_turn_id, or "approval:<id>" for a decision (lower case)
-    control: TurnControl = field(default_factory=TurnControl)  # cancellation and live events (L20)
+    control: TurnControl = field(default_factory=TurnControl)  # cancellation and live events
 
     def running_contract(self, conversation_id: str, contract_version: str) -> dict[str, Any]:
         """A turn still running: what a status lookup can say before it finishes (no outcome yet)."""
@@ -186,7 +186,7 @@ class Conversation:
     claims: dict[str, Claim] = field(default_factory=dict[str, Claim])
     turns: dict[str, Turn] = field(default_factory=dict[str, Turn])
     active_turn_id: str | None = None
-    # This conversation's own state (L19): verified context and native sessions. Never shared, never global.
+    # This conversation's own state: verified context and native sessions. Never shared, never global.
     context: ConversationContext = field(default_factory=ConversationContext)
     sessions: ConversationSessions = field(default_factory=ConversationSessions)
     database: Database | None = None
@@ -208,7 +208,7 @@ class Conversation:
             if client_turn_id.startswith("approval:")
             else client_turn_id,  # a decision's turn has no client_turn_id
             now(),
-            current_trace_id() or secrets.token_hex(16),  # the request's trace (L40); random outside any trace
+            current_trace_id() or secrets.token_hex(16),  # the request's trace; random outside any trace
             client_turn_id.lower(),
         )
         self.claims[client_turn_id.lower()] = claim
@@ -314,7 +314,7 @@ class Conversation:
 
 
 class ConversationStore:
-    """Owned conversations, kept in memory once loaded, and stored in the database (L38)."""
+    """Owned conversations, kept in memory once loaded, and stored in the database."""
 
     def __init__(self, database: Database) -> None:
         self._database = database

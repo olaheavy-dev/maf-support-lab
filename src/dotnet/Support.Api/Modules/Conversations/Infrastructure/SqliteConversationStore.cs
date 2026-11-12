@@ -11,7 +11,7 @@ using Support.Api.Modules.Triage.Domain;
 namespace Support.Api.Modules.Conversations.Infrastructure;
 
 /// <summary>
-/// Conversations in the local SQLite store (L11). A conversation is loaded once per process and then kept, because its
+/// Conversations in the local SQLite store. A conversation is loaded once per process and then kept, because its
 /// in-process object also coordinates the turn running right now (one at a time, duplicates wait for it); finished
 /// turns and the context are written through on every turn, so a new process restores them.
 /// </summary>

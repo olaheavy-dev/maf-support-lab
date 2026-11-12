@@ -5,7 +5,7 @@ using Support.Api.Modules.Technical.Domain;
 
 namespace Support.Api.Tests.Modules.Technical;
 
-/// <summary>L08: knowledge search finds documented fixes and admits when there is none.</summary>
+/// <summary>Knowledge search finds documented fixes and admits when there is none.</summary>
 public sealed class TechnicalTests
 {
     [Theory]

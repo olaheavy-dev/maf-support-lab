@@ -9,7 +9,7 @@ namespace Support.Api.Modules.Triage.Infrastructure.Routing;
 /// Each conversation's native agent sessions, one per specialist, created on first use and reused on later turns.
 /// The agents themselves are shared singletons; only these sessions hold a conversation's history. Callers reach a
 /// session only after the conversation's ownership was checked, and the one-turn-at-a-time rule means a session is
-/// never used by two runs at once. Since L11 each session is serialized with MAF's <c>SerializeSessionAsync</c> after
+/// never used by two runs at once. Each session is serialized with MAF's <c>SerializeSessionAsync</c> after
 /// every run and restored with <c>DeserializeSessionAsync</c> in a new process (the agents have stable ids for this).
 /// </summary>
 internal sealed class ConversationSessions(SupportDatabase database)

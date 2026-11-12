@@ -1,7 +1,7 @@
-"""The provider boundary: the fake model in fake mode, Claude in live mode (L18; bounded since L42).
+"""The provider boundary: the fake model in fake mode, Claude in live mode (bounded).
 
 The live client is created once by the host and owned by its lifespan (closed at shutdown). Creating it makes no call.
-The Anthropic SDK client is built here, not by MAF, so its retry policy is ours and explicit (L42): it is the single
+The Anthropic SDK client is built here, not by MAF, so its retry policy is ours and explicit: it is the single
 retry owner for model calls, with a time limit per HTTP attempt, and an SDK middleware counts every attempt per turn.
 """
 

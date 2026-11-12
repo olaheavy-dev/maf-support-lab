@@ -18,7 +18,7 @@
     <PackageVersion Include="Microsoft.Agents.AI.Hosting" Version="1.28.0-preview.261106.1" />
     <PackageVersion Include="Microsoft.Agents.AI.Hosting.OpenAI" Version="1.28.0-alpha.261106.1" />
   </ItemGroup>
-  <ItemGroup Label="Durable local state (L11)">
+  <ItemGroup Label="Durable local state">
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="11.0.0" />
   </ItemGroup>
   <ItemGroup Label="Service defaults">

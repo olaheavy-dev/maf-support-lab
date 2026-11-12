@@ -3,7 +3,7 @@ using Support.Api.Modules.Identity.Domain;
 namespace Support.Api.Modules.Identity.Application;
 
 /// <summary>
-/// Pins the principal for work that outlives its HTTP request (L13). Since L12 a turn runs detached from the request
+/// Pins the principal for work that outlives its HTTP request. A turn runs detached from the request
 /// that started it; the caller's principal is captured when the turn is accepted and pinned here for the whole run, so
 /// identity can never change mid-turn or depend on a request that has already ended.
 /// </summary>
