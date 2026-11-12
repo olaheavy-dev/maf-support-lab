@@ -1,6 +1,6 @@
 # Threat model
 
-Status: initial draft (L02); identity provenance and the tested access matrix added in L13; prompt-injection evidence added in L14. Next, and L26 completes the review. Scope: the local learning system (two backend APIs, synthetic data, simulated writes). This is not a production security assessment.
+Scope: the two backend APIs as built, with synthetic data and simulated writes. It covers identity, access, prompt injection, operation risk, and a security review with explicit production requirements. This is not a production security assessment.
 
 ## What we protect
 
@@ -144,7 +144,7 @@ The Python backend enforces the same rules with its own code; it never calls int
 | A "SYSTEM:" instruction in the rejection reason | The operation is already `rejected`; re-requests are declined | rejection reason |
 | A paraphrase the heuristic doesn't know | The same gates (detection isn't the control) | paraphrase (stretch) |
 
-Every test's fake model *always* follows the attack, so they prove the gates, not the model's judgment. Live, Claude Haiku got the same direct and indirect attacks; see the L14 evidence.
+Every test's fake model *always* follows the attack, so they prove the gates, not the model's judgment. Live, Claude Haiku got the same direct and indirect attacks through the opt-in live tests, and the gates held.
 
 **The heuristic is diagnostic only.** `InjectionSignals` looks for well-known phrasings in messages, decision reasons and article text (`ignore_instructions`, `role_override`, `prompt_extraction`, `fake_system_message`, `skip_approval`). It records signal *names* on the span (`support.injection.<source>`) and a metric (`support.injection.signals`), never the text. It never blocks or changes a turn. Known limits:
 - **False positives:** "Please ignore my previous message, where is ORD-1002?" is flagged and answered normally. Blocking would refuse real customers.

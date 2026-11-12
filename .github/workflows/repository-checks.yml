@@ -13,8 +13,8 @@ env:
   DOTNET_NOLOGO: "true"
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
 jobs:
-  planning-and-contracts:
-    name: planning-and-contracts
+  contracts-and-docs:
+    name: contracts-and-docs
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,14 +22,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Validate learning roadmap and repository metadata
-        run: python3 scripts/validate_repository.py
-      - name: Check planning validation regressions
-        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
-      # L34: every relative link, anchor and image in the tracked Markdown, and every docs/ page reachable from
+      # Every relative link, anchor and image in the tracked Markdown, and every docs/ page reachable from
       # docs/README.md. Offline: external links are not fetched.
       - name: Check documentation links
         run: python3 scripts/check_docs_links.py
+      - name: Test the documentation link checker
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
       - name: Install contract test tools (hash-locked)
         run: |
           python3 -m venv "$RUNNER_TEMP/contracts-venv"
@@ -224,7 +222,7 @@ jobs:
   repository-checks:
     name: repository-checks
     if: always()
-    needs: [planning-and-contracts, dotnet, python, cross-backend, evaluations]
+    needs: [contracts-and-docs, dotnet, python, cross-backend, evaluations]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
