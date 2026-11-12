@@ -29,7 +29,7 @@ In CI the lane is the *Quality (live, billed)* workflow. It runs only when start
 
 The fake-judge tests (`Support.Evaluations.Tests/QualityTests.cs`) run in CI and need no model. They cover the budget, judge errors, malformed output, missing context, failed turns, concurrency, cancellation, unreserved calls, calibration failure, and the command's refusals.
 
-## Results: live run on 2026-11-12 (assistant-run)
+## Results: live run on 2026-11-12
 
 Source commit `3e61ec3` plus the working tree of this change. Judge and backends on `claude-haiku-5-5`. Packages: Quality 10.11.0, Evaluation 10.11.0, Anthropic 13.7.0. 1 repetition, concurrency 2. **12 of 12 samples scored**, 0 errors, 0 skipped. 53 of 60 calls reserved, 21 of them judge calls. Judge usage: 39,021 input and 6,555 output tokens. The run took 44 s.
 

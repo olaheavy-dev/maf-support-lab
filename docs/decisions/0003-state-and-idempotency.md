@@ -1,6 +1,6 @@
 # 0003 - Durable state and idempotent writes
 
-- Status: Accepted (2026-11-10); the Python port was added (2026-11-10). Assistant-drafted; the owner reviews it with each PR.
+- Status: Accepted (2026-11-10); the Python port was added (2026-11-10).
 - Applies to: `src/dotnet/Support.Api` and `src/python/support_agent` (see "The Python backend" below). Each backend has its own store and file.
 
 ## Context
@@ -119,7 +119,7 @@ The same design and guarantees, ported idiomatically. The observable behaviour i
 
 ## Connection pooling
 
-The .NET store originally opened a fresh connection for every call (`Pooling = false`). Under concurrent writes, the load scenarios showed 150–190 ms tail latencies. With pooling, the duplicate-approval and decision-race p95 dropped to 17–35 ms in the final runs, and read throughput roughly doubled, with every correctness check unchanged. Transactions are unaffected: a write still runs in one `BEGIN IMMEDIATE` transaction on one connection, and each pooled connection re-applies the pragmas when opened. Evidence: [load results](../evaluations/load.md#results-assistant-run-2026-11-12) and [the pooling change](../evaluations/load.md#the-improvement-pooled-sqlite-connections-net).
+The .NET store originally opened a fresh connection for every call (`Pooling = false`). Under concurrent writes, the load scenarios showed 150–190 ms tail latencies. With pooling, the duplicate-approval and decision-race p95 dropped to 17–35 ms in the final runs, and read throughput roughly doubled, with every correctness check unchanged. Transactions are unaffected: a write still runs in one `BEGIN IMMEDIATE` transaction on one connection, and each pooled connection re-applies the pragmas when opened. Evidence: [load results](../evaluations/load.md#results-2026-11-12) and [the pooling change](../evaluations/load.md#the-improvement-pooled-sqlite-connections-net).
 
 ## Consequences
 

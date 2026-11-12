@@ -2,7 +2,7 @@
 
 A short tour of what the system does, run against **both** backends in fake model mode (no key, no cost).
 
-> **Assistant-captured.** The output below is real, captured on 2026-11-12 by the assistant (Claude Code) by running [`scripts/demo.sh`](../scripts/demo.sh) against each backend started by the AppHost. Most of it comes from a fresh clone at commit `ae66f38`. The write section was recaptured after the script switched to a repeatable write: it was run twice in a row, and the second run is shown.
+> The output below is real, captured on 2026-11-12 by running [`scripts/demo.sh`](../scripts/demo.sh) against each backend started by the AppHost. Most of it comes from a fresh clone at commit `ae66f38`. The write section was recaptured after the script switched to a repeatable write: it was run twice in a row, and the second run is shown.
 
 ## Run it yourself
 

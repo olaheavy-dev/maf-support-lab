@@ -57,7 +57,7 @@ dotnet tool run aieval report --path evaluations/results/report/store --output e
 
 The live lane is `quality --live` (see [quality.md](quality.md)), locally or through the *Quality (live, billed)* workflow.
 
-## Curated summary (2026-11-12, assistant-run, local)
+## Curated summary (2026-11-12, local)
 
 The report was built from 23 documents into **107 scenario results** (execution `local-l33`, source commit `a04648e` plus the working tree):
 
