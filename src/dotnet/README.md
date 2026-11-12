@@ -72,7 +72,7 @@ Support.Api/
 
 ## Prerequisites
 
-- .NET SDK 10.0.403 (`dotnet --version`). `global.json` allows newer 10.0.4xx patches.
+- .NET SDK 11.0.100 (`dotnet --version`). `global.json` allows newer 11.0.1xx patches.
 - No Docker and no Claude key are needed for fake mode.
 - Optional: Aspire CLI 13.6.4 (`aspire --version`) for `aspire run`. The build itself doesn't need it.
 

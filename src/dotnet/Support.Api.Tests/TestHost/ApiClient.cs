@@ -68,7 +68,7 @@ internal sealed class ApiClient(HttpClient http)
 
         using var response = await Http.SendAsync(request, TestContext.Current.CancellationToken);
         var text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        var json = string.IsNullOrEmpty(text) ? default : JsonDocument.Parse(text).RootElement.Clone();
+        var json = string.IsNullOrEmpty(text) ? default : JsonElement.Parse(text);
         if (response.Content.Headers.ContentType?.MediaType == "application/problem+json")
         {
             ContractSchemas.AssertValid("problem", json);

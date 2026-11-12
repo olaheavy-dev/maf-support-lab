@@ -163,7 +163,7 @@ public sealed class CancellationTests
             {
             }
 
-            turnId = JsonDocument.Parse(line![6..]).RootElement.GetProperty("turn_id").GetString()!;
+            turnId = JsonElement.Parse(line![6..]).GetProperty("turn_id").GetString()!;
             await WaitForAsync(() => factory.Services.GetRequiredService<IOperationStore>().Find(operationId)!.Status == OperationStatus.Committed);
             await disconnect.CancelAsync(); // the connection drops before turn.final
         }

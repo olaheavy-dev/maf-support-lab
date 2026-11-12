@@ -11,13 +11,13 @@ Use the **latest stable release** of every runtime, framework, and package. Use 
 
 | Component | Selected | Notes |
 | --- | --- | --- |
-| .NET SDK / runtime | 10.0.403 / 10.0.14 (LTS) | .NET 11 is still a release candidate (`11.0.100-rc.3`), so it is not selected. Pin the SDK in `global.json` at L03. |
+| .NET SDK / runtime | 11.0.100 / 11.0.0 (STS) | Moved from 10.0.403 / 10.0.14 (LTS) in L44 (2026-11-12, the owner's choice). The official release index lists end of support for both 10.0 (LTS) and 11.0 (STS) as **2028-11-14**, so the latest-stable rule selects 11.0 at no support cost. Re-check before .NET 12 (LTS) ships. `global.json` pins the SDK (patch roll-forward only). |
 | Python | 3.15.2 | The latest stable release. agent-framework-core, -anthropic, and -devui 1.25.0-era packages list 3.15 support (3.11+ required). |
 | uv | 0.13.7 | Latest release. The local machine currently has 0.11.14; upgrade before L17. |
 | Aspire | 13.6.5 (`Aspire.AppHost.Sdk`, `Aspire.Hosting.AppHost`, `Aspire.Hosting.Python`) | Stable. Raised from 13.6.4 in L22 (the owner's choice: in the same PR) because 13.6.4 has advisory GHSA-f7vh-h5g3-7jrh (CVE-2026-120006, high, elevation of privilege; fixed in 13.6.5). The vulnerable packages came from the `Aspire.AppHost.Sdk` version, so every Aspire pin moves together. |
 
 
-## .NET packages (net10.0)
+## .NET packages (net11.0)
 
 | Package | Version | Status |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ Use the **latest stable release** of every runtime, framework, and package. Use 
 | Microsoft.Agents.AI.Anthropic | 1.28.0 | Stable. Provider integration; depends on `Anthropic >= 12.53.0`. |
 | Anthropic (C# SDK) | 13.7.0 | Stable. **Risk:** this is a newer major version than the 12.x floor MAF declares. L03 must prove it compiles and runs with MAF 1.28.0; if not, use the latest compatible 12.x and record the reason. |
 | Microsoft.Extensions.AI | 10.11.0 | Stable |
-| Microsoft.Extensions.AI.Evaluation | 10.11.0 | Stable. Added in L30, in the evaluation project only (with `Microsoft.Agents.AI` 1.28.0 for MAF's local evaluation). It is the version MAF 1.28.0 depends on and matches MEAI 10.11; 11.0.0 pairs with .NET 11 (still a release candidate), so it is not selected. |
+| Microsoft.Extensions.AI.Evaluation | 10.11.0 | Stable. Added in L30, in the evaluation project only (with `Microsoft.Agents.AI` 1.28.0 for MAF's local evaluation). It is the version MAF 1.28.0 depends on and matches MEAI 10.11. It stays on 10.11 after the L44 move to .NET 11: the Microsoft.Extensions.AI family is versioned independently of the runtime, and moving it ahead of MAF's own dependency is out of scope. |
 | OpenTelemetry.Extensions.Hosting / Exporter.OpenTelemetryProtocol | 1.20.1 | Stable (1.21.0 is still RC). |
 | Microsoft.Data.Sqlite | 11.0.0 | Stable. Added in L11 at 10.0.15, when .NET 11 was still a release candidate. Raised to 11.0.0 on 2026-11-12 (the owner's choice) once .NET 11 went GA: 11.0.0 still targets net10.0, so it runs on our runtime. It brings a major bump of the native layer (SQLitePCLRaw 2.1.13 → 3.0.5; the native library now comes from the `SQLite` 3.53.4 package). Verified by the full .NET suite (durable-state and restart tests included) and the launch-mode evaluations. |
 | Microsoft.Agents.AI.DevUI | 1.28.0-preview.261106.1 | **Prerelease, unavoidable**: no stable release exists. It brings in `Microsoft.Agents.AI.Hosting` 1.28.0-preview and `Microsoft.Agents.AI.Hosting.OpenAI` 1.28.0-alpha. Restricted to the development environment (L05). |

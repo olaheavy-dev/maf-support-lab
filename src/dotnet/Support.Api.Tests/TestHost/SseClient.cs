@@ -21,7 +21,7 @@ internal static class SseClient
         var contentType = response.Content.Headers.ContentType?.MediaType;
         return contentType == "text/event-stream"
             ? (response.StatusCode, contentType, Parse(text), null)
-            : (response.StatusCode, contentType, [], JsonDocument.Parse(text).RootElement.Clone());
+            : (response.StatusCode, contentType, [], JsonElement.Parse(text));
     }
 
     public static IReadOnlyList<JsonElement> Parse(string text)
@@ -43,7 +43,7 @@ internal static class SseClient
                 continue; // a comment such as a keepalive
             }
 
-            var payload = JsonDocument.Parse(data.ToString()).RootElement.Clone();
+            var payload = JsonElement.Parse(data.ToString());
             ContractSchemas.AssertValid("stream-event", payload);
             Assert.Equal(payload.GetProperty("type").GetString(), name);
             Assert.Equal(payload.GetProperty("sequence").GetInt64().ToString(System.Globalization.CultureInfo.InvariantCulture), id);

@@ -42,7 +42,7 @@ dotnet test --solution maf-support-lab.slnx --no-build --configuration Release
   - In CI (`ContinuousIntegrationBuild=true`), restore runs in locked mode. A version change without an updated lock file fails with `NU1004`.
   - The AppHost has no lock file: Aspire restores a different dashboard/orchestrator package per operating system, so a macOS lock cannot be restored on Linux. It is pinned by the exact `Aspire.AppHost.Sdk` version and central package versions.
 - **Contract test tools:** `contracts/requirements.txt` is installed with `--require-hashes`.
-- **SDK:** `global.json` pins .NET SDK 10.0.403 (patch roll-forward only).
+- **SDK:** `global.json` pins .NET SDK 11.0.100 (patch roll-forward only); projects target `net11.0`.
 
 ## Security advisories (network-backed, not required)
 
