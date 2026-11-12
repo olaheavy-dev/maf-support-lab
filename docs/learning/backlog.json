@@ -1862,13 +1862,67 @@
       ]
     },
     {
-      "id": "L32",
+      "id": "L44",
       "order": 32,
+      "epic": "E01",
+      "title": "Move the .NET stack to the .NET 11 runtime",
+      "stack": "dotnet",
+      "depends_on": [
+        "L31"
+      ],
+      "course_refs": [
+        "dn-packages"
+      ],
+      "official_refs": [
+        "ms-dotnet-support",
+        "ms-dotnet11-whats-new",
+        "ms-ca2026"
+      ],
+      "source_note": "The course targets an older runtime; the release index is the authority for support dates. .NET 10 (LTS) and .NET 11 (STS) both reach end of support on 2028-11-14, so the latest-stable rule selects .NET 11 at no support cost.",
+      "implementation": [
+        "Pin SDK 11.0.x in global.json, retarget Directory.Build.props to net11.0, move runtime-paired packages (Microsoft.AspNetCore.Mvc.Testing) to 11.0.x, and regenerate every lock file; keep Microsoft.Extensions.AI* on the version MAF 1.28 depends on unless MAF moves.",
+        "Fix the new .NET 11 analyzer findings rather than suppressing them (CA2026: use JsonElement.Parse instead of JsonDocument.Parse(...).RootElement in app and test code).",
+        "Update ADR 0001 (runtime row and the evaluation package note) and every doc or CI step that names .NET 10 or net10.0."
+      ],
+      "acceptance": [
+        "CI's dotnet, cross-backend, evaluations and nuget-vulnerabilities jobs pass on SDK 11 with -warnaserror and no new suppressions; all .NET tests, the 29 cross-backend probes and the launch-mode evaluations pass on both backends.",
+        "The AppHost starts both APIs under Aspire on .NET 11 and a fake-mode turn completes with its trace visible; ADR 0001 records the support dates from the release index and why STS is acceptable here."
+      ],
+      "learning_outcomes": [
+        "Read the .NET support policy (LTS vs STS, end-of-support dates) and decide a runtime from evidence rather than labels.",
+        "Separate runtime-paired packages from independently versioned ones (MAF, Microsoft.Extensions.AI, Aspire) during an upgrade."
+      ],
+      "interview_questions": [
+        "When is an STS runtime the right choice for a production service?",
+        "What do you check, beyond 'it compiles', before moving a service to a new major runtime?"
+      ],
+      "stretch": "List which packages would still need to move if MAF released a version built on Microsoft.Extensions.AI 11, and what in the evaluation project would change.",
+      "requires_capabilities": [
+        "version_plan"
+      ],
+      "provides_capabilities": [
+        "dotnet_current_runtime"
+      ],
+      "deliverables": [
+        "global.json",
+        "Directory.Build.props",
+        "Directory.Packages.props",
+        "docs/decisions/0001-version-baseline.md"
+      ],
+      "scope_exclusions": [
+        "Moving Microsoft.Extensions.AI or MAF packages ahead of MAF's own dependency",
+        "Python runtime changes",
+        "Behaviour or contract changes"
+      ]
+    },
+    {
+      "id": "L32",
+      "order": 33,
       "epic": "E08",
       "title": "Add budgeted model-based quality evaluation for both backends",
       "stack": "shared",
       "depends_on": [
-        "L31"
+        "L44"
       ],
       "course_refs": [
         "dn-orchestrator",
@@ -1921,7 +1975,7 @@
     },
     {
       "id": "L33",
-      "order": 33,
+      "order": 34,
       "epic": "E08",
       "title": "Generate Microsoft evaluation reports and separate CI lanes",
       "stack": "shared",
@@ -1981,7 +2035,7 @@
     },
     {
       "id": "L34",
-      "order": 34,
+      "order": 35,
       "epic": "E09",
       "title": "Author canonical Markdown documentation for the completed system",
       "stack": "docs",
@@ -2039,7 +2093,7 @@
     },
     {
       "id": "L25",
-      "order": 35,
+      "order": 36,
       "epic": "E07",
       "title": "Run fault, concurrency, and bounded load exercises",
       "stack": "shared",
@@ -2094,7 +2148,7 @@
     },
     {
       "id": "L26",
-      "order": 36,
+      "order": 37,
       "epic": "E07",
       "title": "Review dependencies, security checks, and operational limits",
       "stack": "shared",
@@ -2152,7 +2206,7 @@
     },
     {
       "id": "L27",
-      "order": 37,
+      "order": 38,
       "epic": "E07",
       "title": "Publish the architecture, runbook, and portfolio demonstration",
       "stack": "shared",
@@ -2211,7 +2265,7 @@
     },
     {
       "id": "L28",
-      "order": 38,
+      "order": 39,
       "epic": "E07",
       "title": "Complete a mock interview and independent change exercise",
       "stack": "shared",

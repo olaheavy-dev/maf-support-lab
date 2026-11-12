@@ -10,7 +10,7 @@ Each arrow means finish the preceding phase before starting the next. The ticket
 
 ```mermaid
 flowchart TD
-    E01["E01: Foundation, contracts, and reproducibility<br/>L01 → L02 → L03 → L04"]
+    E01["E01: Foundation, contracts, and reproducibility<br/>L01 → L02 → L03 → L04<br/>L44"]
     E02["E02: Observable .NET support workflow<br/>L05 → L43 → L06 → L07<br/>L08"]
     E03["E03: Conversations, approvals, and streaming<br/>L09 → L10 → L11 → L12"]
     E04["E04: Safety and reliability<br/>L13 → L14 → L15"]
@@ -58,13 +58,14 @@ The table below is the text alternative and includes the exact prerequisites. Fo
 | 29 | L16 | E08 | [Build the shared deterministic behavior evaluation runner](tickets/L16.md) | shared | L29 |
 | 30 | L30 | E08 | [Integrate Microsoft .NET evaluation APIs with local checks](tickets/L30.md) | dotnet | L16 |
 | 31 | L31 | E08 | [Integrate native Python local agent and workflow evaluations](tickets/L31.md) | python | L30 |
-| 32 | L32 | E08 | [Add budgeted model-based quality evaluation for both backends](tickets/L32.md) | shared | L31 |
-| 33 | L33 | E08 | [Generate Microsoft evaluation reports and separate CI lanes](tickets/L33.md) | shared | L32 |
-| 34 | L34 | E09 | [Author canonical Markdown documentation for the completed system](tickets/L34.md) | docs | L33 |
-| 35 | L25 | E07 | [Run fault, concurrency, and bounded load exercises](tickets/L25.md) | shared | L34 |
-| 36 | L26 | E07 | [Review dependencies, security checks, and operational limits](tickets/L26.md) | shared | L25 |
-| 37 | L27 | E07 | [Publish the architecture, runbook, and portfolio demonstration](tickets/L27.md) | shared | L26 |
-| 38 | L28 | E07 | [Complete a mock interview and independent change exercise](tickets/L28.md) | shared | L27 |
+| 32 | L44 | E01 | [Move the .NET stack to the .NET 11 runtime](tickets/L44.md) | dotnet | L31 |
+| 33 | L32 | E08 | [Add budgeted model-based quality evaluation for both backends](tickets/L32.md) | shared | L44 |
+| 34 | L33 | E08 | [Generate Microsoft evaluation reports and separate CI lanes](tickets/L33.md) | shared | L32 |
+| 35 | L34 | E09 | [Author canonical Markdown documentation for the completed system](tickets/L34.md) | docs | L33 |
+| 36 | L25 | E07 | [Run fault, concurrency, and bounded load exercises](tickets/L25.md) | shared | L34 |
+| 37 | L26 | E07 | [Review dependencies, security checks, and operational limits](tickets/L26.md) | shared | L25 |
+| 38 | L27 | E07 | [Publish the architecture, runbook, and portfolio demonstration](tickets/L27.md) | shared | L26 |
+| 39 | L28 | E07 | [Complete a mock interview and independent change exercise](tickets/L28.md) | shared | L27 |
 
 ## Epics
 

@@ -445,6 +445,27 @@
       "kind": "official-doc",
       "checked_on": "2026-11-10",
       "note": "Architecture-rule library selected for L43 (TngTech.ArchUnitNET.xUnitV3 0.13.5, Apache-2.0, released 2026-10-26)."
+    },
+    "ms-dotnet-support": {
+      "title": ".NET releases, patches, and support",
+      "url": "https://learn.microsoft.com/en-us/dotnet/core/releases-and-support",
+      "kind": "official-doc",
+      "checked_on": "2026-11-12",
+      "note": "LTS vs STS; L44 checks end-of-support dates against the release index (10.0 and 11.0 both end 2028-11-14)."
+    },
+    "ms-dotnet11-whats-new": {
+      "title": "What's new in .NET 11",
+      "url": "https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-11/overview",
+      "kind": "official-doc",
+      "checked_on": "2026-11-12",
+      "note": "Runtime/SDK changes to review for L44."
+    },
+    "ms-ca2026": {
+      "title": "CA2026: Prefer JsonElement.Parse over JsonDocument.Parse().RootElement",
+      "url": "https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca2026",
+      "kind": "official-doc",
+      "checked_on": "2026-11-12",
+      "note": "New analyzer finding when building on .NET 11 (trial, 2026-11-12)."
     }
   }
 }
