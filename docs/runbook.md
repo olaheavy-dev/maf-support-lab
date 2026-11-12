@@ -73,8 +73,7 @@ The model is `claude-haiku-5-5`. In Live mode with a missing key or model, a bac
 ## Checks (as CI runs them)
 
 ```bash
-python3 scripts/validate_repository.py && python3 -m unittest discover -s scripts/tests -p 'test_*.py'
-python3 scripts/check_docs_links.py                       # every relative link, anchor, and image in the Markdown
+python3 scripts/check_docs_links.py && python3 -m unittest discover -s scripts/tests   # every relative link, anchor and image
 dotnet build maf-support-lab.slnx -warnaserror && dotnet test --solution maf-support-lab.slnx
 (cd src/python && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest)
 (cd evaluations/python && uv run --locked pytest)

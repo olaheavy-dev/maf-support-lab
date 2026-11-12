@@ -11,21 +11,19 @@ Every pull request and every push to `main` runs `.github/workflows/repository-c
 
 | Job | What it checks |
 | --- | --- |
-| `planning-and-contracts` | Roadmap and issue metadata, planning regressions, contract schemas and examples, fixtures and scenarios, and (L34) the documentation links: every relative link, anchor and image in the tracked Markdown, and every `docs/` page reachable from [docs/README.md](README.md). |
+| `contracts-and-docs` | Contract schemas and examples, fixtures and scenarios, and the documentation links: every relative link, anchor and image in the tracked Markdown, and every `docs/` page reachable from [docs/README.md](README.md) (plus the link checker's own tests). |
 | `dotnet` | Locked restore, Release build with warnings as errors, and the .NET integration tests in fake mode. The test host clears any provider key. |
 | `python` | Locked sync, ruff (lint and format), pyright strict, and the Python integration tests in fake mode. |
 | `cross-backend` | (L21) The real .NET and Python servers in fake mode, sent the same requests by `contracts/probes/run_probes.py`: every response is schema-validated, and the two backends must agree (see [0004](decisions/0004-sdk-comparison.md)). |
 | `evaluations` | (L29) The Python evaluation package (`evaluations/python`): lint, format, strict types, dataset/result contract tests, dataset validation. The .NET evaluation runner and its tests build and run in the `dotnet` job; `cross-backend` also runs every dataset on both backends with the runner's launch mode (fresh store per write case, restarts, cancellation), writes the comparison, and uploads both. See [evaluations/README.md](../evaluations/README.md). |
 | `repository-checks` | **The only required status check.** It always reports and passes only if every job above succeeded. A failed, cancelled, or skipped job makes it fail, so nothing can be silently skipped or left pending. |
 
-New jobs (Python in L17, the cross-backend probes in L21) are listed in `repository-checks` → `needs`. The docs link check (L34) is a step in `planning-and-contracts`, so it is already required.
+A new job joins the required set by being listed in `repository-checks` → `needs`.
 
 Run the same checks locally:
 
 ```bash
-python3 scripts/validate_repository.py
-python3 -m unittest discover -s scripts/tests
-python3 scripts/check_docs_links.py
+python3 scripts/check_docs_links.py && python3 -m unittest discover -s scripts/tests
 python3 -m venv .venv && .venv/bin/pip install --require-hashes -r contracts/requirements.txt
 .venv/bin/python -m unittest discover -s contracts/tests
 .venv/bin/python -m unittest discover -s fixtures/tests
@@ -64,4 +62,4 @@ dotnet test --solution maf-support-lab.slnx -- --filter-trait "Category=Live" --
 
 The model-judged quality lane (L32) is a separate live command, not a test, and in CI a manual-only workflow (L33, [reports](evaluations/reports.md)): `quality --live` in the evaluation runner. It has a 60-call budget, worst case 53. See [docs/evaluations/quality.md](evaluations/quality.md).
 
-When a live check is run, record the date, model, package versions, number of calls, usage if available, and the result in the ticket's evidence note, separately from the offline results.
+When a live check is run, record the date, model, package versions, number of calls, usage if available, and the result in the pull request, separately from the offline results.

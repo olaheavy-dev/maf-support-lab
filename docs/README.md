@@ -12,7 +12,6 @@ Plain Markdown, read on GitHub: no site and no build. Every page under `docs/` i
 6. [Observability](observability.md): traces, metrics and logs in Aspire; failures, retries and budgets.
 7. [Testing](testing.md): offline, reproducible and live checks.
 8. [Evaluations](evaluations/README.md): behaviour baseline, model-judged quality, reports and CI lanes.
-9. [Interview explanations](interview.md): the system explained topic by topic, with links to evidence (assistant-drafted).
 
 ## Reference
 
@@ -24,7 +23,6 @@ Plain Markdown, read on GitHub: no site and no build. Every page under `docs/` i
 | [Fixtures](../fixtures/README.md) | Synthetic data, eligibility rules, scenarios |
 | [Evaluation tooling](../evaluations/README.md) | Datasets, schemas, the runner and its commands |
 | [Version policy](version-policy.md) | How versions are chosen |
-| [Course audit](course-audit.md) | The initial review of the course capstone |
 | [Repository settings](repository-settings.md) | Branch protection and required checks |
 
 ### Decisions
@@ -49,17 +47,6 @@ Plain Markdown, read on GitHub: no site and no build. Every page under `docs/` i
 | [Fault and load](evaluations/load.md) | Concurrency and fault scenarios, latency and throughput on both backends, bottlenecks |
 | [Reports and CI lanes](evaluations/reports.md) | The Microsoft evaluation report, what gates a merge, the curated summary |
 
-### Learning
-
-| Page | What it holds |
-| --- | --- |
-| [Workflow](learning/workflow.md) | How a ticket is worked |
-| [Roadmap](learning/roadmap.md) | Every ticket in order, with its page |
-| [Alignment](learning/alignment.md), [capabilities](learning/capabilities.md) | Cross-ticket rules and which ticket supplies what |
-| [Ticket review](learning/ticket-review.md), [post-build plan](learning/post-build-plan.md), [final review](learning/final-review.md) | Planning records |
-| [Evidence notes](learning/evidence/README.md) | One note per finished ticket (assistant-drafted) |
-| [Evidence template](learning/evidence-template.md) | The note format |
-
 ## Credits
 
-The use case and its starting point come from Dometrain's Microsoft Agent Framework courses (repositories `getting-started-microsoft-agent-framework-in-dotnet` and `…-in-python`): the [.NET capstone](https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/tree/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport) and the [Python capstone](https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/tree/ebd05e88679a93113fe2a3223092be125752e4ba/chapter_07). Links point to pinned commits; no course code or transcripts are copied. The implementation follows the released Microsoft Agent Framework, Microsoft.Extensions.AI and Aspire packages and their documentation. Every source is listed in [sources.json](sources.json) with the date it was checked.
+The use case and its starting point come from Dometrain's Microsoft Agent Framework courses (repositories `getting-started-microsoft-agent-framework-in-dotnet` and `…-in-python`): the [.NET capstone](https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-dotnet/tree/014ca9f4ee3764d18b259246310941a07b13541b/src/Chapter07.VoltCartSupport) and the [Python capstone](https://github.com/Dometrain/getting-started-microsoft-agent-framework-in-python/tree/ebd05e88679a93113fe2a3223092be125752e4ba/chapter_07). Links point to pinned commits; no course code or transcripts are copied. The implementation follows the released Microsoft Agent Framework, Microsoft.Extensions.AI and Aspire packages and their documentation. The official documentation and release notes relied on are listed in [sources.json](sources.json) with the date each was checked.

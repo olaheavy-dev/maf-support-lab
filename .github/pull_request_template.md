@@ -1,25 +1,21 @@
-## Problem and resulting behavior
+## Summary
 
-Closes #
-
-## Changes and tradeoffs
+<!-- What changes and why. A small diagram, call tree or file tree if it helps. Add "Closes #N" only if it should close an issue. -->
 
 ## Verification
 
 - Commands and results:
-- Failure cases:
-- Live-model calls, if any:
+- Failure cases tried:
+- Live model calls, if any (model, calls, usage):
 
-## Learning evidence
+## Risk
 
-- Evidence note:
-- Explain the relevant interview questions in your own words:
-- Course-versus-current-docs differences:
+- Reversible? <!-- two-way or one-way door -->
+- What could break:
 
 ## Checklist
 
-- [ ] Acceptance criteria are met.
-- [ ] Relevant checks pass; limitations are stated accurately.
-- [ ] Sources/API behavior were checked against the selected package versions.
-- [ ] No credentials, private transcripts, or sensitive telemetry are included.
-- [ ] I can demonstrate and explain this change.
+- [ ] Required checks pass; limitations are stated accurately.
+- [ ] Shared behaviour changes cover both backends, the contract, the probes and the evaluation datasets.
+- [ ] API behaviour was checked against the selected package versions.
+- [ ] No credentials, real customer data or sensitive telemetry are included.

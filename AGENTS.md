@@ -1,36 +1,24 @@
-# Learning-first collaboration
+# Working in this repository
 
-The repository exists to teach its owner Microsoft Agent Framework, engineering judgment, and interview communication.
+Guidance for anyone, person or coding agent, changing this repository. It holds one customer-support system built twice with Microsoft Agent Framework (C# and Python) against one contract; see the [README](README.md) and the [documentation index](docs/README.md).
 
-## Collaboration mode
+## How changes land
 
-The assistant drives each ticket end to end; the owner reviews and decides.
+1. Work on a short-lived branch; one change per pull request.
+2. Before coding a non-trivial change, state what will be built and why.
+3. Implement it completely: code, tests, and the documentation it affects.
+4. Open a pull request that says what changed, how it was verified, and what could break. Request an automated review by commenting `@codex review`.
+5. Fix valid review findings, and resolve every thread. Squash-merge only when the required `repository-checks` status passes and the review is clean.
+6. Decisions that belong to the owner (scope, repository settings, anything billed or hard to reverse) are asked as explicit questions, one per decision, with the recommended option first.
 
-- Follow the same steps for every ticket:
-  1. Read the ticket, its prerequisites, and its references.
-  2. Before coding, tell the owner in chat: a short summary, then a detailed plain-English explanation of what will be built and why.
-  3. Implement it completely on a branch: code, tests, docs, and the evidence note. **Do not commit yet.**
-  4. Stop and give the owner a local-review brief: what changed file by file, what the code does, what to understand, and how to run the checks. Wait for the owner's go-ahead.
-  5. After the go-ahead: commit, push, open the PR, post the review brief and learning note, and request a Codex review by commenting `@codex review`.
-  6. Wait for the Codex review to finish. Explain each finding in plain English, and fix valid ones (changes go back through the owner's go-ahead). Merge only when the checks pass and Codex has no unresolved findings, then report with the PR and comment links.
-- Explain in plain, simple English. Put the review brief (what changed, what to check) on the PR, knowledge the owner should learn on the ticket, and a short summary plus anything needing the owner in the chat.
-- When the owner must make a decision, present it in the interactive question prompt (not as a chat list): one question per decision, 2–4 options each with a short trade-off, and the recommended option first and marked "(Recommended)".
-- Keep the project board current: move the active ticket to In progress when work starts and to Review when its PR opens. After the PR merges, move it to Done and the next ticket in Order to Ready.
-- Never commit before the owner's go-ahead. After it, merge the PR (squash) once required checks pass, Codex has reviewed it, and review threads are resolved. Do not start implementing the next ticket without the owner's go-ahead, and never mark a ticket learned; the owner decides that.
-- Label assistant-written evidence and interview answers as assistant-drafted.
-- Never invent learning evidence, interview answers, test results, or elapsed study time.
-- Use the latest stable release of every runtime and package (see docs/version-policy.md), and the cheapest model adequate for live checks; escalate only on recorded evidence.
+Never commit credentials, local stores, checkpoints, captured prompts or sensitive telemetry. Never invent test results; label output an assistant produced as assistant-captured.
 
-## Engineering
+## Engineering rules
 
-- Read the active issue and its dependencies, docs/version-policy.md, and docs/sources.json.
-- Verify API signatures against the selected released version; surface documentation disagreements.
-- Keep C# and Python idiomatic while preserving the shared observable behavior.
-- Changes need meaningful verification appropriate to their effect; avoid tests that merely mirror implementation.
-- Keep business authorization, approval enforcement, and idempotency in application/tool code.
-- Use synthetic fixtures. Exclude credentials, local sessions, checkpoints, and sensitive telemetry from Git.
-- Do not add infrastructure or abstractions without a ticket-supported need.
-
-## Scope
-
-The initial roadmap is a plan. Empty application directories are intentional. Do not generate the full application while setting up governance or planning.
+- **Versions:** use the latest stable release of every runtime and package ([version policy](docs/version-policy.md), [0001](docs/decisions/0001-version-baseline.md)). Verify API signatures against the selected release, and record any disagreement with the documentation.
+- **Behaviour parity:** keep C# and Python idiomatic while preserving the shared observable behaviour. A contract change updates the schemas, both backends, the probes, and the evaluation datasets together.
+- **Authority in code:** business authorization, approval enforcement and idempotency live in application and tool code, never in prompts or model output.
+- **Data:** use the synthetic fixtures only.
+- **Verification:** a change needs checks that would fail if it were wrong (mutation-test the important ones); avoid tests that mirror the implementation. Offline checks never need a model key.
+- **Live model use:** opt-in, bounded and recorded. Use the cheapest adequate model (`claude-haiku-5-5`), and escalate only on recorded evidence.
+- **Scope:** add no infrastructure or abstraction without a concrete need in the change at hand.

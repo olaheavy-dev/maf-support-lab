@@ -75,7 +75,7 @@ Constraints the implementation must respect (current Claude models):
 
 ## Chapter 7 audit (static review of the pinned course commits)
 
-The audit in `docs/course-audit.md` is confirmed:
+A static review of the pinned course commits found:
 
 - **.NET hosted path:** `Program.cs` registers four agents and the `SupportTriage` workflow (triage -> `TriageDecisionExecutor` -> conditional edge -> specialist) and exposes them through `MapOpenAIResponses`/`MapOpenAIConversations` and DevUI. `SupportOrchestrator` (injection check, refund routing) and `RefundWorkflowRunner` (refund approval) only reference each other; **neither is wired into the hosted app**. The hosted Billing agent has no refund tool.
 - **.NET approval:** `RefundWorkflowRunner` answers the native approval request with a caller-supplied `customerConfirmed` flag. `OrderTools.CancelOrder` (hosted) trusts a **model-supplied** `customerConfirmed` string, so there is no real approval gate.

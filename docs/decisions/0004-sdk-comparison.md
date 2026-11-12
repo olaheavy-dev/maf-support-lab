@@ -64,7 +64,7 @@ They may differ in the wording of human-readable text, and in how they get there
   1. A failed turn had a `route` in .NET but none in Python. Python now keeps the route triage chose.
   2. .NET's invalid create body had no `errors[]`, although the contract requires it. It now lists the offending pointer.
   3. Python used `"/"` for the whole body. It now uses `""` (RFC 6901).
-- **The probes catch regressions:** removing Python's ownership check, or changing .NET's `client_turn_id_reused` status, each fails them (evidence: `docs/learning/evidence/L21.md`).
+- **The probes catch regressions:** removing Python's ownership check, or changing .NET's `client_turn_id_reused` status, each fails them (checked when the probes were introduced).
 - **Out of scope here:** model quality, statistical comparison and formal evaluation wait for E08 (L29+). These probes assert contract behaviour on synthetic fixtures, not answer quality.
 
 ## Choosing an SDK for a team
