@@ -5,13 +5,14 @@ Plain Markdown, read on GitHub: no site and no build. Every page under `docs/` i
 ## Reading order
 
 1. [Architecture](architecture.md): the pieces, one turn end to end, state, and the two SDKs.
-2. [Runbook](runbook.md): prerequisites, running both backends, exercising the API, the CI checks, common problems.
-3. [API, approval, and state flow](api-flow.md): turns, approvals, operations, streaming and cancellation.
-4. [Threat model](threat-model.md): identity, the access matrix, prompt injection, operation risk, and known gaps.
-5. [Observability](observability.md): traces, metrics and logs in Aspire; failures, retries and budgets.
-6. [Testing](testing.md): offline, reproducible and live checks.
-7. [Evaluations](evaluations/README.md): behaviour baseline, model-judged quality, reports and CI lanes.
-8. [Interview explanations](interview.md): the system explained topic by topic, with links to evidence (assistant-drafted).
+2. [Demonstration](demo.md): the system's behaviour on both backends, with real output from a fresh clone.
+3. [Runbook](runbook.md): prerequisites, running both backends, exercising the API, the CI checks, common problems.
+4. [API, approval, and state flow](api-flow.md): turns, approvals, operations, streaming and cancellation.
+5. [Threat model](threat-model.md): identity, the access matrix, prompt injection, operation risk, and known gaps.
+6. [Observability](observability.md): traces, metrics and logs in Aspire; failures, retries and budgets.
+7. [Testing](testing.md): offline, reproducible and live checks.
+8. [Evaluations](evaluations/README.md): behaviour baseline, model-judged quality, reports and CI lanes.
+9. [Interview explanations](interview.md): the system explained topic by topic, with links to evidence (assistant-drafted).
 
 ## Reference
 

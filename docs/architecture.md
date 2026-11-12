@@ -60,7 +60,21 @@ The backends are native to their stacks: MAF Workflows and `ChatClientAgent` in 
 | Timeouts, retries and per-turn model-call budgets | [observability: failures, retries and budgets](observability.md#failures-retries-and-budgets-l15) |
 | Offline, live and reproducible checks | [testing](testing.md) |
 | Behaviour, native and model-judged evaluation | [evaluations](evaluations/README.md) |
+| Concurrency, faults, latency and throughput | [fault and load](evaluations/load.md) |
+| Security review, code scanning, production requirements | [threat model: security review](threat-model.md#security-review-l26-2026-11-12) |
+| Seeing it work, on both backends | [demonstration](demo.md) |
+
+## Under load
+
+In fake mode on one 18-CPU machine, the .NET backend handles about 1,500 requests/s at 16 concurrent conversations, with a p50 of about 2 ms. The Python backend plateaus near 300 requests/s on its single event loop. Isolation, one write per approval, and one winner per decision race hold on both, and CI checks them on every push. Pooling the .NET SQLite connections removed 150–190 ms write tails ([load results](evaluations/load.md)).
 
 ## What it is not
 
-A learning system, not a production service. It has one development principal per process (no real authentication), local SQLite, one process per database file, and no retention policy. The [threat model's gaps](threat-model.md#gaps-not-production-ready) list the rest.
+A demonstration system, not a production service. It has:
+
+- one development principal per process, with no real authentication;
+- simulated writes;
+- local SQLite, one process per database file;
+- no rate limiting and no retention policy.
+
+The [production requirements](threat-model.md#production-requirements-explicit-follow-ups) list what a deployment would need.
