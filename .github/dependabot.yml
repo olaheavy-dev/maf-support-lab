@@ -83,3 +83,27 @@ updates:
         update-types: [minor, patch]
       npm-major:
         update-types: [major]
+    # Held majors (checked 2026-11-12). Each waits for its ecosystem; the weekly maintenance routine re-checks
+    # the conditions and removes a rule once it holds, then takes the upgrade as a reviewed PR.
+    ignore:
+      # typescript-eslint 8.72.2 supports TypeScript <6.1.0. Remove when it accepts 7.
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
+      # eslint-config-next's plugins (eslint-plugin-react, jsx-a11y, import) support up to ESLint 9. Remove when
+      # they accept 10.
+      - dependency-name: "eslint"
+        versions: [">=10.0.0"]
+      # @vercel/otel 2.3.0 requires the OpenTelemetry SDK packages below these versions, and sdk-trace-base has
+      # no 3.x yet. Remove when @vercel/otel's peer ranges include them.
+      - dependency-name: "@opentelemetry/resources"
+        versions: [">=3.0.0"]
+      - dependency-name: "@opentelemetry/sdk-metrics"
+        versions: [">=3.0.0"]
+      - dependency-name: "@opentelemetry/sdk-trace-base"
+        versions: [">=3.0.0"]
+      - dependency-name: "@opentelemetry/sdk-logs"
+        versions: [">=0.300.0"]
+      - dependency-name: "@opentelemetry/api-logs"
+        versions: [">=0.300.0"]
+      - dependency-name: "@opentelemetry/instrumentation"
+        versions: [">=0.300.0"]
