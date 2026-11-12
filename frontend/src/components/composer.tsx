@@ -20,7 +20,8 @@ export function Composer({
   activeTurnId: string | undefined;
   /** Returns false if the message can't be sent now; the text then stays in the box. */
   onSend: (text: string) => boolean;
-  onStop: () => void;
+  /** Resolves false if the stop wasn't accepted, so Stop can be tried again. */
+  onStop: () => Promise<boolean>;
 }) {
   const [text, setText] = useState("");
   // Which turn a stop was asked for, so "Stopping…" never carries over to the next one.
@@ -69,7 +70,9 @@ export function Composer({
           disabled={!activeTurnId || stopping}
           onClick={() => {
             setStoppingTurn(activeTurnId);
-            onStop();
+            void onStop().then((accepted) => {
+              if (!accepted) setStoppingTurn(undefined);
+            });
           }}
           className="border-border-secondary text-text-primary hover:bg-bg-tertiary inline-flex h-10 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60"
         >

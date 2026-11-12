@@ -56,56 +56,67 @@ export function useSupport() {
     setBusyState(value);
   }, []);
 
-  // Restore this tab's conversation after a reload. Nothing can be sent until this settles.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const saved = load();
-      if (!saved) {
+  // Restore this tab's conversation after a reload. Nothing can be sent until this settles: if the server
+  // can't be reached, the page offers to try again (or to start over) rather than starting a new
+  // conversation over the saved one.
+  const [restoreFailed, setRestoreFailed] = useState(false);
+  const restore = useCallback(async () => {
+    const saved = load();
+    if (!saved) {
+      setBusy(false);
+      return;
+    }
+    setBusy(true);
+    setRestoreFailed(false);
+    try {
+      const conversation = await getConversation(saved.conversationId);
+      // An entry that was mid-turn is kept if it has a turn id: its result is fetched below. One without
+      // a turn id never reached the server's turn, so there is nothing to recover.
+      const unfinished = (entry: Entry) =>
+        entry.kind === "assistant" && (entry.status === "waiting" || entry.status === "streaming");
+      const entries = saved.entries.filter(
+        (entry) => !unfinished(entry) || (entry.kind === "assistant" && entry.turnId),
+      );
+      dispatch({
+        type: "restored",
+        conversation,
+        entries,
+        approvals: saved.approvals ?? {},
+        operations: saved.operations ?? {},
+      });
+      const pending = new Set(conversation.pending_approvals.map((each) => each.approval_id));
+      for (const [approvalId, approval] of Object.entries(saved.approvals ?? {})) {
+        if (!pending.has(approvalId)) await lookUp(dispatch, approval.operationId, approvalId);
+      }
+      const recovering = entries.filter(unfinished) as Extract<Entry, { kind: "assistant" }>[];
+      for (const entry of recovering) {
+        await poll(dispatch, entry.id, conversation.conversation_id, entry.turnId!);
+      }
+      const active = conversation.active_turn_id;
+      if (active && !recovering.some((entry) => entry.turnId === active)) {
+        const assistantId = id();
+        dispatch({ type: "resuming", assistantId, turnId: active });
+        await poll(dispatch, assistantId, conversation.conversation_id, active);
+      }
+      setBusy(false);
+    } catch (error) {
+      if (error instanceof SupportApiError && error.code === "not_found") {
+        // The server says it's gone: forget it and start fresh.
+        clear();
         setBusy(false);
-        return;
+      } else {
+        // Briefly unreachable: keep the saved conversation as the one to continue.
+        setRestoreFailed(true);
       }
-      try {
-        const conversation = await getConversation(saved.conversationId);
-        if (cancelled) return;
-        // Entries that were mid-turn when the page unloaded can't be resumed by id: drop them, and resume
-        // the server's active turn instead, if there is one.
-        const entries = saved.entries.filter(
-          (entry) =>
-            entry.kind !== "assistant" || entry.status === "finished" || entry.status === "unknown",
-        );
-        dispatch({
-          type: "restored",
-          conversation,
-          entries,
-          approvals: saved.approvals ?? {},
-          operations: saved.operations ?? {},
-        });
-        const pending = new Set(conversation.pending_approvals.map((each) => each.approval_id));
-        for (const [approvalId, approval] of Object.entries(saved.approvals ?? {})) {
-          if (!pending.has(approvalId)) await lookUp(dispatch, approval.operationId, approvalId);
-        }
-        if (conversation.active_turn_id) {
-          const assistantId = id();
-          dispatch({ type: "resuming", assistantId, turnId: conversation.active_turn_id });
-          await poll(
-            dispatch,
-            assistantId,
-            conversation.conversation_id,
-            conversation.active_turn_id,
-          );
-        }
-      } catch (error) {
-        // Forget the conversation only if the server says it is gone, not if it is briefly unreachable.
-        if (error instanceof SupportApiError && error.code === "not_found") clear();
-      } finally {
-        if (!cancelled) setBusy(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    }
   }, [setBusy]);
+
+  useEffect(() => {
+    // Syncing with external systems (this tab's storage and the server) once on mount, which is what effects
+    // are for; with nothing saved, restore() sets `busy` false straight away.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void restore();
+  }, [restore]);
 
   useEffect(() => {
     // Saved as soon as the conversation exists, mid-turn too, so a reload during the first reply can still
@@ -226,12 +237,13 @@ export function useSupport() {
   );
 
   /** Asks the running turn to stop. Cooperative: the turn's own final event says what happened. */
-  const stop = useCallback(async () => {
+  const stop = useCallback(async (): Promise<boolean> => {
     const { conversation, activeId, entries } = stateRef.current;
     const active = entries.find((entry) => entry.id === activeId);
-    if (!conversation || !active || active.kind !== "assistant" || !active.turnId) return;
+    if (!conversation || !active || active.kind !== "assistant" || !active.turnId) return false;
     try {
       await cancelTurn(conversation.conversation_id, active.turnId);
+      return true;
     } catch (error) {
       // The turn carries on and still ends with its own result; just say the stop didn't go through.
       dispatch({
@@ -239,16 +251,20 @@ export function useSupport() {
         noticeId: id(),
         message: `Couldn't stop the reply. ${explain(error)}`,
       });
+      return false;
     }
   }, []);
 
+  /** Starts a new conversation. Also the way out when a saved one can't be restored. */
   const startOver = useCallback(() => {
-    if (busyRef.current) return;
+    if (busyRef.current && !restoreFailed) return;
     clear();
     dispatch({ type: "reset" });
-  }, []);
+    setRestoreFailed(false);
+    setBusy(false);
+  }, [restoreFailed, setBusy]);
 
-  return { state, busy, send, decide, stop, startOver };
+  return { state, busy, send, decide, stop, startOver, restoreFailed, retryRestore: restore };
 }
 
 /** A refused request: say why, and settle what it means for the approval it was about. */

@@ -17,7 +17,7 @@ import { Welcome } from "./welcome";
 const BACKEND = { dotnet: ".NET backend", python: "Python backend" } as const;
 
 export function SupportApp() {
-  const { state, busy, send, decide, stop, startOver } = useSupport();
+  const { state, busy, send, decide, stop, startOver, restoreFailed, retryRestore } = useSupport();
   const running = state.activeId !== undefined;
   const latest = [...state.entries]
     .reverse()
@@ -90,7 +90,7 @@ export function SupportApp() {
             <button
               type="button"
               onClick={startOver}
-              disabled={busy || state.entries.length === 0}
+              disabled={restoreFailed ? false : busy || state.entries.length === 0}
               className="border-border-secondary hover:bg-bg-tertiary inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <PlusIcon />
@@ -115,6 +115,24 @@ export function SupportApp() {
             className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6 lg:px-0"
           >
             <div className="mx-auto w-full max-w-[720px] py-6 sm:py-8">
+              {restoreFailed && (
+                <div
+                  role="alert"
+                  className="border-status-warning bg-bg-secondary mb-6 flex flex-wrap items-center gap-3 rounded-md border-l-2 px-4 py-3 text-sm"
+                >
+                  <p className="text-text-secondary flex-1">
+                    Couldn&apos;t reach the support API to reopen your conversation. Is the backend
+                    running?
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void retryRestore()}
+                    className="border-border-secondary hover:bg-bg-tertiary h-9 rounded-md border px-3 font-medium transition-colors duration-150"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
               {state.entries.length === 0 && recovered.length === 0 ? (
                 <Welcome onPick={send} disabled={busy} />
               ) : (

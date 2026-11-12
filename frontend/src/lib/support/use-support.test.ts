@@ -158,13 +158,79 @@ describe("useSupport", () => {
     });
   });
 
-  it("keeps the saved conversation when the backend is briefly unreachable on reload", async () => {
+  it("keeps the saved conversation and blocks sending when restore can't reach the server; retry works", async () => {
     sessionStorage.setItem(
       "voltcart-conversation",
-      JSON.stringify({ conversationId: "conv", entries: [], approvals: {}, operations: {} }),
+      JSON.stringify({
+        conversationId: conversation.conversation_id,
+        entries: [],
+        approvals: {},
+        operations: {},
+      }),
     );
-    mocked.getConversation.mockRejectedValue(new SupportApiError("unreachable", "down"));
-    await ready();
+    mocked.getConversation.mockRejectedValueOnce(new SupportApiError("unreachable", "down"));
+    const { result } = renderHook(() => useSupport());
+    await waitFor(() => expect(result.current.restoreFailed).toBe(true));
+    expect(result.current.busy).toBe(true);
+    let accepted = true;
+    act(() => {
+      accepted = result.current.send("hello");
+    });
+    expect(accepted).toBe(false); // no new conversation over the saved one
     expect(sessionStorage.getItem("voltcart-conversation")).not.toBeNull();
+
+    mocked.getConversation.mockResolvedValue(conversation);
+    await act(() => result.current.retryRestore());
+    expect(result.current.restoreFailed).toBe(false);
+    expect(result.current.busy).toBe(false);
+    expect(result.current.state.conversation?.conversation_id).toBe(conversation.conversation_id);
+  });
+
+  it("after a reload, recovers a reply that was mid-stream even if the server has since finished it", async () => {
+    const unfinished = {
+      kind: "assistant",
+      id: "a1",
+      turnId: finalResult.turn_id,
+      status: "streaming",
+      text: "Order",
+      steps: [],
+    };
+    sessionStorage.setItem(
+      "voltcart-conversation",
+      JSON.stringify({
+        conversationId: conversation.conversation_id,
+        entries: [{ kind: "customer", id: "c1", text: "hello" }, unfinished],
+        approvals: {},
+        operations: {},
+      }),
+    );
+    mocked.getConversation.mockResolvedValue(conversation); // no active turn any more
+    mocked.getTurn.mockResolvedValue(finalResult as TurnResult);
+    const { result } = await ready();
+    expect(mocked.getTurn).toHaveBeenCalledWith(conversation.conversation_id, finalResult.turn_id);
+    expect(result.current.state.entries.at(-1)).toMatchObject({
+      id: "a1",
+      status: "finished",
+      text: finalResult.reply!.text,
+    });
+  });
+
+  it("reports a stop that wasn't accepted, so Stop can be tried again", async () => {
+    mocked.streamTurn.mockImplementation(async function* () {
+      yield completed[0]!; // turn.started: the turn has an id, so it can be stopped
+      await new Promise(() => {});
+    });
+    mocked.cancelTurn.mockRejectedValue(new SupportApiError("unreachable", "down"));
+    const { result } = await ready();
+    act(() => void result.current.send("hello"));
+    await waitFor(() =>
+      expect(result.current.state.entries.at(-1)).toMatchObject({ turnId: finalResult.turn_id }),
+    );
+    let accepted = true;
+    await act(async () => {
+      accepted = await result.current.stop();
+    });
+    expect(accepted).toBe(false);
+    expect(result.current.state.entries.at(-1)).toMatchObject({ kind: "notice" });
   });
 });
