@@ -51,6 +51,18 @@ public sealed partial class LoadTests
     }
 
     [Fact]
+    public async Task Duplicate_approval_fails_when_the_write_repeats_behind_the_same_turn()
+    {
+        Assert.True((await LoadScenarios.DuplicateApprovalAsync(Client(new FakeApi()), Base, 8, None)).Passed);
+
+        // Every approval writes a ticket, yet every response replays the same resumed turn and the operation says
+        // committed: only the probe ticket's number can reveal it.
+        var result = await LoadScenarios.DuplicateApprovalAsync(Client(new FakeApi { RepeatWrite = true }), Base, 8, None);
+        Assert.True(Check(result, "every response is the same resumed turn").Passed);
+        Assert.False(Check(result, "the write ran exactly once (the next ticket is TKT-0002)").Passed);
+    }
+
+    [Fact]
     public async Task Decision_race_fails_when_both_decisions_succeed()
     {
         Assert.True((await LoadScenarios.DecisionRaceAsync(Client(new FakeApi()), Base, 4, None)).Passed);
@@ -125,7 +137,8 @@ public sealed partial class LoadTests
     {
         private readonly Lock gate = new();
         private readonly Dictionary<string, string> turnsByClientId = [];
-        private string? decided;
+        private readonly Dictionary<string, (string? Decision, string? Ticket)> operations = [];
+        private int tickets;
         private int next;
 
         public string? LeakOrder { get; init; }
@@ -135,6 +148,8 @@ public sealed partial class LoadTests
         public bool IgnoreClientTurnId { get; init; }
 
         public bool EveryDecisionWins { get; init; }
+
+        public bool RepeatWrite { get; init; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -153,9 +168,10 @@ public sealed partial class LoadTests
                 if (path.EndsWith("/turns", StringComparison.Ordinal))
                 {
                     var message = body!["message"]!.GetValue<string>();
-                    if (message.Contains("refund", StringComparison.OrdinalIgnoreCase))
+                    if (message.Contains("ticket", StringComparison.OrdinalIgnoreCase))
                     {
-                        return Json(200, new JsonObject { ["outcome"] = "awaiting_approval", ["conversation_id"] = conversation, ["turn_id"] = $"turn_{id}", ["pending_approval"] = new JsonObject { ["approval_id"] = "appr_1", ["operation_id"] = "op_1" } });
+                        operations[$"op_{id}"] = (null, null);
+                        return Json(200, new JsonObject { ["outcome"] = "awaiting_approval", ["conversation_id"] = conversation, ["turn_id"] = $"turn_{id}", ["pending_approval"] = new JsonObject { ["approval_id"] = $"appr_{id}", ["operation_id"] = $"op_{id}" } });
                     }
 
                     var clientId = body["client_turn_id"]!.GetValue<string>();
@@ -177,16 +193,27 @@ public sealed partial class LoadTests
 
                 if (path.Contains("/approvals/", StringComparison.Ordinal))
                 {
-                    var decision = body!["decision"]!.GetValue<string>();
+                    var operation = body!["operation_id"]!.GetValue<string>();
+                    var decision = body["decision"]!.GetValue<string>();
+                    var (decided, ticket) = operations[operation];
+                    var first = decided is null;
                     decided ??= decision;
+                    if (decision == "approve" && (first || RepeatWrite || EveryDecisionWins) && decided == "approve" | EveryDecisionWins)
+                    {
+                        var written = $"TKT-{++tickets:0000}"; // a repeated write takes another number
+                        ticket ??= written;
+                    }
+
+                    operations[operation] = (decided, ticket);
                     return EveryDecisionWins || decided == decision
-                        ? Json(200, new JsonObject { ["outcome"] = "completed", ["turn_id"] = "turn_resumed" })
+                        ? Json(200, new JsonObject { ["outcome"] = "completed", ["turn_id"] = $"turn_resumed_{operation}" })
                         : Json(409, new JsonObject { ["code"] = "approval_already_decided" });
                 }
 
                 if (path.StartsWith("/api/v1/operations/", StringComparison.Ordinal))
                 {
-                    return Json(200, new JsonObject { ["status"] = decided == "approve" ? "committed" : "rejected" });
+                    var (decided, ticket) = operations[segments[4]];
+                    return Json(200, new JsonObject { ["status"] = decided == "approve" ? "committed" : "rejected", ["result"] = new JsonObject { ["ticket_id"] = ticket } });
                 }
 
                 return Json(404, new JsonObject { ["code"] = "not_found" });

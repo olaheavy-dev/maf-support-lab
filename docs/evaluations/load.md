@@ -11,9 +11,11 @@ What happens to each backend under concurrency, and whether its guarantees still
 | `isolation-c1`, `-c4`, `-c16` | 96 turns per level, split across 1, 4 or 16 concurrent conversations (both customers), each asking only about its own orders | every turn answers about the order it asked and names no other order; every turn belongs to the conversation that sent it; turn ids unique |
 | `duplicate-submission` | one turn sent 16 times at once with the same `client_turn_id` | all accepted, all name **one** turn |
 | `turn-in-progress` | 8 turns sent while that conversation's slow turn runs, then that turn is cancelled | all 8 get `409 turn_in_progress`; the cancel is accepted; the slow turn ends `cancelled` |
-| `duplicate-approval` | one cancellation approved 16 times at once (fresh store) | all 200 and the same resumed turn; the operation `committed`; the order shows the change once |
-| `decision-race` | 8 approvals and 8 rejections of one refund at once (fresh store) | exactly one decision wins; every request for the other decision gets `409 approval_already_decided`; the operation matches the winner |
+| `duplicate-approval` | one support ticket approved 16 times at once (fresh store), then one probe ticket approved once | all 200 and the same resumed turn; the operation committed `TKT-0001`; **the probe is `TKT-0002`**, so the write ran exactly once |
+| `decision-race` | 8 approvals and 8 rejections of one ticket at once (fresh store), then one probe ticket | exactly one decision wins; every request for the other decision gets `409 approval_already_decided`; the operation matches the winner; **the probe is `TKT-0002` if approve won, `TKT-0001` if reject won** |
 | `faults-under-load` | 16 conversations at once, half with an injected model failure | the failures are `failed / internal_error` (as the `support-failure` dataset expects); the healthy half completes; a failed conversation's next turn completes |
+
+**Why a probe ticket:** a final status of `committed`, or an order showing `cancelled`, can't tell one write from several. Tickets are numbered from a stored counter in each store, so the next ticket's number counts the writes (Codex review).
 
 The checks are correctness only, with no timing thresholds, so they are deterministic. CI runs them on both backends in `cross-backend` (required). Latency and throughput are recorded in `load-<backend>.json` (schema `evaluation-load` 1.0, in the `evaluation-results` artifact) and are **never gated**, because CI hardware varies.
 
@@ -23,20 +25,20 @@ The checks are correctness only, with no timing thresholds, so they are determin
 
 | Scenario | .NET req/s | .NET p50 / p95 ms | Python req/s | Python p50 / p95 ms |
 | --- | --- | --- | --- | --- |
-| isolation, 1 conversation | 750–866 | 1.0–1.2 / 1.5–2.0 | 117–137 | 7.2–8.4 / 8.1–10.0 |
-| isolation, 4 at once | 1,174–1,366 | 1.0–1.7 / 2.6–6.5 | 244–270 | 14.8–16.3 / 18.0–20.5 |
-| isolation, 16 at once | 1,185–2,355 | 1.7–2.4 / 21.8–37.0 | 278–302 | 55.7–61.2 / 66.6–77.7 |
-| faults under load (16) | 363–673 | 1.5–3.0 / 21.6–27.6 | 112–120 | 105–124 / 147–175 |
-| duplicate approval (16) | 431–611 | 25–36 / 26–36 | 464–500 | 21–23 / 31–34 |
-| decision race (16) | 454–868 | 9–12 / 18–35 | 505–613 | 19–23 / 26–32 |
+| isolation, 1 conversation | 680–779 | 1.2–1.3 / 1.4–2.2 | 121–136 | 7.0–7.8 / 9.4–11.1 |
+| isolation, 4 at once | 1,217–1,420 | 1.3–1.9 / 5.7–6.6 | 243–274 | 13.9–15.5 / 18.5–21.6 |
+| isolation, 16 at once | 1,533–1,673 | 2.2–2.5 / 21.8–22.9 | 274–322 | 51.8–55.3 / 72.5–73.8 |
+| faults under load (16) | 319–506 | 2.4–3.2 / 31.6–69.3 | 118–128 | 87–99 / 155–179 |
+| duplicate approval (16) | 598–644 | 24–25 / 25–26 | 359–517 | 20–30 / 29–44 |
+| decision race (16) | 458–906 | 10–12 / 17–35 | 572–642 | 18–19 / 25–28 |
 
 Request counts per scenario are in the result documents: for example, 97–112 for isolation (96 turns plus conversation creation) and 16 for the races.
 
 ## Bottlenecks
 
 - **.NET, before the fix: storage connections.** `SupportDatabase` opened a fresh SQLite connection (open plus pragmas) for every call. Under concurrent writes this showed a cluster of **150–190 ms** tail latencies (over 3 runs: duplicate-approval p95 186 and 156 ms in two runs and 37.5 ms in the third; decision-race p95 156–179 ms in all three), against medians of 10–36 ms.
-- **Python: one event loop.** Throughput plateaus near 300 req/s, and the median grows with concurrency (7 → 15 → 58 ms): requests queue on a single Uvicorn worker. Storage also opens a connection per call, synchronously on the loop.
-- **Python: the failure path.** With half the turns failing, throughput drops to about 115 req/s and the median to about 110 ms, roughly 2.5× slower than all-success load. A failed turn costs much more than a successful one there. **Not investigated further.** Candidates are exception classification and logging and telemetry on the failure path; the next step would be a profile of one failed turn.
+- **Python: one event loop.** Throughput plateaus near 300 req/s, and the median grows with concurrency (7 → 15 → 53 ms): requests queue on a single Uvicorn worker. Storage also opens a connection per call, synchronously on the loop.
+- **Python: the failure path.** With half the turns failing, throughput drops to about 120 req/s and the median to about 90 ms, roughly 2.5× slower than all-success load. A failed turn costs much more than a successful one there. **Not investigated further.** Candidates are exception classification and logging and telemetry on the failure path; the next step would be a profile of one failed turn.
 
 ## The improvement: pooled SQLite connections (.NET)
 
@@ -44,10 +46,10 @@ One setting changed: `Pooling = false` → `Pooling = true` in `SupportDatabase`
 
 | .NET, 3 runs each, concurrency 16 | Before | After |
 | --- | --- | --- |
-| duplicate-approval p95 | 37.5–186 ms (2 of 3 runs over 150 ms) | 25.7–36.4 ms |
-| decision-race p95 | 156–179 ms | 18.3–35.0 ms |
-| isolation-c16 throughput | 608–686 req/s | 1,185–2,355 req/s |
-| isolation-c16 p50 | 4.5–5.4 ms | 1.7–2.4 ms |
+| duplicate-approval p95 | 37.5–186 ms (2 of 3 runs over 150 ms) | 25–27 ms (pooling experiment) |
+| decision-race p95 | 156–179 ms | 20–22 ms (pooling experiment) |
+| isolation-c16 throughput | 608–686 req/s | 1,533–1,673 req/s |
+| isolation-c16 p50 | 4.5–5.4 ms | 2.2–2.5 ms |
 
 **The shared suite still passes:**
 - the full .NET suite, three times;
@@ -55,7 +57,7 @@ One setting changed: `Pooling = false` → `Pooling = true` in `SupportDatabase`
 - the 29 cross-backend probes;
 - every load check.
 
-The "before" isolation numbers come from an earlier measurement pass at concurrency 16 only; the "after" numbers are from the final runs.
+The before/after write rows come from the pooling experiment (concurrency 16 only, 3 runs each), which ran when these scenarios still wrote a cancellation and a refund; the throughput and p50 "after" values are from the final runs.
 
 ## Limitations
 

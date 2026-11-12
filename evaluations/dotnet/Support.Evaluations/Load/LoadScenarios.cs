@@ -172,19 +172,25 @@ internal static partial class LoadScenarios
             ]);
     }
 
-    /// <summary>One approval decided "approve" many times at once: the write runs once, every response reports it.</summary>
+    private const string TicketRequest = "Please open a support ticket: my smart fridge firmware shows error Z-77.";
+
+    /// <summary>
+    /// One ticket approved many times at once. Tickets are countable: each store numbers them TKT-0001 upwards from a
+    /// stored counter, so after the race one more ticket (approved once) must be TKT-0002. A write that ran k times
+    /// would push it to TKT-000(k+1); the final operation status alone could not show that.
+    /// </summary>
     public static async Task<ScenarioResult> DuplicateApprovalAsync(LoadClient client, Uri url, int copies, CancellationToken cancellationToken)
     {
-        var (conversation, approval, operation, proposal) = await ProposeAsync(client, url, "Please cancel order ORD-1003.", cancellationToken).ConfigureAwait(false);
+        var (conversation, approval, operation, proposal) = await ProposeAsync(client, url, TicketRequest, cancellationToken).ConfigureAwait(false);
         var clock = Stopwatch.StartNew();
         var responses = await Task.WhenAll(Enumerable.Range(0, copies).Select(_ => client.DecideAsync(url, conversation, approval, operation, "approve", cancellationToken))).ConfigureAwait(false);
         clock.Stop();
         var record = await client.GetAsync(new Uri(url, $"api/v1/operations/{operation}"), cancellationToken).ConfigureAwait(false);
-        var follow = await client.TurnAsync(url, conversation, "Where is my order ORD-1003?", null, cancellationToken).ConfigureAwait(false);
+        var probe = await ProbeTicketAsync(client, url, cancellationToken).ConfigureAwait(false);
         var turns = responses.Select(r => r.Text("turn_id")).Distinct().ToList();
         return new ScenarioResult(
             "duplicate-approval",
-            $"One cancellation approved {copies} times at once.",
+            $"One ticket approved {copies} times at once, then one probe ticket to count the writes.",
             copies,
             responses,
             clock.Elapsed.TotalMilliseconds,
@@ -192,26 +198,32 @@ internal static partial class LoadScenarios
                 new LoadCheck("the write was proposed", proposal.Text("outcome") == "awaiting_approval", proposal.Text("outcome") ?? $"HTTP {proposal.Status}"),
                 new LoadCheck("every decision is accepted (200, idempotent)", responses.All(r => r.Status == 200), string.Join(",", responses.Select(r => r.Status).Distinct())),
                 new LoadCheck("every response is the same resumed turn", turns.Count == 1, $"{turns.Count} distinct resumed turns"),
-                new LoadCheck("the operation committed once", record.Text("status") == "committed", record.Text("status") ?? $"HTTP {record.Status}"),
-                new LoadCheck("the order shows the change once (cancelled)", (follow.Text("reply", "text") ?? "").Contains("cancelled", StringComparison.OrdinalIgnoreCase), follow.Text("reply", "text") ?? ""),
+                new LoadCheck("the operation committed TKT-0001", record.Text("status") == "committed" && record.Text("result", "ticket_id") == "TKT-0001", $"{record.Text("status")} {record.Text("result", "ticket_id")}"),
+                new LoadCheck("the write ran exactly once (the next ticket is TKT-0002)", probe == "TKT-0002", $"next ticket {probe ?? "none"}"),
             ]);
     }
 
-    /// <summary>Approve and reject sent at once for one operation: exactly one decision wins and the other side gets 409.</summary>
+    /// <summary>
+    /// Approve and reject sent at once for one ticket: exactly one decision wins, the other side gets 409, and the probe
+    /// ticket counts the writes (TKT-0002 if approve won and wrote once, TKT-0001 if reject won and nothing was written).
+    /// </summary>
     public static async Task<ScenarioResult> DecisionRaceAsync(LoadClient client, Uri url, int each, CancellationToken cancellationToken)
     {
-        var (conversation, approval, operation, proposal) = await ProposeAsync(client, url, "I want a refund for ORD-1001, the headphones crackle.", cancellationToken).ConfigureAwait(false);
+        var (conversation, approval, operation, proposal) = await ProposeAsync(client, url, TicketRequest, cancellationToken).ConfigureAwait(false);
         var decisions = Enumerable.Range(0, each * 2).Select(i => i % 2 == 0 ? "approve" : "reject").ToList();
         var clock = Stopwatch.StartNew();
         var responses = await Task.WhenAll(decisions.Select(d => client.DecideAsync(url, conversation, approval, operation, d, cancellationToken))).ConfigureAwait(false);
         clock.Stop();
         var record = await client.GetAsync(new Uri(url, $"api/v1/operations/{operation}"), cancellationToken).ConfigureAwait(false);
+        var probe = await ProbeTicketAsync(client, url, cancellationToken).ConfigureAwait(false);
         var winners = decisions.Zip(responses).Where(p => p.Second.Status == 200).Select(p => p.First).Distinct().ToList();
         var losers = decisions.Zip(responses).Where(p => p.Second.Status != 200).ToList();
-        var expected = winners.Count == 1 ? (winners[0] == "approve" ? "committed" : "rejected") : "?";
+        var approved = winners is ["approve"];
+        var expected = winners.Count == 1 ? (approved ? "committed" : "rejected") : "?";
+        var expectedProbe = approved ? "TKT-0002" : "TKT-0001";
         return new ScenarioResult(
             "decision-race",
-            $"{each} approvals and {each} rejections of one refund, all at once.",
+            $"{each} approvals and {each} rejections of one ticket, all at once, then one probe ticket to count the writes.",
             each * 2,
             responses,
             clock.Elapsed.TotalMilliseconds,
@@ -220,7 +232,16 @@ internal static partial class LoadScenarios
                 new LoadCheck("exactly one decision wins", winners.Count == 1, winners.Count == 1 ? winners[0] : $"{winners.Count} decisions succeeded"),
                 new LoadCheck("every other-decision request gets 409 approval_already_decided", losers.All(l => l.Second.Status == 409 && l.Second.Text("code") == "approval_already_decided") && losers.All(l => winners.Count == 1 && l.First != winners[0]), string.Join(",", losers.Select(l => $"{l.First}:{l.Second.Status} {l.Second.Text("code")}").Distinct())),
                 new LoadCheck("the operation matches the winning decision", record.Text("status") == expected, $"{record.Text("status")} (expected {expected})"),
+                new LoadCheck("the winner's writes happened exactly once (probe ticket)", probe == expectedProbe, $"next ticket {probe ?? "none"} (expected {expectedProbe})"),
             ]);
+    }
+
+    /// <summary>Creates and approves one ticket in a new conversation, and returns its id: the counter's next value.</summary>
+    private static async Task<string?> ProbeTicketAsync(LoadClient client, Uri url, CancellationToken cancellationToken)
+    {
+        var (conversation, approval, operation, _) = await ProposeAsync(client, url, TicketRequest, cancellationToken).ConfigureAwait(false);
+        await client.DecideAsync(url, conversation, approval, operation, "approve", cancellationToken).ConfigureAwait(false);
+        return (await client.GetAsync(new Uri(url, $"api/v1/operations/{operation}"), cancellationToken).ConfigureAwait(false)).Text("result", "ticket_id");
     }
 
     /// <summary>Model failures in some conversations while others run: failures stay in their own conversations.</summary>
