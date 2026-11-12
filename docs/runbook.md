@@ -14,6 +14,17 @@ Versions are pinned; the [version baseline](decisions/0001-version-baseline.md) 
 | Aspire | AppHost SDK 13.6.5; CLI 13.6.x, optional | `apphost/Support.AppHost.csproj` |
 | `aieval` (Microsoft.Extensions.AI.Evaluation.Console) | 10.11.0, local tool | `.config/dotnet-tools.json` |
 
+The main application packages (versions as locked; the full list and the reasoning are in [0001](decisions/0001-version-baseline.md)):
+
+| Package | .NET | Python |
+| --- | --- | --- |
+| Microsoft Agent Framework | `Microsoft.Agents.AI` 1.28.0 (+ Workflows, Anthropic) | `agent-framework-core` 1.25.0 (+ `-anthropic`, `-devui` 1.0.0b261106) |
+| Web host | ASP.NET Core 11 | FastAPI 0.162.3, Uvicorn 0.54.0 |
+| Model SDK | `Anthropic` 13.7.0 | `anthropic` 1.17.0 |
+| Storage | `Microsoft.Data.Sqlite` 11.0.0 (pooled) | `sqlite3` (standard library) |
+| Telemetry | OpenTelemetry 1.20 | OpenTelemetry (locked in `uv.lock`) |
+| Evaluation (runner only) | `Microsoft.Extensions.AI.Evaluation` + `.Quality` + `.Reporting` 10.11.0 | `agent-framework-core` 1.25.0 |
+
 NuGet packages are locked (`packages.lock.json`), and Python is locked (`src/python/uv.lock`, `evaluations/python/uv.lock`). Docker isn't needed.
 
 ## Run both backends under Aspire
@@ -83,6 +94,9 @@ The cross-backend probes, the evaluations and the report are in [testing](testin
 | `410 approval_expired` | Approvals expire after 15 minutes. Ask again. |
 | A stream dropped before `turn.final` | Read `GET …/turns/{turn_id}`, then `GET /api/v1/operations/{id}`; they are authoritative. |
 | Starting the API fails: the port is in use | A previous run is still listening on 5180 or 5280. Stop it. |
+| `curl` to the Python backend fails under Aspire | Aspire serves it over **https** on a dynamic port. Take the URL from the dashboard and add `-k` for the local development certificate. |
+| `git push` is rejected with a secret-scanning message | Push protection found a credential in the commit. Remove it from the commit (don't just delete it in a later commit), rotate the key, and push again. |
+| A live run fails at startup with a missing setting | Live mode needs the key and the model. The error names the setting, never its value; see [Live mode](#live-mode-opt-in-billed). |
 | `aieval` won't start on a machine with only .NET 11 | The tool targets .NET 8–10, and `rollForward: true` in the manifest allows .NET 11. Run `dotnet tool restore` first. |
 
 Never paste the output of `aspire describe` with environment variables: it includes the dashboard's OTLP API key.

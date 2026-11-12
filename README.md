@@ -1,51 +1,66 @@
 # MAF Support Lab
 
-A learning project: build the same customer-support system with Microsoft Agent Framework in C# and Python, orchestrate local development with Aspire, and verify both backends against one shared contract.
+One customer-support agent system, built twice with **Microsoft Agent Framework**: in **C#** (ASP.NET Core, .NET 11) and in **Python** (FastAPI). Both implement one versioned API contract, run side by side under **Aspire**, and are checked against each other on every push.
 
-## Current state
+```mermaid
+flowchart LR
+    C[Client] -->|contract v1: JSON or SSE| A[.NET backend<br/>MAF 1.28]
+    C -->|same contract| P[Python backend<br/>MAF 1.25]
+    A & P --> T[Triage agent → code routing]
+    T --> S[Orders · Billing · Technical agents<br/>scoped, owner-checked tools]
+    S -->|writes| G[Approval gate<br/>bound, expiring, run once]
+    A & P -.-> D[(SQLite per backend)]
+    A & P -.->|OpenTelemetry| H[Aspire dashboard]
+```
 
-Both backends are built and verified: .NET (ASP.NET Core, MAF 1.28.0, .NET 11) and Python (FastAPI, MAF 1.25.0, Python 3.15). Each has triage and routing, read-only specialists, bound approvals for simulated writes, durable SQLite state, streaming and cancellation, access and prompt-injection tests, bounded retries and budgets, and OpenTelemetry into Aspire. Both agree on 29 cross-backend contract probes and every evaluation dataset. A budgeted, model-judged quality lane and Microsoft evaluation reports sit on top. The remaining tickets are fault and load exercises, a security review, the final runbook and portfolio, and a mock interview.
+## What it demonstrates
 
-## Start here
+- **The model proposes; code decides.** Identity comes from the host, never the request. Ownership is checked in application services. Writes (cancel, refund, ticket) are approval-required tools whose exact arguments are bound before the customer decides, and they run at most once, across restarts and under concurrency.
+- **Two native implementations, one behaviour.** 29 black-box contract probes and 31 evaluation cases must agree across C# and Python, and they run in CI on every push.
+- **Failure is designed in.** Each turn has a deadline and a model-call budget, retries happen in one layer, and failures are classified into contract error codes. Streaming offers cooperative cancellation, and a dropped connection never undoes a committed write.
+- **Measured, not claimed.** The evaluation layers:
+  - deterministic behaviour runs;
+  - Microsoft's native agent evaluators;
+  - a budgeted LLM-as-judge lane with calibration;
+  - Microsoft evaluation reports;
+  - fault and load scenarios (with one fix they motivated);
+  - a security review with CodeQL, dependency audits and secret scanning.
 
-- **Understand the system:** [docs/README.md](docs/README.md), the documentation index. It starts with the [architecture](docs/architecture.md).
-- **Run it:** the [runbook](docs/runbook.md). `dotnet run --project apphost` starts both backends in fake mode; no key is needed.
-- **Follow the learning path:** [the workflow](docs/learning/workflow.md), then [the roadmap](docs/learning/roadmap.md#ticket-execution-order). Work one ticket and one pull request at a time.
+## See it
+
+```bash
+dotnet run --project apphost          # both backends in fake mode (no key) + the Aspire dashboard
+scripts/demo.sh http://localhost:5180 # an answer, a denial, a write approved twice that runs once, a failure
+```
+
+The [demonstration](docs/demo.md) shows the real output from a fresh clone on both backends. The [runbook](docs/runbook.md) has prerequisites (the .NET 11 SDK, Python 3.15, uv), live mode with Claude, and the full check suite.
+
+## Read more
+
+| | |
+| --- | --- |
+| [Architecture](docs/architecture.md) | The pieces, one turn end to end, state, the two SDKs, behaviour under load |
+| [API, approval, and state flow](docs/api-flow.md) | Turns, approvals, operations, streaming, cancellation |
+| [Threat model](docs/threat-model.md) | Identity, the access matrix, prompt injection, the security review, production requirements |
+| [Evaluations](docs/evaluations/README.md) | Behaviour baseline, model-judged quality, reports and CI lanes, fault and load |
+| [Observability](docs/observability.md) | Traces, metrics and logs in Aspire; budgets and failure classes |
+| [Decisions](docs/README.md#decisions) | Version baseline, code layout, durable state, SDK comparison |
+| [Contract](contracts/README.md) | The API both backends implement |
+| [All documentation](docs/README.md) | The index, in reading order |
 
 ## Layout
 
-    apphost/                      C# Aspire AppHost: both backends and the Python DevUI
-    src/dotnet/                   ASP.NET Core / MAF implementation (Support.Api) and its tests
-    src/python/                   Python / MAF implementation with uv (support_agent) and its tests
-    contracts/                    Version 1 schemas, examples, and the cross-backend probes
-    fixtures/                     Synthetic customers, orders, invoices, payments, knowledge base, policies, scenarios
-    evaluations/                  Datasets, the evaluation runner (behaviour, native MAF, model-judged), reports
-    docs/                         Architecture, runbook, decisions, evaluations, learning evidence
-    scripts/                      Roadmap rendering and validation, the documentation link check
+    apphost/        Aspire AppHost: both backends and the Python DevUI
+    src/dotnet/     Support.Api (ASP.NET Core + MAF) and its tests
+    src/python/     support_agent (FastAPI + MAF, uv) and its tests
+    contracts/      API schemas, examples, and the cross-backend probes
+    fixtures/       Synthetic customers, orders, invoices, payments, knowledge base, policies, scenarios
+    evaluations/    Datasets and the evaluation runner (behaviour, native, quality, reports, load)
+    docs/           Architecture, runbook, threat model, decisions, evaluation results
+    scripts/        The demo, and the documentation link check
 
-The two backends implement the same use case independently. They share the contract and the synthetic fixtures; conversations and mutable state stay isolated per backend, and each configures its own OpenTelemetry.
+## Status and limits
 
-## References and versions
+The backends, evaluations and security review are complete. This is a **demonstration system**, not a production service: identity is one fixed development customer per process, business writes are simulated, and storage is local SQLite. The [production requirements](docs/threat-model.md#production-requirements-explicit-follow-ups) list what a deployment would need.
 
-The course capstone supplies the use case. Implementation follows compatible released packages, migration notes, official documentation, and release-tagged samples.
-See [sources](docs/sources.json), [the initial audit](docs/course-audit.md), and [version policy](docs/version-policy.md).
-
-## Working agreements
-
-- One short-lived branch per ticket, for example feat/l05-order-status.
-- Pull requests target main; squash merge after the required checks pass.
-- No model credentials, customer data, or private course transcripts in commits or issues.
-- Offline CI uses fakes. Live-model evaluations are explicit, bounded, and separately reported.
-- Preserve source attribution; link to course material rather than copying entire course projects.
-
-See [contribution guidance](CONTRIBUTING.md) and [repository settings](docs/repository-settings.md).
-
-Ticket scope and parity requirements are defined in the [alignment contract](docs/learning/alignment.md). The [ticket review](docs/learning/ticket-review.md) records the corrections and verification limits; the [capability map](docs/learning/capabilities.md) identifies which earlier tasks supply each prerequisite.
-
-## GitHub learning board
-
-[Project board](https://github.com/orgs/olaheavy-dev/projects/4) · [First ticket: L01](https://github.com/olaheavy-dev/maf-support-lab/issues/8) · [All issues](https://github.com/olaheavy-dev/maf-support-lab/issues)
-
-The board contains 39 active learning tickets and eight parent epics linked through native sub-issues; five retired tickets and one retired epic stay closed for history (see the roadmap). Follow the execution Order field and blocking links; stable ticket IDs never change or get reused. The first unblocked ticket is Ready; later tickets are blocked by their execution predecessor.
-
-Build and verify the .NET and Python APIs first (through L21). E08 then introduces six formal evaluation tasks, and E09 one documentation task: canonical plain Markdown that GitHub renders, with a documentation index and a CI link check. The project closes once the backends are solid; a frontend and a generated documentation site were dropped on 2026-11-11 (see the roadmap's retired tickets).
+The use case started from Dometrain's Microsoft Agent Framework course capstones ([credits](docs/README.md#credits)); everything here was rebuilt on the released Microsoft Agent Framework, Microsoft.Extensions.AI and Aspire packages. Security reporting: [SECURITY.md](SECURITY.md).
