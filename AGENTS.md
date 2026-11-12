@@ -11,7 +11,7 @@ Guidance for anyone, person or coding agent, changing this repository. It holds 
 5. Fix valid review findings, and resolve every thread. Squash-merge only when the required `repository-checks` status passes and the review is clean.
 6. Decisions that belong to the owner (scope, repository settings, anything billed or hard to reverse) are asked as explicit questions, one per decision, with the recommended option first.
 
-Never commit credentials, local stores, checkpoints, captured prompts or sensitive telemetry. Never invent test results; label output an assistant produced as assistant-captured.
+Never commit credentials, local stores, checkpoints, captured prompts or sensitive telemetry. Never invent test results.
 
 ## Engineering rules
 

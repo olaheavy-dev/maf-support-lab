@@ -19,7 +19,7 @@ What happens to each backend under concurrency, and whether its guarantees still
 
 The checks are correctness only, with no timing thresholds, so they are deterministic. CI runs them on both backends in `cross-backend` (required). Latency and throughput are recorded in `load-<backend>.json` (schema `evaluation-load` 1.0, in the `evaluation-results` artifact) and are **never gated**, because CI hardware varies.
 
-## Results (assistant-run, 2026-11-12)
+## Results (2026-11-12)
 
 **Target:** macOS, 18 CPUs, Release build (.NET) and uv-locked (Python), loopback HTTP, with the runner on the same machine. Each row is the range over **3 runs**, with one warm-up pass before measuring. Every check passed in every run, on both backends. Both columns include their backend's storage fix (below); the Python column was re-measured after its fix.
 
