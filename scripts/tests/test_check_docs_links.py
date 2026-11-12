@@ -70,6 +70,14 @@ class CheckDocsLinksTests(unittest.TestCase):
         self.write("README.md", "```markdown\n[x](missing.md)\n```\n\nInline `[y](also-missing.md)` too.\n")
         self.assertEqual(self.problems(), [])
 
+    def test_a_longer_fence_wraps_a_shorter_one(self) -> None:
+        self.write(
+            "README.md",
+            "````markdown\n```text\n[example](not-a-real-file.md)\n```\n````\n\n"
+            "~~~\n[also](missing-too.md)\n```\n~~~\n\n[real](docs/gone.md)\n",
+        )
+        self.assertEqual(self.problems(), ["docs/gone.md -> no such file or folder"])
+
     def test_a_link_out_of_the_repository_fails(self) -> None:
         self.write("README.md", "[up](../../etc/passwd)\n")
         self.assertEqual(self.problems(), ["../../etc/passwd -> points outside the repository"])

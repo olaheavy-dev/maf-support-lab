@@ -56,10 +56,12 @@ def prose_lines(text: str, keep_inline_code: bool = False) -> list[tuple[int, st
     for number, line in enumerate(text.splitlines(), start=1):
         match = FENCE.match(line)
         if fence is None and match:
-            fence = match.group(1)[0] * 3
+            fence = match.group(1)  # the whole opening run: ```` can wrap a ``` example
             continue
         if fence is not None:
-            if line.lstrip().startswith(fence):
+            # CommonMark: closed only by the same character, at least as many, and nothing else on the line.
+            closing = re.match(rf"^ {{0,3}}({re.escape(fence[0])}{{{len(fence)},}})\s*$", line)
+            if closing:
                 fence = None
             continue
         lines.append((number, line if keep_inline_code else INLINE_CODE.sub("", line)))
