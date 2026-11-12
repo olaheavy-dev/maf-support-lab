@@ -49,16 +49,7 @@ On failure, every span from HTTP down to the failing call has error status. `sup
 ## DevUI chats
 
 DevUI (Development only) is listed as a **DevUI** link on the `support-api-dotnet` resource in the dashboard, at `http://localhost:5180/devui/`.
-- **A chat with the `support-routing` workflow** is traced like an API turn, without `support.turn`: `POST /v1/responses/` → `invoke_workflow support-routing` → `executor.process chat-input` → `triage` → the selected executor → `reply`.
-- **A chat with a single agent** (`orders`, `billing`, `technical`) skips triage:
-
-```text
-POST /v1/responses/      Microsoft.AspNetCore
-└─ invoke_agent <agent>  Support.Agents
-   ├─ chat <model>       Support.Model
-   ├─ execute_tool <tool>
-   └─ chat <model>
-```
+A DevUI chat (with the `support-routing` workflow, the only entity the .NET DevUI lists) is traced like an API turn, without `support.turn`: `POST /v1/responses/` → `invoke_workflow support-routing` → `executor.process chat-input` → `triage` → the selected executor → `reply`.
 
 **Use Aspire for DevUI traces, not DevUI's own Traces panel.**
 - DevUI's built-in Traces panel only works with the Python DevUI (`--tracing`); Microsoft's C# DevUI tracing docs are "coming soon". With .NET DevUI 1.28.0-preview the panel shows "Trace retrieval is not available for this server".
@@ -270,7 +261,7 @@ Ids are never labels; a test scans every metric data point for id-shaped values.
 - **Success:** the turn's `trace_id` from the API is the dashboard's trace. It holds 20 spans under `support-api-python`, from `POST …/turns` through `support.turn`, the workflow, triage, the orders specialist, three `chat fake-model` calls and `execute_tool get_order_status`.
 - **Failure** (`[fake:model-error]`): `support.turn` and the chain down to the failing model call have error status, while the HTTP span stays OK, since a failed turn is a 200 by contract. Two log records sit on that trace: the exception and "Turn failed".
 - **Metrics** (dashboard): meters `agent_framework`, `fastapi`, `support_agent`; `support.turns` showed exactly the 2 turns sent.
-- **DevUI:** a chat traced as `support-devui-python` (`POST /v1/responses` → `invoke_agent orders` → `chat`, `execute_tool`, `chat`, each once). No `agent-framework-server` resource exists.
+- **DevUI:** a chat with the `orders` agent traced as `support-devui-python` (`POST /v1/responses` → `invoke_agent orders` → `chat`, `execute_tool`, `chat`, each once). No `agent-framework-server` resource exists. (DevUI then also listed the specialists; it now lists only the workflow.)
 - **No content:** the success trace's exported JSON had no message phrase, customer id or tool result, although Aspire also sets `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`.
 
 ### Sensitive data (Python)

@@ -1,9 +1,13 @@
-"""Development-only Python DevUI: the read-only specialists and the support workflow, for inspection.
+"""Development-only Python DevUI: the support workflow, for inspection.
 
 It runs as its own process on loopback (``uv run python -m support_agent.devui``; the AppHost starts it in
 development). It uses the same agents, tools, and guarded services as the API. DevUI has no request identity, so
 this process serves one configured development customer, never a customer chosen by the client or the model. It
 refuses to start outside development.
+
+It lists only the routing workflow, never a specialist on its own: a direct agent chat would skip triage and the
+approval gate, so the model could offer a write the API never would (an ineligible cancel, or a refund of another
+customer's order). A DevUI chat has no support conversation, so the gate declines every write before any approval exists.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ from support_agent.workflow import build_workflow
 
 
 def entities(settings: Settings) -> list[Any]:
-    """What DevUI lists: the three read-only specialists and the support-routing workflow."""
+    """What DevUI lists: only the support-routing workflow (see the module docstring)."""
     if settings.app_environment is not Environment.DEVELOPMENT or not settings.identity.development_customer_id:
         raise RuntimeError("DevUI is only available in development.")
     set_process_principal(Principal(settings.identity.development_customer_id))
@@ -33,7 +37,7 @@ def entities(settings: Settings) -> list[Any]:
     services = Services.create(Fixtures.load(), database)
     operations = build_operations(services.state, database)
     agents = create_agents(create_client(settings), services, operations, settings.resilience)
-    return [*agents.specialists.values(), build_workflow(agents, operations, for_chat=True)]
+    return [build_workflow(agents, operations, for_chat=True)]
 
 
 def main() -> None:

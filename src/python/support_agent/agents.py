@@ -1,6 +1,7 @@
-"""The agents: triage plus three read-only specialists, each with only its own tools.
+"""The agents: triage plus three specialists, each with only its own tools.
 
-Instructions are ported from the .NET backend, minus the write tools, which only arrive with the approval gate.
+Instructions are ported from the .NET backend. Each specialist has read tools and one write tool, which always
+waits for the customer's approval through the approval gate.
 Identity never enters a prompt: tools read the pinned principal.
 """
 
@@ -128,7 +129,7 @@ def create_agents(
                 BILLING_INSTRUCTIONS,
                 id=BILLING,
                 name=BILLING,
-                description="Answers invoice and payment-history questions (read-only).",
+                description="Answers invoice and payment-history questions; refunds need the customer's approval.",
                 **bounded,
                 tools=[*billing_tools(services), refund_tool(operations)],
                 context_providers=[BoundedHistory()],
@@ -138,7 +139,7 @@ def create_agents(
                 TECHNICAL_INSTRUCTIONS,
                 id=TECHNICAL,
                 name=TECHNICAL,
-                description="Answers troubleshooting questions from the knowledge base (read-only).",
+                description="Answers troubleshooting questions from the knowledge base; tickets need the customer's approval.",
                 **bounded,
                 tools=[*technical_tools(services), ticket_tool(operations)],
                 context_providers=[BoundedHistory()],

@@ -1,4 +1,4 @@
-"""Development-only DevUI lists the read-only specialists and the workflow, and goes through the same guards."""
+"""Development-only DevUI lists only the routing workflow, which goes through triage, the approval gate and the same guards."""
 
 from __future__ import annotations
 
@@ -39,27 +39,11 @@ def ask(client: TestClient, entity_id: str, text: str) -> str:
     return response.text
 
 
-def test_devui_lists_the_three_specialists_and_the_workflow() -> None:
-    server = DevServer(host="127.0.0.1", auth_enabled=False, ui_enabled=False)
-    server.register_entities(
-        entities(
-            Settings(
-                app_environment=Environment.DEVELOPMENT, identity=IdentitySettings(development_customer_id="CUST-1001")
-            )
-        )
-    )
-    with TestClient(server.get_app(), base_url="http://127.0.0.1") as client:
-        found = listed(client)
-    set_process_principal(None)
-    assert {"orders", "billing", "technical", "support-routing"} <= set(found)
+def test_devui_lists_only_the_workflow(devui: TestClient) -> None:
+    # A specialist listed on its own would skip triage and the approval gate (see support_agent.devui).
+    found = listed(devui)
+    assert set(found) == {"support-routing"}
     assert found["support-routing"]["type"] == "workflow"
-    assert {found[name]["type"] for name in ("orders", "billing", "technical")} == {"agent"}
-
-
-def test_a_devui_agent_chat_uses_the_same_ownership_guard(devui: TestClient) -> None:
-    text = ask(devui, listed(devui)["orders"]["id"], "What's the status of ORD-2001?")
-    assert "couldn't find order ORD-2001" in text
-    assert "delivered" not in text.lower()
 
 
 @pytest.mark.parametrize(
@@ -108,8 +92,15 @@ def test_devui_rejects_requests_not_addressed_to_loopback() -> None:
     set_process_principal(None)
 
 
-def test_a_devui_workflow_chat_cannot_request_a_change(devui: TestClient) -> None:
+@pytest.mark.parametrize(
+    ("message", "route"),
+    [
+        ("Please cancel order ORD-1003.", "[route: orders | reply: clarification]"),
+        ("Refund ORD-2003 to my card right away.", "[route: billing | reply: clarification]"),  # another customer's
+    ],
+)
+def test_a_devui_workflow_chat_cannot_request_a_change(devui: TestClient, message: str, route: str) -> None:
     # DevUI workflow chats are stateless (no conversation), so a write request is declined natively: nothing changes.
-    text = ask(devui, listed(devui)["support-routing"]["id"], "Please cancel order ORD-1003.")
-    assert "[route: orders" in text
-    assert "approval_request" not in text
+    text = ask(devui, listed(devui)["support-routing"]["id"], message)
+    assert route in text
+    assert "reply: approval_request" not in text

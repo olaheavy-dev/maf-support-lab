@@ -25,7 +25,7 @@ internal static class TriageModule
     }
 
     /// <summary>
-    /// Development only: lists the support workflow in DevUI next to the agents, so a DevUI chat can go through
+    /// Development only: lists the support workflow in DevUI (its only entity), so a DevUI chat goes through
     /// triage and the routing switch exactly like an API turn. Transient, so every DevUI run gets a fresh workflow.
     /// </summary>
     public static WebApplicationBuilder AddTriageDevUi(this WebApplicationBuilder builder)

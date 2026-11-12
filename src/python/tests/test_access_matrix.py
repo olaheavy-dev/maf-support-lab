@@ -387,19 +387,18 @@ def test_devui_serves_only_its_configured_customer_even_with_a_claiming_header()
     try:
         with TestClient(server.get_app(), base_url="http://127.0.0.1") as client:
             ids = {e["name"]: e["id"] for e in client.get("/v1/entities").json()["entities"]}
-            for entity in ("orders", "support-routing"):
-                response = client.post(
-                    "/v1/responses",
-                    json={
-                        "metadata": {"entity_id": ids[entity]},
-                        "input": "What's the status of ORD-1003?",
-                        "stream": False,
-                    },
-                    headers={"X-Customer-Id": "CUST-1001", "X-User-Id": "CUST-1001"},
-                )
-                assert response.status_code == 200, entity
-                assert "couldn't find order ORD-1003" in response.text, entity
-                assert "processing" not in response.text.lower(), entity
+            response = client.post(
+                "/v1/responses",
+                json={
+                    "metadata": {"entity_id": ids["support-routing"]},
+                    "input": "What's the status of ORD-1003?",
+                    "stream": False,
+                },
+                headers={"X-Customer-Id": "CUST-1001", "X-User-Id": "CUST-1001"},
+            )
+            assert response.status_code == 200
+            assert "couldn't find order ORD-1003" in response.text
+            assert "processing" not in response.text.lower()
     finally:
         set_process_principal(None)
 

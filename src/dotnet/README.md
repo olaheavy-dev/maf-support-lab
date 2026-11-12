@@ -278,7 +278,7 @@ Everything a conversation needs survives a restart. It lives in one local SQLite
 
 ## Agents, tools, and the model boundary
 
-- **`orders` agent** (`Modules/Orders/Infrastructure/OrdersAgentFactory.cs`, registered by `OrdersModule` as a `SupportAgent`): built once and shared by the API and DevUI. It has a single tool.
+- **`orders` agent** (`Modules/Orders/Infrastructure/OrdersAgentFactory.cs`, registered by `OrdersModule` as a `SupportAgent`): built once and shared by the API and the DevUI workflow. It has a single tool.
 - **`billing` and `technical` agents** (`Modules/Billing/Infrastructure/BillingAgentFactory.cs`, `Modules/Technical/Infrastructure/TechnicalAgentFactory.cs`):
   - read-only tools that take ids or search text, never a customer id;
   - their instructions require citing the invoice, order, payment or article id;
@@ -291,9 +291,9 @@ Everything a conversation needs survives a restart. It lives in one local SQLite
 
 ## DevUI (Development only)
 
-Run the API (or the AppHost, where the `support-api-dotnet` resource shows a **DevUI** link) and open `http://localhost:5180/devui/`. DevUI lists:
-- **`support-routing` (workflow):** chat through the whole pipeline, exactly like an API turn (triage, the routing switch, one specialist). Each reply starts with the routing result, for example `[route: billing | reply: answer]`. DevUI can also show the workflow graph.
-- **`orders`, `billing`, `technical` (agents):** talk to one specialist directly, skipping triage. This is useful for checking a tool on its own.
+Run the API (or the AppHost, where the `support-api-dotnet` resource shows a **DevUI** link) and open `http://localhost:5180/devui/`. DevUI lists one entity, the **`support-routing` workflow**: chat through the whole pipeline, exactly like an API turn (triage, the routing switch, one specialist). Each reply starts with the routing result, for example `[route: billing | reply: answer]`, and the graph lights up the route taken.
+
+The specialists are not listed on their own. A direct agent chat would skip triage and the approval gate, so the model could offer a write the API never would (an ineligible cancel, or a refund of another customer's order). In the workflow, a DevUI chat has no support conversation, so the gate declines every write before any approval exists: writes and approvals go through the contract API only.
 
 DevUI and its OpenAI-compatible `/v1/responses` and `/v1/entities` endpoints are mapped only in Development. They use the same agent instances and the same executors as the API, so the same ownership checks apply. The DevUI workflow differs only at its two ends:
 - a `chat-input` entrance that speaks MAF's chat protocol and forwards the text to triage;
