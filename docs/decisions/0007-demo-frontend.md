@@ -1,7 +1,7 @@
 # 0007 - A demo frontend from the house Next.js template
 
 - Status: Accepted (2026-11-12). Reverses the 2026-11-11 retirement of the frontend ([0006](0006-browser-integration.md)) for a demo chat page.
-- Versions: Next.js 16.4.3, React 19.3.1, Tailwind CSS 4.3.3, TypeScript 5.9.3, Playwright 1.64.1, on Node 26 with pnpm 12, as rendered from `house-template-nextjs` v0.3.0. `Aspire.Hosting.JavaScript` 13.6.5 starts it.
+- Versions: Next.js 16.4.3, React 19.3.1, Tailwind CSS 4.3.3, TypeScript 6.0.3 (raised from the template's 5.9.3), Playwright 1.64.1, on Node 26 with pnpm 12, as rendered from `house-template-nextjs` v0.3.0. `Aspire.Hosting.JavaScript` 13.6.5 starts it.
 
 ## Context
 
