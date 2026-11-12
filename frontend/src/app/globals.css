@@ -9,8 +9,94 @@
     font-family: var(--font-sans);
   }
 
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
+  }
+}
+
+/* Motion, kept to one idea: current reaching a node. Under 150ms everywhere else. */
+@layer components {
+  /* The node a turn is working on. */
+  .pad-pulse {
+    animation: pad-pulse 1.2s ease-out infinite;
+  }
+
+  /* New conversation entries settle in. */
+  .entry-in {
+    animation: entry-in 150ms ease-out both;
+  }
+
+  /* The cursor at the end of streaming text. */
+  .caret {
+    display: inline-block;
+    width: 0.5ch;
+    height: 1.1em;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    background: var(--color-accent-primary);
+    animation: caret 1s steps(1) infinite;
+  }
+
+  /* Waiting for the first words. */
+  .dots {
+    width: 1.25rem;
+    height: 0.375rem;
+    background:
+      radial-gradient(circle, var(--color-accent-primary) 45%, transparent 50%) 0 50% / 0.375rem
+        0.375rem no-repeat,
+      radial-gradient(circle, var(--color-accent-primary) 45%, transparent 50%) 50% 50% / 0.375rem
+        0.375rem no-repeat,
+      radial-gradient(circle, var(--color-accent-primary) 45%, transparent 50%) 100% 50% / 0.375rem
+        0.375rem no-repeat;
+    animation: dots 1s ease-in-out infinite;
+  }
+}
+
+@keyframes pad-pulse {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes entry-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes dots {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

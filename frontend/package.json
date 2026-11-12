@@ -12,7 +12,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
-    "e2e:docker": "scripts/e2e-docker.sh"
+    "e2e:docker": "scripts/e2e-docker.sh",
+    "api-types": "openapi-typescript ../contracts/openapi.json -o src/lib/api/schema.d.ts"
   },
   "engines": {
     "node": ">=26 <27"

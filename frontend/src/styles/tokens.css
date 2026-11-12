@@ -2,85 +2,109 @@
  * Design tokens: the one place colours, type and radii are defined. Components use these semantic
  * names only (bg-bg-secondary, text-text-primary, border-border-primary...), never raw hex.
  *
- * A neutral starter set: re-skin it per product by changing values, not names. The names match
- * the house's other apps. Every text colour meets WCAG AA (4.5:1) on every background, and
- * interactive borders and focus rings meet 3:1, in light and dark; the template's tests check it.
+ * VoltCart support: a circuit board's palette. A cool grey-green board (light) or deep solder mask
+ * (dark), and one accent, copper, for the places the system acts: the route trace and the approve
+ * action. Every text colour meets WCAG AA (4.5:1) on every background, and interactive borders and the
+ * focus ring meet 3:1, in light and dark; src/styles/tokens.test.ts measures it.
  *
- * Dark mode follows the system; set data-theme="light" or "dark" on <html> to choose one.
+ * Dark mode follows the system; data-theme="light" or "dark" on <html> chooses one. Every token has
+ * its complete light value here, unconditionally, and its dark value in both blocks below.
  */
 
 @theme {
   /* Backgrounds */
-  --color-bg-primary: #ffffff; /* page canvas */
-  --color-bg-secondary: #f6f7f9; /* cards, panels */
-  --color-bg-tertiary: #eceff3; /* wells, inputs, table stripes */
-  --color-bg-inverse: #111827;
+  --color-bg-primary: #f3f5f1; /* page canvas */
+  --color-bg-secondary: #ffffff; /* cards, panels, the composer */
+  --color-bg-tertiary: #e8ece6; /* wells: the customer's messages, inputs */
+  --color-bg-inverse: #13201a;
 
   /* Text */
-  --color-text-primary: #111827;
-  --color-text-secondary: #374151;
-  --color-text-tertiary: #555e6c; /* captions, placeholders */
-  --color-text-inverse: #ffffff;
-  --color-text-link: #1d4ed8;
+  --color-text-primary: #111a15;
+  --color-text-secondary: #3e4a43;
+  --color-text-tertiary: #56635b; /* captions, labels, placeholders */
+  --color-text-inverse: #f3f5f1;
+  --color-text-link: #9a3f17;
 
   /* Borders and focus */
-  --color-border-primary: #e2e6eb; /* hairlines, decorative */
-  --color-border-secondary: #7c8594; /* inputs and other interactive edges */
-  --color-focus-ring: #2563eb;
+  --color-border-primary: #d9dfd6; /* hairlines, decorative */
+  --color-border-secondary: #76837b; /* inputs and other interactive edges */
+  --color-focus-ring: #a4471d;
 
-  /* Accent and status */
-  --color-accent-primary: #1d4ed8;
-  --color-accent-primary-hover: #1e40af;
-  --color-status-success: #067647;
-  --color-status-warning: #93530a;
-  --color-status-danger: #b42318;
+  /* Accent: copper. The trace when current runs through it, and the approve action. */
+  --color-accent-primary: #a4471d;
+  --color-accent-primary-hover: #873815;
+  --color-accent-tint: #f6e6dc;
+  --color-accent-contrast: #ffffff; /* text on the accent */
+  --color-trace-idle: #c5cdc3; /* an unlit trace: decorative */
 
-  /* Type and shape */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --radius-sm: 0.375rem;
+  /* Status */
+  --color-status-success: #1e6b42;
+  --color-status-warning: #85580a;
+  --color-status-danger: #b3261e;
+
+  /* Type and shape. The faces are loaded by src/app/layout.tsx (next/font, served from this origin). */
+  --font-sans:
+    var(--font-plex-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display:
+    var(--font-plex-condensed), var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  /* The type scale: six sizes for the whole page (Tailwind's xs, sm and lg, plus these). */
+  --text-code: 0.8125rem; /* arguments and ids in the mono face */
+  --text-body: 0.9375rem; /* conversation text */
+  --text-body--line-height: 1.65;
+  --text-display-sm: 1.75rem;
+  --text-display-sm--line-height: 1.15;
+  --text-display: 2.5rem; /* the one large heading */
+  --text-display--line-height: 1.1;
+  --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg-primary: #0b0f17;
-    --color-bg-secondary: #121826;
-    --color-bg-tertiary: #1a2233;
-    --color-bg-inverse: #f3f4f6;
-    --color-text-primary: #f3f4f6;
-    --color-text-secondary: #c9ced6;
-    --color-text-tertiary: #9aa3b2;
-    --color-text-inverse: #0b0f17;
-    --color-text-link: #8ab4ff;
-    --color-border-primary: #263042;
-    --color-border-secondary: #6b7689;
-    --color-focus-ring: #8ab4ff;
-    --color-accent-primary: #8ab4ff;
-    --color-accent-primary-hover: #a8c7ff;
-    --color-status-success: #47cd89;
-    --color-status-warning: #fdb022;
-    --color-status-danger: #f97066;
+    --color-bg-primary: #0c1510;
+    --color-bg-secondary: #121e17;
+    --color-bg-tertiary: #1a2820;
+    --color-bg-inverse: #e6ede8;
+    --color-text-primary: #e6ede8;
+    --color-text-secondary: #b5c2ba;
+    --color-text-tertiary: #8e9d94;
+    --color-text-inverse: #0c1510;
+    --color-text-link: #e8946a;
+    --color-border-primary: #24342b;
+    --color-border-secondary: #6c7e73;
+    --color-focus-ring: #e8946a;
+    --color-accent-primary: #e08a5d;
+    --color-accent-primary-hover: #eba07a;
+    --color-accent-tint: #2e1b12;
+    --color-accent-contrast: #1a0d06;
+    --color-trace-idle: #2e4237;
+    --color-status-success: #6cc991;
+    --color-status-warning: #e2b04d;
+    --color-status-danger: #f28b82;
   }
 }
 
 :root[data-theme="dark"] {
-  --color-bg-primary: #0b0f17;
-  --color-bg-secondary: #121826;
-  --color-bg-tertiary: #1a2233;
-  --color-bg-inverse: #f3f4f6;
-  --color-text-primary: #f3f4f6;
-  --color-text-secondary: #c9ced6;
-  --color-text-tertiary: #9aa3b2;
-  --color-text-inverse: #0b0f17;
-  --color-text-link: #8ab4ff;
-  --color-border-primary: #263042;
-  --color-border-secondary: #6b7689;
-  --color-focus-ring: #8ab4ff;
-  --color-accent-primary: #8ab4ff;
-  --color-accent-primary-hover: #a8c7ff;
-  --color-status-success: #47cd89;
-  --color-status-warning: #fdb022;
-  --color-status-danger: #f97066;
+  --color-bg-primary: #0c1510;
+  --color-bg-secondary: #121e17;
+  --color-bg-tertiary: #1a2820;
+  --color-bg-inverse: #e6ede8;
+  --color-text-primary: #e6ede8;
+  --color-text-secondary: #b5c2ba;
+  --color-text-tertiary: #8e9d94;
+  --color-text-inverse: #0c1510;
+  --color-text-link: #e8946a;
+  --color-border-primary: #24342b;
+  --color-border-secondary: #6c7e73;
+  --color-focus-ring: #e8946a;
+  --color-accent-primary: #e08a5d;
+  --color-accent-primary-hover: #eba07a;
+  --color-accent-tint: #2e1b12;
+  --color-accent-contrast: #1a0d06;
+  --color-trace-idle: #2e4237;
+  --color-status-success: #6cc991;
+  --color-status-warning: #e2b04d;
+  --color-status-danger: #f28b82;
 }

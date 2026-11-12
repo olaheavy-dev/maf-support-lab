@@ -27,8 +27,26 @@ The owner asked "how complicated is a frontend for this?" and then "see if next 
    CodeQL adds JavaScript/TypeScript, and Dependabot adds npm.
 5. **The AppHost uses `AddJavaScriptApp`**, which runs the `dev` script. `AddNextJsApp` is marked experimental (ASPIREJAVASCRIPT001) in Aspire 13.6.5.
 
+## The chat page
+
+One page, `frontend/src/app/page.tsx`, holds one conversation as Ada Example (CUST-1001, the development customer). Its job: let a visitor see that **the model proposes and code decides**.
+
+- **Direction:** VoltCart sells electronics, so the palette comes from a circuit board.
+  - **Background:** a grey-green board in light mode, solder-mask green in dark.
+  - **One accent, copper:** used only where the system acts, on the route trace and the approve action.
+  - **Type:** the IBM Plex family, for a datasheet feel. Plex Sans for reading, Plex Sans Condensed for the wordmark and the one large heading, Plex Mono for ids, tool names and arguments.
+  - **Contrast:** `src/styles/tokens.test.ts` measures every text and edge colour against every background in both themes (WCAG AA).
+- **Signature, the circuit:** the rail beside the transcript draws the turn's path (triage, specialist, tools, approval gate, reply) and lights each node in copper as the server's progress events arrive.
+  - **Proposed vs run:** a proposed write shows *held* until the customer approves. A write the gate refuses lights the gate as *refused in code*.
+  - **Phone layout:** on a phone, the same path is a one-line trace under each reply.
+- **Approval card:** written as a work order, showing the action, its exact bound arguments, a live expiry countdown, and Approve or Reject. After the decision it records the outcome.
+- **States:** waiting, streaming (with `reply.reset` handled), awaiting approval, deciding, refused by the API, failed, stopped, and a dropped stream. A dropped stream is recovered only in ways the contract makes safe: re-send the same request (the same `client_turn_id`, or the same decision), poll `GET …/turns/{id}`, and read `GET /operations/{id}`. If none answers, the page says the outcome is unconfirmed rather than guessing.
+- **What changed comes from the record:** the circuit, the approval card and every "nothing changed" come from operation status (`committed`, `failed`, `rejected`, `expired`), never from progress events alone.
+  - **Reload:** the transcript survives a reload in this tab's `sessionStorage`; pending approvals come from the server.
+- **Copy:** the empty state offers one-tap prompts for every scenario group, including "Test the guardrails" (another customer's order, an injection, nonsense). Errors say what happened and what to do.
+
 ## Consequences
 
 - **More to maintain:** Node 26, pnpm 12 and a Next.js stack join CI, Dependabot and CodeQL.
-- **Contract types:** the chat page needs TypeScript types for the contract. They will be generated from the existing JSON Schemas, through an OpenAPI description that references them, rather than by adding OpenAPI to both backends.
+- **Contract types:** the chat page's TypeScript types are generated from the existing JSON Schemas through `contracts/openapi.json`, an OpenAPI description that references them, rather than by adding OpenAPI to both backends. CI regenerates them and fails if they are stale, and a contract test keeps the file's routes equal to the contract's.
 - **A second identity boundary:** the frontend never sends identity. A real deployment would need sign-in in the frontend and authentication in the backends together.
