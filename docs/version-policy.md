@@ -21,3 +21,21 @@ Record: checked date, runtime/SDK, direct package versions, transitive lockfile,
 Pin Aspire SDK/integrations and all application dependencies to compatible versions established during the scaffold ticket. Commit global.json, NuGet locks/central versions, and Python pyproject.toml/uv.lock.
 
 Package refreshes are separate reviewed changes. Reading newer docs does not silently change an existing locked baseline.
+
+## Held upgrades
+
+The latest-stable rule yields to compatibility: an upgrade waits while a tool or framework around it doesn't support it yet. Each hold is a Dependabot ignore rule (`.github/dependabot.yml`) or a pnpm setting (`frontend/pnpm-workspace.yaml`) with its reason, and is lifted as soon as its condition is met. The weekly maintenance routine re-checks them.
+
+| Held | At | Waiting for | Since |
+| --- | --- | --- | --- |
+| Microsoft.Extensions.AI family | 10.x | Microsoft Agent Framework to depend on 11.x; then both move together (the owner's decision) | 2026-11-12 |
+| TypeScript | 6.0.x | `typescript-eslint` to accept TypeScript 7 | 2026-11-12 |
+| ESLint | 9.x | `eslint-config-next`'s plugins (`eslint-plugin-react`, `jsx-a11y`, `import`) to accept ESLint 10 | 2026-11-12 |
+| OpenTelemetry JS SDK (frontend) | 2.x / 0.2xx | `@vercel/otel` to accept 3.x / 0.3xx (and `sdk-trace-base` 3.x to exist) | 2026-11-12 |
+
+Pinned around upstream gaps, rather than held:
+
+| Setting | Why | Remove when |
+| --- | --- | --- |
+| `minimatch` override to 11.0.8 | GHSA-g3hv-75wg-m249; `typescript-eslint` still depends on `minimatch ^10` | `typescript-eslint` depends on `minimatch >=11.0.1` |
+| `openapi-typescript` allowed on TypeScript 6 | Its `typescript ^5` peer range is stale; it generates the contract types byte-identically on 6, and CI diffs them | Its range includes 6 |
