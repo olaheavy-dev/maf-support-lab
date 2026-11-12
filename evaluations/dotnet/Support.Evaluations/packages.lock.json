@@ -54,6 +54,16 @@
           "Microsoft.Extensions.AI.Evaluation": "10.11.0"
         }
       },
+      "Microsoft.Extensions.AI.Evaluation.Reporting": {
+        "type": "Direct",
+        "requested": "[10.11.0, )",
+        "resolved": "10.11.0",
+        "contentHash": "9i7OJKD4JVfKdXFTD5CdzbHbhNKDmfCnpSnu9mvK6gJDQ1BZqupWayRgUEX1aAfo4CYDjAvZxFmXhmxgkAfSsQ==",
+        "dependencies": {
+          "Microsoft.Extensions.AI": "10.11.0",
+          "Microsoft.Extensions.AI.Evaluation": "10.11.0"
+        }
+      },
       "Google.Protobuf": {
         "type": "Transitive",
         "resolved": "3.30.2",

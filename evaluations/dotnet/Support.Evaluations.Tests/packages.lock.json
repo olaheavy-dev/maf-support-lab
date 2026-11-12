@@ -212,7 +212,8 @@
           "JsonSchema.Net": "[9.6.0, )",
           "Microsoft.Agents.AI": "[1.28.0, )",
           "Microsoft.Extensions.AI.Evaluation": "[10.11.0, )",
-          "Microsoft.Extensions.AI.Evaluation.Quality": "[10.11.0, )"
+          "Microsoft.Extensions.AI.Evaluation.Quality": "[10.11.0, )",
+          "Microsoft.Extensions.AI.Evaluation.Reporting": "[10.11.0, )"
         }
       },
       "Anthropic": {
@@ -274,6 +275,16 @@
         "resolved": "10.11.0",
         "contentHash": "n78G6Oyj2dsQJ9QQUCLY4xX+iluo7YZr0AzwFKXKL9nwliw7BlDku06w6wrE6QW4Ai5s/goYTRIsxKw3qs4tmw==",
         "dependencies": {
+          "Microsoft.Extensions.AI.Evaluation": "10.11.0"
+        }
+      },
+      "Microsoft.Extensions.AI.Evaluation.Reporting": {
+        "type": "CentralTransitive",
+        "requested": "[10.11.0, )",
+        "resolved": "10.11.0",
+        "contentHash": "9i7OJKD4JVfKdXFTD5CdzbHbhNKDmfCnpSnu9mvK6gJDQ1BZqupWayRgUEX1aAfo4CYDjAvZxFmXhmxgkAfSsQ==",
+        "dependencies": {
+          "Microsoft.Extensions.AI": "10.11.0",
           "Microsoft.Extensions.AI.Evaluation": "10.11.0"
         }
       }

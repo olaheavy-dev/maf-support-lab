@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Support.Evaluations;
 
 // The evaluation runner's command line (L29, L16). Three commands:
@@ -18,6 +19,9 @@ using Support.Evaluations;
 //   native record|evaluate [--recordings DIR] [--out DIR]
 //                                    native MAF evaluation (L30): record the fake agent's conversations, or score the
 //                                    saved recordings without re-running the agent
+//   report [--results DIR] [--store DIR] [--execution NAME]
+//                                    write the result documents in DIR (default evaluations/results) to a disk result
+//                                    store for `dotnet aieval report` (L33). Reads files only: no model, no backend.
 //   quality --live [--config FILE] [--out DIR] [--source-commit SHA]
 //                                    the budgeted, model-judged quality lane (L32): live replies from both backends
 //                                    judged for relevance and groundedness. Billed, so it never runs without --live.
@@ -37,6 +41,7 @@ internal static class Cli
                 "run" => await RunAsync(Options.Parse(args[1..])).ConfigureAwait(false),
                 "compare" => await Comparison.WriteAsync(args[1..]).ConfigureAwait(false),
                 "native" => await Support.Evaluations.Native.NativeEvaluation.MainAsync(args[1..]).ConfigureAwait(false),
+                "report" => await Support.Evaluations.Reporting.ReportCommand.MainAsync(args[1..]).ConfigureAwait(false),
                 "quality" => await Support.Evaluations.Quality.QualityCommand.MainAsync(args[1..]).ConfigureAwait(false),
                 _ => Usage(),
             };
@@ -48,9 +53,16 @@ internal static class Cli
         }
     }
 
+    /// <summary>
+    /// The run's exit code, the CI gate (L33): 1 if any case failed or errored, otherwise 0. Skipped cases don't fail
+    /// the run (they say why), but an error does: a case that couldn't be run is not a pass.
+    /// </summary>
+    public static int ExitCodeFor(IEnumerable<JsonObject> runs) =>
+        runs.Any(run => run["summary"]!["failed"]!.GetValue<int>() > 0 || run["summary"]!["error"]!.GetValue<int>() > 0) ? 1 : 0;
+
     private static int Usage()
     {
-        Console.Error.WriteLine("Usage: validate | run --backend dotnet|python (--launch | --principal CUST-1001=URL) [options] | compare --results DIR --out FILE | native record|evaluate | quality --live");
+        Console.Error.WriteLine("Usage: validate | run --backend dotnet|python (--launch | --principal CUST-1001=URL) [options] | compare --results DIR --out FILE | native record|evaluate | report | quality --live");
         return 2;
     }
 
@@ -104,12 +116,12 @@ internal static class Cli
                 ["isolated_writes"] = backends.IsolatesWrites ? "true" : "false",
                 ["customers"] = parsed.Launch ? string.Join(",", LaunchedBackends.Customers) : string.Join(",", parsed.Principals.Keys.Order(StringComparer.Ordinal)),
             };
-            var failed = false;
+            List<JsonObject> runs = [];
             foreach (var dataset in datasets)
             {
                 var run = await EvaluationRun.RunAsync(dataset, runner, parsed.Run, parsed.Identity, configuration, TimeProvider.System, CancellationToken.None).ConfigureAwait(false);
                 var summary = run["summary"]!.AsObject();
-                failed |= summary["failed"]!.GetValue<int>() > 0 || summary["error"]!.GetValue<int>() > 0;
+                runs.Add(run);
                 var file = Path.Combine(parsed.Out, $"{parsed.Run.Backend}-{dataset.DatasetId}.json");
                 await File.WriteAllTextAsync(file, run.ToJsonString(EvaluationJson.Options)).ConfigureAwait(false);
                 Console.WriteLine($"{parsed.Run.Backend} {dataset.DatasetId}: {summary["passed"]} passed, {summary["failed"]} failed, {summary["error"]} error, {summary["skipped"]} skipped -> {file}");
@@ -122,7 +134,7 @@ internal static class Cli
                 }
             }
 
-            return failed ? 1 : 0;
+            return ExitCodeFor(runs);
         }
         finally
         {

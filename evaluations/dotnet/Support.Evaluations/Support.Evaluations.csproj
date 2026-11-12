@@ -18,6 +18,8 @@
          Only the explicit live quality lane calls a model. -->
     <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Quality" />
     <PackageReference Include="Anthropic" />
+    <!-- L33: the result store the aieval tool reports from. The runner writes results only; it never evaluates here. -->
+    <PackageReference Include="Microsoft.Extensions.AI.Evaluation.Reporting" />
   </ItemGroup>
 
   <ItemGroup>

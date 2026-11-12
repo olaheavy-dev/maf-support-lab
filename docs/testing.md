@@ -61,6 +61,6 @@ dotnet test --solution maf-support-lab.slnx -- --filter-trait "Category=Live" --
 | --- | --- | --- |
 | `LiveSmokeTests.Claude_answers_a_known_order_through_the_tool` | L05 | One turn on `claude-haiku-5-5`: two model calls (tool request, then answer), output capped at 4096 tokens. |
 
-The model-judged quality lane (L32) is a separate live command, not a test: `quality --live` in the evaluation runner. It has a 60-call budget, worst case 53. See [docs/evaluations/quality.md](evaluations/quality.md).
+The model-judged quality lane (L32) is a separate live command, not a test, and in CI a manual-only workflow (L33, [reports](evaluations/reports.md)): `quality --live` in the evaluation runner. It has a 60-call budget, worst case 53. See [docs/evaluations/quality.md](evaluations/quality.md).
 
 When a live check is run, record the date, model, package versions, number of calls, usage if available, and the result in the ticket's evidence note, separately from the offline results.
