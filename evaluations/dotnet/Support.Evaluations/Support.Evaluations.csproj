@@ -13,6 +13,7 @@
     <!-- MAF's local evaluation (EvalItem, LocalEvaluator, EvaluateAsync) and the Microsoft.Extensions.AI.Evaluation
          abstractions it builds on. Evaluation-only: no application project references them. -->
     <PackageReference Include="Microsoft.Agents.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.Evaluation" />
     <!-- The AI-judged quality evaluators (Relevance, Groundedness) and the Anthropic SDK for the judge client.
          Only the explicit live quality lane calls a model. -->
