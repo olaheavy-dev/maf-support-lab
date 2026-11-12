@@ -40,7 +40,7 @@ internal sealed record QualitySample(
 /// </summary>
 internal static class QualityLane
 {
-    public const string ResultSchemaVersion = "1.0";
+    public const string ResultSchemaVersion = "1.1";
 
     public static IReadOnlyList<QualitySample> Plan(QualityConfig config, IReadOnlyList<Dataset> datasets)
     {
@@ -263,6 +263,7 @@ internal static class QualityLane
                     ["scale"] = "1-5 (higher is better)",
                     ["rubric"] = "the evaluator's built-in prompt (Microsoft.Extensions.AI.Evaluation.Quality); unchanged",
                 })]),
+                ["response_cache"] = "not used: every backend reply and judge call in this run is fresh (a cached judge answer would hide judge variability, and the budget counts real calls)",
                 ["repetitions"] = config.Budget.Repetitions,
                 ["concurrency"] = config.Budget.Concurrency,
                 ["budget"] = new JsonObject

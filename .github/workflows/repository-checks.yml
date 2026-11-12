@@ -148,6 +148,17 @@ jobs:
       - name: Compare the backends
         if: always()
         run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- compare --results evaluations/results --out evaluations/results/comparison.md
+      # L33: the report. It reads the result documents above and renders them with Microsoft's aieval tool (pinned in
+      # .config/dotnet-tools.json); it starts no backend, agent, or judge. One execution name per CI attempt.
+      - name: Build the evaluation report (no model calls)
+        if: always()
+        env:
+          DOTNET_AIEVAL_TELEMETRY_OPTOUT: "1"
+        run: |
+          dotnet tool restore
+          dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- report --results evaluations/results --store evaluations/results/report/store --execution "ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          dotnet tool run aieval report --path evaluations/results/report/store --output evaluations/results/report/report.html
+          dotnet tool run aieval report --path evaluations/results/report/store --output evaluations/results/report/report.json --format json
       - name: Upload the evaluation results and comparison
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

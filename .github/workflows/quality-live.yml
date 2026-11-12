@@ -1,0 +1,74 @@
+# The model-judged quality lane (L32/L33): billed, so it runs only when someone starts it by hand. It is never a
+# required check and never runs on push or pull request. Its budget is the one in evaluations/config/quality.json
+# (60 model calls, worst case 53); the runner refuses a configuration over budget before calling anything.
+# Needs the repository secret ANTHROPIC_API_KEY. Results and the report are uploaded as the quality-results artifact.
+name: Quality (live, billed)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quality-live
+  cancel-in-progress: false # never two billed runs at once; a second one waits
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_AIEVAL_TELEMETRY_OPTOUT: "1"
+jobs:
+  quality-live:
+    name: quality-live
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Require the API key secret
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Set the ANTHROPIC_API_KEY repository secret to run the live quality lane."
+            exit 1
+          fi
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install .NET SDK from global.json
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          python-version: "3.15.2"
+          enable-cache: true
+          cache-dependency-glob: src/python/uv.lock
+      - name: Build the .NET API and the evaluation runner (locked restore, Release)
+        run: |
+          dotnet restore src/dotnet/Support.Api
+          dotnet build src/dotnet/Support.Api --no-restore --configuration Release
+          dotnet build evaluations/dotnet/Support.Evaluations --configuration Release
+      - name: Sync the Python backend (locked)
+        working-directory: src/python
+        run: uv sync --locked
+      - name: Run the quality lane (live; budget from evaluations/config/quality.json)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- quality --live --source-commit "$GITHUB_SHA"
+      - name: Build the report (reads the result only; no model calls)
+        if: always()
+        run: |
+          dotnet tool restore
+          dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- report --results evaluations/results --store evaluations/results/report/store --execution "quality-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          dotnet tool run aieval report --path evaluations/results/report/store --output evaluations/results/report/report.html
+          dotnet tool run aieval report --path evaluations/results/report/store --output evaluations/results/report/report.json --format json
+      - name: Upload the quality results and report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quality-results
+          path: evaluations/results/
+          if-no-files-found: warn
+          retention-days: 14

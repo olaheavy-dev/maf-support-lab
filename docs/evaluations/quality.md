@@ -15,7 +15,7 @@ The quality lane asks both backends the same questions live, then has an AI judg
 | Budget | Every model call, backend or judge, comes out of one budget. A backend turn reserves its per-turn cap up front, because the contract doesn't report how many calls a turn made. Each judge metric reserves 1. Samples are admitted in plan order, and whatever doesn't fit is recorded as `skipped: budget`. The judge client refuses any call that no reservation covers. The worst case for the committed configuration is 4 × 2 × 4 + 8 × 2 + 5 = **53 of 60**. |
 | Statuses | A metric is `scored` only with a value and no error diagnostic. A judge exception, malformed judge output, missing context, or a backend turn that didn't complete is `error`. Budget or cancellation is `skipped`. None of these turns into a score. |
 | Calibration | Fixed answers with known quality: a good answer, a contradicting one, an off-topic one, and (the stretch) the good answer judged against a different order's record. For each metric, every "high" answer must score above every "low" one. |
-| Result | `evaluations/results/quality-live.json`, schema `evaluations/schemas/evaluation-quality.schema.json` (1.0). It records the judge, models, package versions, metrics, rubric, context, answers, repetitions, budget, judge token usage, and an uncertainty statement. It is ignored by Git. |
+| Result | `evaluations/results/quality-live.json`, schema `evaluations/schemas/evaluation-quality.schema.json` (1.1 since L33: each metric keeps the evaluator's per-call metadata, and the run states that no response cache is used; 1.0 documents are still read). It records the judge, models, package versions, metrics, rubric, context, answers, repetitions, budget, judge token usage, and an uncertainty statement. It is ignored by Git. |
 
 Run it (it is billed; `ANTHROPIC_API_KEY` must be set, and is passed to the backends and the judge, never printed):
 
@@ -24,6 +24,8 @@ dotnet build src/dotnet/Support.Api -c Release
 dotnet build evaluations/dotnet/Support.Evaluations -c Release
 dotnet run --project evaluations/dotnet/Support.Evaluations -c Release --no-build -- quality --live --source-commit "$(git rev-parse HEAD)"
 ```
+
+In CI the lane is the *Quality (live, billed)* workflow. It runs only when started by hand, needs the `ANTHROPIC_API_KEY` repository secret, and uploads the result and its report ([reports.md](reports.md)).
 
 The fake-judge tests (`Support.Evaluations.Tests/QualityTests.cs`) run in CI and need no model. They cover the budget, judge errors, malformed output, missing context, failed turns, concurrency, cancellation, unreserved calls, calibration failure, and the command's refusals.
 

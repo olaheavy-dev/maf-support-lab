@@ -6,7 +6,8 @@ using Microsoft.Extensions.AI.Evaluation.Quality;
 namespace Support.Evaluations.Quality;
 
 /// <summary>One metric's outcome. Only <c>scored</c> carries a score; an error or skip never becomes one.</summary>
-internal sealed record MetricOutcome(string Name, string Status, double? Score = null, string? Rating = null, bool? Failed = null, string? Reason = null, string? Error = null)
+/// <param name="Metadata">The evaluator's per-call metadata (judge model, duration, tokens), as reported; L33 turns it into report chat details.</param>
+internal sealed record MetricOutcome(string Name, string Status, double? Score = null, string? Rating = null, bool? Failed = null, string? Reason = null, string? Error = null, IReadOnlyDictionary<string, string>? Metadata = null)
 {
     public JsonObject ToJson()
     {
@@ -34,6 +35,17 @@ internal sealed record MetricOutcome(string Name, string Status, double? Score =
         if (Error is not null)
         {
             json["error"] = Error;
+        }
+
+        if (Metadata is { Count: > 0 })
+        {
+            var metadata = new JsonObject();
+            foreach (var (key, value) in Metadata.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            {
+                metadata[key] = value;
+            }
+
+            json["metadata"] = metadata;
         }
 
         return json;
@@ -98,9 +110,10 @@ internal static class QualityScorer
     internal static MetricOutcome Interpret(string metric, NumericMetric value)
     {
         var errors = (value.Diagnostics ?? []).Where(d => d.Severity == EvaluationDiagnosticSeverity.Error).Select(d => d.Message).ToList();
+        var metadata = value.Metadata is { Count: > 0 } ? new Dictionary<string, string>(value.Metadata, StringComparer.Ordinal) : null;
         if (errors.Count > 0 || value.Value is null)
         {
-            return new MetricOutcome(metric, "error", Error: Trim(errors.Count > 0 ? string.Join("; ", errors) : "the judge returned no score"));
+            return new MetricOutcome(metric, "error", Error: Trim(errors.Count > 0 ? string.Join("; ", errors) : "the judge returned no score"), Metadata: metadata);
         }
 
         return new MetricOutcome(
@@ -109,7 +122,8 @@ internal static class QualityScorer
             value.Value,
             value.Interpretation?.Rating.ToString(),
             value.Interpretation?.Failed,
-            value.Reason is null ? null : Trim(value.Reason));
+            value.Reason is null ? null : Trim(value.Reason),
+            Metadata: metadata);
     }
 
     private static string Trim(string text) => text.Length <= MaxText ? text : text[..MaxText] + "…";

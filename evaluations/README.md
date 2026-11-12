@@ -14,6 +14,7 @@ Evaluation of the two support backends, kept apart from the application: nothing
 | `python/` | The Python evaluation package (its own locked uv project): the same contract checks; native evaluations from L31. |
 | `schemas/evaluation-quality.schema.json` | What the model-judged quality lane produces (L32): judge, models, packages, metrics, rubric, context, answers, budget, judge usage, uncertainty. |
 | `config/quality.json` | The quality lane's pinned settings: judge, backend live model and per-turn cap, metrics, sampled cases, budget, calibration answers. |
+| `dotnet/Support.Evaluations/Reporting/` | `report` (L33): maps run and quality documents into Microsoft's reporting store for `dotnet aieval report` (HTML and JSON). It reads files only. See [docs/evaluations/reports.md](../docs/evaluations/reports.md). |
 | `results/` | Generated run documents. Git ignores them; CI uploads them as the `evaluation-results` artifact. The curated baseline is [docs/evaluations/baseline.md](../docs/evaluations/baseline.md). |
 
 ## Native .NET evaluation (L30)
@@ -34,6 +35,10 @@ Microsoft Agent Framework 1.28.0 has local evaluation built in: `EvalItem`, `Exp
 | `cites_found_record` | A record a lookup found is named in the reply |
 
 None of them can show that a write was *authorized*. That's the backend's gate, checked through its API by the behaviour runner (L16), and the native scores sit alongside those assertions, never instead of them. Expected arguments are written once in canonical snake_case in the datasets, and the .NET adapter maps them to the tools' C# names (`order_id` → `orderId`).
+
+## Reports (L33)
+
+`report` writes the result documents in `results/` to a Microsoft.Extensions.AI.Evaluation disk result store under one execution name. `dotnet tool run aieval report` (pinned in `.config/dotnet-tools.json`) then renders HTML and JSON. Failed checks stay failed, errors and skips are never scores, and tags carry run ids, versions, provenance (fake, recorded or live), unknown usage, and estimates. CI builds the report after every evaluation and uploads it with the results. Lanes, commands and the curated summary: [docs/evaluations/reports.md](../docs/evaluations/reports.md).
 
 ## Model-judged quality (L32)
 
