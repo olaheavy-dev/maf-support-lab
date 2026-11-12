@@ -152,7 +152,7 @@ public sealed class ReportTests
             var document = await RecordedRunAsync();
             await File.WriteAllTextAsync(Path.Combine(folder.FullName, "a.json"), document.ToJsonString(), None);
             await File.WriteAllTextAsync(Path.Combine(folder.FullName, "notes.json"), """{"hello": "world"}""", None); // not a result: left out
-            var (scenarios, read) = await ReportCommand.LoadAsync(folder.FullName, "exec", None);
+            var (_, read) = await ReportCommand.LoadAsync(folder.FullName, "exec", None);
             Assert.Contains(read, line => line.StartsWith("notes.json: not a result document", StringComparison.Ordinal));
 
             await File.WriteAllTextAsync(Path.Combine(folder.FullName, "b.json"), document.ToJsonString(), None); // the same run twice

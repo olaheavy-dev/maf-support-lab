@@ -20,6 +20,8 @@ internal static class ModelProviderRegistration
     /// </summary>
     public const string ProviderHttpHandlerKey = "model-provider-http";
 
+    private const string AnthropicClientKey = "model-provider-anthropic";
+
     public static IServiceCollection AddModelProvider(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<ResilienceOptions>().Bind(configuration.GetSection(ResilienceOptions.SectionName)).ValidateOnStart();
@@ -48,19 +50,26 @@ internal static class ModelProviderRegistration
                 return new FakeChatClient();
             }
 
-            // The SDK is the one retry owner for model calls: a bounded number of retries for connection errors,
-            // timeouts, 408/409/429/5xx, honouring the provider's retry-after. Its HttpClient is created here, not by
-            // IHttpClientFactory, so the service defaults' standard resilience handler never adds a second retry layer.
+            var resilience = provider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
+            return provider.GetRequiredKeyedService<AnthropicClient>(AnthropicClientKey).AsIChatClient(options.Anthropic.Model!, resilience.MaxOutputTokens);
+        });
+
+        // The SDK is the one retry owner for model calls: a bounded number of retries for connection errors,
+        // timeouts, 408/409/429/5xx, honouring the provider's retry-after. Its HttpClient is created here, not by
+        // IHttpClientFactory, so the service defaults' standard resilience handler never adds a second retry layer.
+        // Registered on its own (Live mode only resolves it) so the container owns it and disposes it at shutdown.
+        services.AddKeyedSingleton<AnthropicClient>(AnthropicClientKey, (provider, _) =>
+        {
+            var options = provider.GetRequiredService<IOptions<ModelProviderOptions>>().Value;
             var resilience = provider.GetRequiredService<IOptions<ResilienceOptions>>().Value;
             var transport = provider.GetKeyedService<HttpMessageHandler>(ProviderHttpHandlerKey) ?? new SocketsHttpHandler();
-            var client = new AnthropicClient
+            return new AnthropicClient
             {
                 ApiKey = options.Anthropic.ApiKey,
                 HttpClient = new HttpClient(new ProviderAttemptHandler(transport)) { Timeout = Timeout.InfiniteTimeSpan },
                 MaxRetries = resilience.ModelMaxRetries,
                 Timeout = TimeSpan.FromSeconds(resilience.ModelAttemptTimeoutSeconds),
             };
-            return client.AsIChatClient(options.Anthropic.Model!, resilience.MaxOutputTokens);
         });
 
         // Model layer telemetry: one "chat" span and per-call token usage for every model call, on Support.Model.

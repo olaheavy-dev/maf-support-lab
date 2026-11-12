@@ -101,7 +101,7 @@ internal static class TurnStream
             }
         }
 
-        yield return Event(started, ++sequence, "turn.final", new FinalData(result));
+        yield return Event(started, sequence + 1, "turn.final", new FinalData(result));
     }
 
     /// <summary>The stored turn; if it could not be stored, a failed result (never shown as success).</summary>

@@ -13,7 +13,7 @@ public sealed class DependencyCompatibilityTests
     [Fact]
     public void Agent_framework_Anthropic_integration_runs_with_the_selected_SDK()
     {
-        var client = new AnthropicClient { ApiKey = "not-used-no-network-call" };
+        using var client = new AnthropicClient { ApiKey = "not-used-no-network-call" };
 
         AIAgent agent = client.AsAIAgent(model: "claude-haiku-5-5", name: "compatibility-probe");
 

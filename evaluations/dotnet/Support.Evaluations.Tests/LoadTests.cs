@@ -11,8 +11,10 @@ namespace Support.Evaluations.Tests;
 /// duplicates, or lets two decisions win, and pass when it behaves. (The real backends are exercised by the
 /// <c>load</c> command itself; these prove the checks can fail at all.)
 /// </summary>
-public sealed partial class LoadTests
+public sealed partial class LoadTests : IDisposable
 {
+    private readonly List<HttpClient> clients = [];
+
     private static readonly CancellationToken None = CancellationToken.None;
     private static readonly Uri Base = new("http://fake/");
 
@@ -123,7 +125,20 @@ public sealed partial class LoadTests
 
     private static readonly IReadOnlyDictionary<string, Uri> Principals = new Dictionary<string, Uri> { ["CUST-1001"] = Base, ["CUST-1002"] = Base };
 
-    private static LoadClient Client(FakeApi api) => new(new HttpClient(api));
+    public void Dispose()
+    {
+        foreach (var client in clients)
+        {
+            client.Dispose();
+        }
+    }
+
+    private LoadClient Client(FakeApi api)
+    {
+        var http = new HttpClient(api);
+        clients.Add(http);
+        return new LoadClient(http);
+    }
 
     private static LoadCheck Check(ScenarioResult result, string name) => result.Checks.Single(c => c.Name == name);
 
