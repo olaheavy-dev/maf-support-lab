@@ -4,14 +4,15 @@ One customer-support agent system, built twice with **Microsoft Agent Framework*
 
 ```mermaid
 flowchart LR
-    C[Client] -->|contract v1: JSON or SSE| A[.NET backend<br/>MAF 1.28]
-    C -->|same contract| P[Python backend<br/>MAF 1.25]
-    A & P --> T[Triage agent → code routing]
+    C[Client] -->|contract v1: JSON or SSE| A[Support API]
+    A --> T[Triage agent → code routing]
     T --> S[Orders · Billing · Technical agents<br/>scoped, owner-checked tools]
     S -->|writes| G[Approval gate<br/>bound, expiring, run once]
-    A & P -.-> D[(SQLite per backend)]
-    A & P -.->|OpenTelemetry| H[Aspire dashboard]
+    A -.-> D[(SQLite)]
+    A -.->|OpenTelemetry| H[Aspire dashboard]
 ```
+
+The Support API is built twice, in C# (ASP.NET Core, Agent Framework 1.28) and in Python (FastAPI, Agent Framework 1.25), each with its own SQLite store. Both answer the same contract, and CI checks they behave the same ([architecture](docs/architecture.md)).
 
 ## What it demonstrates
 
