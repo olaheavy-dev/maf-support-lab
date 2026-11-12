@@ -61,7 +61,7 @@ internal static class QualityCommand
             cancel.Cancel();
         };
         Console.CancelKeyPress += onCancel;
-        var anthropic = new AnthropicClient { ApiKey = key };
+        using var anthropic = new AnthropicClient { ApiKey = key };
         using var judge = new BudgetedJudgeClient(anthropic.AsIChatClient(config.Judge.Model, config.Judge.MaxOutputTokens));
         await using var replies = new LiveReplySource(RepositoryRoot.Find(), new LiveModel(config.Backends.Model, key, config.Backends.MaxModelCallsPerTurn));
         try

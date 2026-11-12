@@ -1,5 +1,5 @@
 # Code scanning: CodeQL's security-and-quality queries over the code this repository actually has: C# (both
-# .NET projects and the evaluation runner, built as CI builds them), Python (both uv projects and the scripts), and
+# .NET projects and the evaluation runner, read from source), Python (both uv projects and the scripts), and
 # the GitHub Actions workflows themselves. Results go to the Security tab. Not a required check: findings are
 # triaged there, and a new query can flag old code without any change here.
 name: CodeQL
@@ -29,7 +29,7 @@ jobs:
       matrix:
         include:
           - language: csharp
-            build-mode: manual
+            build-mode: none # reads the source, so generated build output stays out (see the config file)
           - language: python
             build-mode: none
           - language: actions
@@ -42,24 +42,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install .NET SDK from global.json
-        if: matrix.language == 'csharp'
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
-        with:
-          global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/packages.lock.json"
       - name: Initialize CodeQL
         uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           queries: security-and-quality
-      - name: Build the solution (locked restore)
-        if: matrix.language == 'csharp'
-        run: |
-          dotnet restore maf-support-lab.slnx -p:ContinuousIntegrationBuild=true
-          dotnet build maf-support-lab.slnx --no-restore --configuration Release
+          config-file: ./.github/codeql/codeql-config.yml
       - name: Analyze
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:

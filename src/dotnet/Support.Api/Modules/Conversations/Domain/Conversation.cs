@@ -72,8 +72,15 @@ public sealed class Conversation
             if (stored.ClientKey is { } key)
             {
                 var reservation = new TurnReservation(stored.Turn.TurnId, stored.Message ?? string.Empty);
-                reservation.Completion.TrySetResult(stored.Turn);
-                reservation.Dispose();
+                try
+                {
+                    reservation.Completion.TrySetResult(stored.Turn);
+                }
+                finally
+                {
+                    reservation.Dispose(); // a restored turn is finished: nothing will wait on its lock
+                }
+
                 conversation.reservations[key] = reservation;
             }
         }
