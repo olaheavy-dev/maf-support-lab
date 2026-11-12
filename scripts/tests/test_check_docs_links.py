@@ -86,6 +86,15 @@ class CheckDocsLinksTests(unittest.TestCase):
         )
         self.assertEqual(self.problems(), ["docs/gone.md -> no such file or folder"])
 
+    def test_fences_inside_blockquotes_and_list_items_are_code(self) -> None:
+        self.write(
+            "README.md",
+            "> ```markdown\n> [example](not-a-real-file.md)\n> ```\n\n"
+            "1. Step one:\n\n    ```text\n    [also](missing.md)\n    ```\n\n"
+            "2. Then see [real](docs/gone.md).\n\n> Quoted [link](docs/gone-too.md).\n",
+        )
+        self.assertEqual(self.problems(), ["docs/gone.md -> no such file or folder", "docs/gone-too.md -> no such file or folder"])
+
     def test_balanced_parentheses_in_a_destination(self) -> None:
         (self.root / "docs" / "guide(v2).md").write_text("# Guide v2\n", encoding="utf-8")
         self.write("README.md", "[v2](docs/guide(v2).md) [v2 anchor](docs/guide(v2).md#guide-v2) [gone](docs/gone(v3).md)\n")

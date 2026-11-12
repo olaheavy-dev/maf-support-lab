@@ -28,7 +28,12 @@ internal sealed class TelemetryCapture
             .WithLogging(logging => logging.AddInMemoryExporter(Logs));
 
     /// <summary>Flushes metrics and waits for the trace's server span, which ends just after the response is sent.</summary>
-    public async Task<IReadOnlyList<Activity>> TraceAsync(WebApplicationFactory<Program> factory, ActivityTraceId traceId)
+    /// <summary>
+    /// The spans of one trace, once its server span and every span named in <paramref name="required"/> have ended.
+    /// A turn runs detached from its request (L12), so its own spans (support.turn) can end a moment after the HTTP
+    /// response: a test that reads them must name them, or it races the turn (seen as a CI flake in PR #113).
+    /// </summary>
+    public async Task<IReadOnlyList<Activity>> TraceAsync(WebApplicationFactory<Program> factory, ActivityTraceId traceId, params string[] required)
     {
         for (var attempt = 0; attempt < 50; attempt++)
         {
@@ -36,7 +41,7 @@ internal sealed class TelemetryCapture
             lock (Spans)
             {
                 var spans = Spans.Where(span => span.TraceId == traceId).ToList();
-                if (spans.Any(span => span.Kind == ActivityKind.Server))
+                if (spans.Any(span => span.Kind == ActivityKind.Server) && required.All(name => spans.Any(span => span.DisplayName == name)))
                 {
                     return spans;
                 }
@@ -45,7 +50,7 @@ internal sealed class TelemetryCapture
             await Task.Delay(100, TestContext.Current.CancellationToken);
         }
 
-        throw new TimeoutException($"No server span arrived for trace {traceId}.");
+        throw new TimeoutException($"The server span{(required.Length > 0 ? " or one of " + string.Join(", ", required) : "")} did not arrive for trace {traceId}.");
     }
 
     public IReadOnlyList<MetricSnapshot> FlushMetrics(WebApplicationFactory<Program> factory)

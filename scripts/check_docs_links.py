@@ -34,6 +34,7 @@ INLINE_LINK = re.compile(r"!?\[(?:[^\[\]]|\[[^\[\]]*\])*\]\(\s*(<[^>]*>|(?:[^()\
 REFERENCE_DEFINITION = re.compile(r"^ {0,3}\[[^\]]+\]:\s*(<[^>]*>|\S+)")
 HTML_ATTRIBUTE = re.compile(r"""\b(?:href|src)\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
 HTML_ANCHOR = re.compile(r"""<a\s[^>]*\b(?:id|name)\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
+BLOCKQUOTE = re.compile(r"^ {0,3}(?:> ?)+")
 LIST_ITEM = re.compile(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:\s|$)")
 INDENTED = re.compile(r"^(?: {4}|\t)")
 HEADING = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$")
@@ -62,7 +63,10 @@ def prose_lines(text: str, keep_inline_code: bool = False) -> list[tuple[int, st
     in_indented_code = False
     for number, line in enumerate(text.splitlines(), start=1):
         blank = not line.strip()
-        if fence is None and not FENCE.match(line):
+        # Fences may sit inside a container: a blockquote (">" prefixes) or a list item (indented to its content).
+        inner = BLOCKQUOTE.sub("", line)
+        fence_line = inner.lstrip(" ") if in_list else inner
+        if fence is None and not FENCE.match(fence_line):
             if in_indented_code and (blank or INDENTED.match(line)):
                 previous_blank = blank
                 continue  # an indented block runs until a non-blank line that isn't indented
@@ -76,13 +80,13 @@ def prose_lines(text: str, keep_inline_code: bool = False) -> list[tuple[int, st
             elif not blank and not INDENTED.match(line):
                 in_list = False
             previous_blank = blank
-        match = FENCE.match(line)
+        match = FENCE.match(fence_line)
         if fence is None and match:
             fence = match.group(1)  # the whole opening run: ```` can wrap a ``` example
             continue
         if fence is not None:
             # CommonMark: closed only by the same character, at least as many, and nothing else on the line.
-            closing = re.match(rf"^ {{0,3}}({re.escape(fence[0])}{{{len(fence)},}})\s*$", line)
+            closing = re.match(rf"^ {{0,3}}({re.escape(fence[0])}{{{len(fence)},}})\s*$", fence_line)
             if closing:
                 fence = None
             continue
