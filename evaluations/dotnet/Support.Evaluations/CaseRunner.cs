@@ -64,8 +64,13 @@ internal sealed class CaseRunner(Func<Uri, HttpClient> clientFor, IBackends back
                 }
 
                 // The step builds on an earlier one. If that one already failed, the case failed (not a runner error).
-                if (((step.Action == "decide" && previous?.PendingApproval is null) || (step.Action == "get_operation" && lastOperation is null))
-                    && steps.Any(done => done!["checks"]!.AsArray().Any(check => !check!["passed"]!.GetValue<bool>())))
+                var needsEarlierResult = step.Action switch
+                {
+                    "decide" => previous?.PendingApproval is null,
+                    "get_operation" => lastOperation is null,
+                    _ => false,
+                };
+                if (needsEarlierResult && steps.Any(done => done!["checks"]!.AsArray().Any(check => !check!["passed"]!.GetValue<bool>())))
                 {
                     return CaseResult(item, "failed", ApiTime(steps), steps);
                 }
