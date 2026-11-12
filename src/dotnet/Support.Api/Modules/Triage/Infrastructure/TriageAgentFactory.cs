@@ -30,7 +30,7 @@ public static class TriageAgentFactory
     /// left out because some providers' structured-output modes reject them (contracts/README.md allows this);
     /// the application still validates against the full contract schema.
     /// </summary>
-    public static readonly JsonElement ModelSchema = JsonDocument.Parse("""
+    public static readonly JsonElement ModelSchema = JsonElement.Parse("""
         {
           "type": "object",
           "additionalProperties": false,
@@ -44,7 +44,7 @@ public static class TriageAgentFactory
             "confidence": { "type": "number" }
           }
         }
-        """).RootElement.Clone();
+        """);
 
     public static AIAgent Create(IChatClient chatClient, ILoggerFactory? loggerFactory = null) =>
         new ChatClientAgent(

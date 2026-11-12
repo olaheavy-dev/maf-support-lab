@@ -18,7 +18,7 @@ public sealed class TurnSubmissionSafetyTests
 
         using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
         using var response = await api.Http.PostAsync(new Uri($"/api/v1/conversations/{conversation}/turns", UriKind.Relative), content, TestContext.Current.CancellationToken);
-        var body = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement;
+        var body = System.Text.Json.JsonElement.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         ContractSchemas.AssertValid("problem", body);
