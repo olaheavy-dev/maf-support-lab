@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # A short demonstration against one running backend (fake model mode, development customer CUST-1001):
 # an answer, a denial, a write that waits for approval and then runs once, a model failure, and a refusal.
+# Repeatable: the write is a support ticket (always eligible; each run creates the next TKT-number).
 # Usage: scripts/demo.sh http://localhost:5180      (needs curl and jq; add -k for a local https endpoint)
 set -euo pipefail
 
@@ -26,11 +27,16 @@ turn "$conversation" "What's the status of ORD-2001?" | jq -c '{outcome, reply_k
 show "Not eligible: checked before asking for approval" "Cancel order ORD-1001."
 turn "$conversation" "Cancel order ORD-1001." | jq -c '{outcome, reply_kind: .reply.kind, operations: (.operations // [] | length)}'
 
-show "A write waits for approval" "Please cancel order ORD-1003."
-proposal=$(turn "$conversation" "Please cancel order ORD-1003.")
+ticket_request="Please open a support ticket: my smart fridge firmware shows error Z-77."
+show "A write waits for approval" "$ticket_request"
+proposal=$(turn "$conversation" "$ticket_request")
 echo "$proposal" | jq -c '{outcome, pending: (.pending_approval | {kind, arguments, expires_at})}'
-approval=$(echo "$proposal" | jq -r .pending_approval.approval_id)
-operation=$(echo "$proposal" | jq -r .pending_approval.operation_id)
+approval=$(echo "$proposal" | jq -r '.pending_approval.approval_id // empty')
+operation=$(echo "$proposal" | jq -r '.pending_approval.operation_id // empty')
+if [[ -z "$approval" || -z "$operation" ]]; then
+  echo "No approval was proposed (outcome: $(echo "$proposal" | jq -r .outcome)); the rest of the demo needs one. Is the backend in fake mode?" >&2
+  exit 1
+fi
 
 show "Approve it twice: the write runs once" "approve, approve"
 for _ in 1 2; do

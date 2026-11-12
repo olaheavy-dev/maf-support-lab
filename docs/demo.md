@@ -1,6 +1,8 @@
 # Demonstration
 
-A short tour of what the system does, run against **both** backends from a fresh clone, in fake model mode (no key, no cost). The output below is real, captured on 2026-11-12 from commit `ae66f38`: [`scripts/demo.sh`](../scripts/demo.sh) run against each backend started by the AppHost.
+A short tour of what the system does, run against **both** backends in fake model mode (no key, no cost).
+
+> **Assistant-captured.** The output below is real, captured on 2026-11-12 by the assistant (Claude Code) by running [`scripts/demo.sh`](../scripts/demo.sh) against each backend started by the AppHost. Most of it comes from a fresh clone at commit `ae66f38`. The write section was recaptured after the script switched to a repeatable write: it was run twice in a row, and the second run is shown.
 
 ## Run it yourself
 
@@ -11,7 +13,7 @@ scripts/demo.sh http://localhost:5180             # the .NET backend
 scripts/demo.sh https://localhost:<port> -k       # the Python backend: Aspire serves it over https on a port shown in the dashboard
 ```
 
-The demo needs `curl`, `jq` and `uuidgen`. Prerequisites and troubleshooting are in the [runbook](runbook.md).
+The demo needs `curl`, `jq` and `uuidgen`. It can be run again and again: each run opens a new support ticket. If no approval is proposed, which happens only outside fake mode, it stops with a message. Prerequisites and troubleshooting are in the [runbook](runbook.md).
 
 ## What it shows
 
@@ -49,21 +51,21 @@ ORD-1001 was delivered and can't be cancelled. Eligibility is checked *before* a
 
 ### A write waits for approval, and runs once
 
-> Please cancel order ORD-1003.
+> Please open a support ticket: my smart fridge firmware shows error Z-77.
 
 ```json
-{"outcome":"awaiting_approval","pending":{"kind":"cancel_order","arguments":{"order_id":"ORD-1003"},"expires_at":"2026-11-12T17:06:50Z"}}
+{"outcome":"awaiting_approval","pending":{"kind":"create_ticket","arguments":{"description":"Please open a support ticket: my smart fridge firmware shows error Z-77.","priority":"normal","subject":"Support request"},"expires_at":"2026-11-12T17:13:46Z"}}
 ```
 
-Approved twice:
+Approved twice (the second run of the demo, so the ticket is the store's second):
 
 ```json
-{"outcome":"completed","turn_id":"turn_58291c3459ac1f2d88e7","reply":"Done: order ORD-1003 is cancelled."}
-{"outcome":"completed","turn_id":"turn_58291c3459ac1f2d88e7","reply":"Done: order ORD-1003 is cancelled."}
-{"status":"committed","result":{"order_id":"ORD-1003","order_status":"cancelled"}}
+{"outcome":"completed","turn_id":"turn_df1521d9032afeac9886","reply":"Done: support ticket TKT-0002 is open."}
+{"outcome":"completed","turn_id":"turn_df1521d9032afeac9886","reply":"Done: support ticket TKT-0002 is open."}
+{"status":"committed","result":{"ticket_id":"TKT-0002"}}
 ```
 
-The second approval returns the same resumed turn. The operation record is the authority: it committed once. Under 16 concurrent approvals a probe ticket confirms one write ([load results](evaluations/load.md)).
+The second approval returns the same resumed turn, and the operation record is the authority: one ticket. Tickets are numbered from a stored counter, which is also how the load scenarios count writes under 16 concurrent approvals ([load results](evaluations/load.md)).
 
 ### Changing your mind afterwards is refused
 
