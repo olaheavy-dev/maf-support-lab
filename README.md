@@ -51,15 +51,16 @@ The [demonstration](docs/demo.md) shows the real output from a fresh clone on bo
 | [Threat model](docs/threat-model.md) | Identity, the access matrix, prompt injection, the security review, production requirements |
 | [Evaluations](docs/evaluations/README.md) | Behaviour baseline, model-judged quality, reports and CI lanes, fault and load |
 | [Observability](docs/observability.md) | Traces, metrics and logs in Aspire; budgets and failure classes |
-| [Decisions](docs/README.md#decisions) | Version baseline, code layout, durable state, SDK comparison |
+| [Decisions](docs/README.md#decisions) | Version baseline, code layout, durable state, SDK comparison, demo frontend |
 | [Contract](contracts/README.md) | The API both backends implement |
 | [All documentation](docs/README.md) | The index, in reading order |
 
 ## Layout
 
-    apphost/        Aspire AppHost: both backends and the Python DevUI
+    apphost/        Aspire AppHost: both backends, the Python DevUI and the demo frontend
     src/dotnet/     Support.Api (ASP.NET Core + MAF) and its tests
     src/python/     support_agent (FastAPI + MAF, uv) and its tests
+    frontend/       The demo frontend (Next.js, from the house template)
     contracts/      API schemas, examples, and the cross-backend probes
     fixtures/       Synthetic customers, orders, invoices, payments, knowledge base, policies, scenarios
     evaluations/    Datasets and the evaluation runner (behaviour, native, quality, reports, load)

@@ -34,6 +34,7 @@ Plain Markdown, read on GitHub: no site and no build. Every page under `docs/` i
 | [0003 - Durable state and idempotent writes](decisions/0003-state-and-idempotency.md) | current |
 | [0004 - SDK comparison](decisions/0004-sdk-comparison.md) | current |
 | [0006 - Browser integration](decisions/0006-browser-integration.md) | superseded (the frontend was retired on 2026-11-11) |
+| [0007 - Demo frontend](decisions/0007-demo-frontend.md) | current: Next.js from house-template-nextjs, reversing the 2026-11-11 retirement for a demo chat page |
 
 0005 was reserved for a retired ticket and was never written.
 

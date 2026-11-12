@@ -1,0 +1,7 @@
+# pnpm settings (https://pnpm.io/supply-chain-security). Install scripts run only for packages
+# listed here as true: sharp and unrs-resolver ship prebuilt binaries, so neither needs one.
+# pnpm also holds back versions published in the last day (minimumReleaseAge, default 1440
+# minutes), and Dependabot waits seven days before proposing an update.
+allowBuilds:
+  sharp: false
+  unrs-resolver: false

@@ -5,6 +5,9 @@ paths-ignore:
   # Effective because C# is analyzed with build-mode none, which reads the source tree instead of a build.
   - "**/bin/**"
   - "**/obj/**"
+  # The demo frontend's build output and dependencies.
+  - "frontend/.next/**"
+  - "frontend/node_modules/**"
 query-filters:
   # cs/path-combine warns that Path.Combine drops earlier parts when a later part is absolute. Every call here joins
   # the repository root or a temp folder with constant relative names (fixtures, schemas, datasets, stores), so the

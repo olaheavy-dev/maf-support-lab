@@ -14,7 +14,7 @@ Target: main.
 
 This is a solo repository: required approval count is zero. The owner reviews every diff, and an automated Codex review runs on each pull request. When another reviewer joins, raise the approval requirement to one and enable stale-approval dismissal. Requiring the author to obtain their own approval would block normal progress.
 
-The required `repository-checks` status is an aggregate job: it waits for every job (`contracts-and-docs`, `dotnet`, `python`, `cross-backend`, `evaluations`) and passes only if all succeeded. Never require a check that cannot run on every relevant PR. See [testing](testing.md) for the offline/live split and the separate dependency audit.
+The required `repository-checks` status is an aggregate job: it waits for every job (`contracts-and-docs`, `dotnet`, `python`, `cross-backend`, `evaluations`, `frontend`) and passes only if all succeeded. Never require a check that cannot run on every relevant PR. See [testing](testing.md) for the offline/live split and the separate dependency audit.
 
 The only application secret is an optional `ANTHROPIC_API_KEY` for the manual, budgeted live-quality workflow. Live-model evaluation is opt-in and bounded.
 

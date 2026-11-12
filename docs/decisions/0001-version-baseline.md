@@ -14,7 +14,8 @@ Use the **latest stable release** of every runtime, framework, and package. Use 
 | .NET SDK / runtime | 11.0.100 / 11.0.0 (STS) | Moved from 10.0.403 / 10.0.14 (LTS) on 2026-11-12 (the owner's choice). The official release index lists end of support for both 10.0 (LTS) and 11.0 (STS) as **2028-11-14**, so the latest-stable rule selects 11.0 at no support cost. Re-check before .NET 12 (LTS) ships. `global.json` pins the SDK (patch roll-forward only). |
 | Python | 3.15.2 | The latest stable release. agent-framework-core, -anthropic, and -devui 1.25.0-era packages list 3.15 support (3.11+ required). |
 | uv | 0.13.7 | Latest release. The version CI installs. |
-| Aspire | 13.6.5 (`Aspire.AppHost.Sdk`, `Aspire.Hosting.AppHost`, `Aspire.Hosting.Python`) | Stable. Raised from 13.6.4 (the owner's choice) because 13.6.4 has advisory GHSA-f7vh-h5g3-7jrh (CVE-2026-120006, high, elevation of privilege; fixed in 13.6.5). The vulnerable packages came from the `Aspire.AppHost.Sdk` version, so every Aspire pin moves together. |
+| Node.js / pnpm | 26 / 12.15.0 | The demo frontend's runtime and package manager, as rendered from house-template-nextjs v0.3.0; its packages (Next.js 16.4.3, React 19.3.1, Tailwind CSS 4.3.3, TypeScript 5.9.3, Playwright 1.64.1) are locked in `frontend/pnpm-lock.yaml`. See [0007](0007-demo-frontend.md). |
+| Aspire | 13.6.5 (`Aspire.AppHost.Sdk`, `Aspire.Hosting.AppHost`, `Aspire.Hosting.Python`, `Aspire.Hosting.JavaScript`) | Stable. Raised from 13.6.4 (the owner's choice) because 13.6.4 has advisory GHSA-f7vh-h5g3-7jrh (CVE-2026-120006, high, elevation of privilege; fixed in 13.6.5). The vulnerable packages came from the `Aspire.AppHost.Sdk` version, so every Aspire pin moves together. |
 
 
 ## .NET packages (net11.0)
