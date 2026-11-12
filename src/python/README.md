@@ -144,13 +144,14 @@ One SQLite file per backend and run (`STORAGE__PATH`, default `.data/python/supp
 
 ```bash
 APP_ENVIRONMENT=development IDENTITY__DEVELOPMENT_CUSTOMER_ID=CUST-1001 uv run python -m support_agent.devui
-# → http://127.0.0.1:5290  (orders, billing, technical, support-routing)
+# → http://127.0.0.1:5290  (the support-routing workflow)
 ```
 
 DevUI runs as its own process on loopback (port 5290 by default, or `PORT`), and the AppHost starts it as `support-devui-python`.
 - **Why a separate process:** DevUI's UI calls `/v1/...` at the root, and a mounted sub-app's lifespan doesn't run.
 - **Its customer:** DevUI has no request identity, so this process serves the one configured development customer (`set_process_principal`). The API process never uses that fallback: every API turn pins the caller, and anything unpinned fails closed.
 - **Its guards:** it refuses to start outside development, and rejects requests not addressed to loopback (DevUI's own guard).
+- **Only the workflow:** a specialist listed on its own would skip triage and the approval gate. In the workflow, a DevUI chat has no support conversation, so every write is declined before any approval exists.
 
 ## Configuration
 

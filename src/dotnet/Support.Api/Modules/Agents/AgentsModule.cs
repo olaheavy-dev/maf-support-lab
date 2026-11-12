@@ -23,7 +23,7 @@ internal static class AgentsModule
 
         if (builder.Environment.IsDevelopment())
         {
-            builder.AddDevUiForAgents([.. SupportAgents.SpecialistNames]);
+            builder.AddDevUi();
         }
 
         return builder;
@@ -36,7 +36,7 @@ internal static class AgentsModule
 
         if (app.Environment.IsDevelopment())
         {
-            app.MapDevUiForAgents();
+            app.MapDevUi();
         }
 
         return app;

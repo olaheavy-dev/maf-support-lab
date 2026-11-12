@@ -94,7 +94,7 @@ public sealed class TelemetryTests
     }
 
     [Fact]
-    public async Task A_DevUI_chat_is_traced_through_the_same_agent_model_and_tool()
+    public async Task A_DevUI_chat_is_traced_through_the_same_workflow_agent_model_and_tool()
     {
         var capture = new TelemetryCapture();
         using var factory = SupportApiFactory.Create(configureServices: capture.AddTo);
@@ -102,18 +102,22 @@ public sealed class TelemetryTests
 
         using var response = await client.PostAsJsonAsync(
             new Uri("/v1/responses", UriKind.Relative),
-            new { agent = new { name = "orders" }, input = OrderQuestion },
+            new { agent = new { name = "support-routing" }, input = OrderQuestion },
             TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var agent = await WaitForAsync(() => capture.Spans.FirstOrDefault(span => Tag(span, "gen_ai.operation.name") == "invoke_agent"));
+        var agent = await WaitForAsync(() => capture.Spans.FirstOrDefault(span => Tag(span, "gen_ai.operation.name") == "invoke_agent" && Tag(span, "gen_ai.agent.name") == "orders"));
         var spans = await capture.TraceAsync(factory, agent.TraceId);
 
-        // DevUI enters through its own HTTP route but reaches the same instrumented agent instance as the API.
+        // DevUI enters through its own HTTP route but runs the same workflow and the same instrumented agents as the API.
         var http = Assert.Single(spans, span => span.Kind == ActivityKind.Server);
         Assert.Equal("/v1/responses", Tag(http, "url.path"));
-        Assert.Equal("orders", Tag(agent, "gen_ai.agent.name"));
-        Assert.Equal(2, spans.Count(span => span.Source.Name == "Support.Model" && Tag(span, "gen_ai.operation.name") == "chat"));
+        // One DevUI chat produces more than one invoke_workflow span (observed: two); each is the routing workflow.
+        var workflows = spans.Where(span => Tag(span, "gen_ai.operation.name") == "invoke_workflow").ToList();
+        Assert.NotEmpty(workflows);
+        Assert.All(workflows, workflow => Assert.Equal("support-routing", Tag(workflow, "gen_ai.workflow.name")));
+        Assert.Single(spans, span => Tag(span, "gen_ai.agent.name") == "triage");
+        Assert.Equal(2, spans.Count(span => span.ParentSpanId == agent.SpanId && span.Source.Name == "Support.Model" && Tag(span, "gen_ai.operation.name") == "chat"));
         Assert.Single(spans, span => Tag(span, "gen_ai.operation.name") == "execute_tool");
 
         // No contract-API turn: the support.turn span and turn metrics belong to the conversation handler only.

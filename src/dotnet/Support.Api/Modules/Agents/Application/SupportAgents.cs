@@ -9,22 +9,19 @@ namespace Support.Api.Modules.Agents.Application;
 public sealed record SupportAgent(string Name, AIAgent Agent);
 
 /// <summary>
-/// The application's agents, built once and shared by every entry point (contract API and DevUI).
+/// The application's agents, built once and shared by every entry point (the contract API and the DevUI workflow).
 /// Feature modules register a <see cref="SupportAgent"/> each; this class collects them and gives every agent the
 /// same agent-level telemetry (invoke_agent spans on <see cref="AgentTelemetry.AgentSourceName"/>), so a new
 /// specialist cannot forget it.
 /// </summary>
 public sealed class SupportAgents
 {
-    /// <summary>The orders agent's name: what DevUI lists and what a turn's route target reports.</summary>
+    /// <summary>The orders agent's name: what a turn's route target reports.</summary>
     public const string OrdersAgentName = "orders";
 
     public const string BillingAgentName = "billing";
 
     public const string TechnicalAgentName = "technical";
-
-    /// <summary>The specialists a turn can be routed to. DevUI lists these too.</summary>
-    public static readonly IReadOnlyList<string> SpecialistNames = [OrdersAgentName, BillingAgentName, TechnicalAgentName];
 
     private readonly Dictionary<string, AIAgent> byName;
 

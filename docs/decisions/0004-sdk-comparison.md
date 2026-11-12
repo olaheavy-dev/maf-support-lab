@@ -35,6 +35,7 @@ They may differ in the wording of human-readable text, and in how they get there
 | Running turns | Detached `Task`s with their own `CancellationTokenSource`; host shutdown cancels them | `RunningTurns`: detached tasks; shutdown cancels them and waits for them to be stored before the database closes |
 | Telemetry | Aspire `ServiceDefaults`; host-owned providers | Its own providers, once per process; flushed in the lifespan; a bounded 5 s exit |
 | DevUI | Same process, Development only | A separate process: a mounted sub-app's lifespan doesn't run, and DevUI calls `/v1` at the root |
+| DevUI entities | Only the routing workflow: a direct agent chat would skip triage and the approval gate | The same |
 
 ## Known implementation differences (none is client-visible except as noted)
 

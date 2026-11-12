@@ -4,52 +4,43 @@ using System.Text.Json;
 
 namespace Support.Api.Tests.Modules.Agents;
 
-/// <summary>DevUI is a Development-only entry point to the same agent and the same service guards.</summary>
+/// <summary>DevUI is a Development-only entry point to the same workflow, the same approval gate and the same service guards.</summary>
 public sealed class DevUiTests
 {
     [Fact]
-    public async Task DevUI_lists_the_orders_agent_and_its_tool()
+    public async Task DevUI_lists_only_the_support_workflow()
     {
-        await using var factory = SupportApiFactory.Create();
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
         using var client = factory.CreateClient();
 
-        var entities = await client.GetFromJsonAsync<JsonElement>(new Uri("/v1/entities", UriKind.Relative), TestContext.Current.CancellationToken);
+        var entities = (await client.GetFromJsonAsync<JsonElement>(new Uri("/v1/entities", UriKind.Relative), TestContext.Current.CancellationToken))
+            .GetProperty("entities").EnumerateArray()
+            .Select(entity => (Id: entity.GetProperty("id").GetString(), Type: entity.GetProperty("type").GetString()))
+            .ToList();
 
-        var orders = entities.GetProperty("entities").EnumerateArray().Single(entity => entity.GetProperty("id").GetString() == "orders");
-        Assert.Equal("agent", orders.GetProperty("type").GetString());
-        Assert.Contains("get_order_status", orders.GetProperty("tools").EnumerateArray().Select(tool => tool.GetString()));
+        // A specialist listed on its own would skip triage and the approval gate (see DevUiEndpoints).
+        Assert.Equal([("support-routing", "workflow")], entities);
     }
 
-    [Fact]
-    public async Task DevUI_requests_go_through_the_same_ownership_guard()
+    [Theory]
+    [InlineData("orders")]
+    [InlineData("billing")]
+    [InlineData("technical")]
+    public async Task DevUI_does_not_serve_a_specialist_directly(string agent)
     {
         await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
         using var client = factory.CreateClient();
 
         using var response = await client.PostAsJsonAsync(
             new Uri("/v1/responses", UriKind.Relative),
-            new { agent = new { name = "orders" }, input = "What's the status of ORD-2001?" },
+            new { agent = new { name = agent }, input = "Where is my order ORD-1002? Show my payment history and help with crackling headphones." },
             TestContext.Current.CancellationToken);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("couldn't find order ORD-2001", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("delivered", body, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public async Task DevUI_lists_the_support_workflow_and_its_specialists()
-    {
-        await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
-        using var client = factory.CreateClient();
-
-        var entities = (await client.GetFromJsonAsync<JsonElement>(new Uri("/v1/entities", UriKind.Relative), TestContext.Current.CancellationToken))
-            .GetProperty("entities").EnumerateArray().ToDictionary(entity => entity.GetProperty("id").GetString()!, entity => entity.GetProperty("type").GetString());
-
-        Assert.Equal("workflow", entities["support-routing"]);
-        Assert.Equal("agent", entities["orders"]);
-        Assert.Equal("agent", entities["billing"]);
-        Assert.Equal("agent", entities["technical"]);
+        // No specialist answers: the request is refused, no tool runs and no reply text comes back.
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("function_call", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("output_text", body, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -70,6 +61,27 @@ public sealed class DevUiTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(route, body, StringComparison.Ordinal);
         Assert.Contains(expected, body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Cancel order ORD-1002.", "[route: orders | reply: clarification]")]
+    [InlineData("Refund ORD-2003 to my card right away.", "[route: billing | reply: clarification]")] // another customer's order
+    public async Task A_DevUI_workflow_chat_never_offers_a_write_for_approval(string message, string route)
+    {
+        // DevUI chats have no support conversation, so the approval gate declines every write before any approval
+        // exists: nothing to approve in DevUI, and nothing changes. Writes go through the contract API only.
+        await using var factory = SupportApiFactory.Create(principal: "CUST-1001");
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/v1/responses", UriKind.Relative),
+            new { agent = new { name = "support-routing" }, input = message },
+            TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains(route, body, StringComparison.Ordinal);
+        Assert.DoesNotContain("reply: approval_request", body, StringComparison.Ordinal);
     }
 
     [Theory]

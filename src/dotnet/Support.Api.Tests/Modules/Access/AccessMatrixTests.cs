@@ -16,7 +16,7 @@ namespace Support.Api.Tests.Modules.Access;
 
 /// <summary>
 /// The cross-customer matrix. For both synthetic customers, every way to reach the other customer's data (each
-/// API route, streamed and plain; each tool and service called directly; the agents through the API and DevUI) is
+/// API route, streamed and plain; each tool and service called directly; the agents through the API, and the workflow through DevUI) is
 /// denied, and a denial looks exactly like a missing record. Identity comes only from the trusted server-side source:
 /// client headers, query strings, body fields, model arguments, and guessed ids never change it.
 /// </summary>
@@ -174,25 +174,22 @@ public sealed class AccessMatrixTests
 
     [Theory]
     [MemberData(nameof(Pairs))]
-    public async Task DevUI_agents_and_the_workflow_deny_the_other_customer_even_with_a_claiming_header(string owner, string intruder, string ownerOrder, string ownerInvoice)
+    public async Task DevUI_workflow_denies_the_other_customer_even_with_a_claiming_header(string owner, string intruder, string ownerOrder, string ownerInvoice)
     {
         _ = ownerInvoice;
         await using var factory = SupportApiFactory.Create(principal: intruder);
         using var client = factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-Customer-Id", owner);
 
-        foreach (var entity in new[] { "orders", "support-routing" })
-        {
-            using var response = await client.PostAsJsonAsync(
-                new Uri("/v1/responses", UriKind.Relative),
-                new { agent = new { name = entity }, input = $"What's the status of {ownerOrder}?" },
-                TestContext.Current.CancellationToken);
-            var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var response = await client.PostAsJsonAsync(
+            new Uri("/v1/responses", UriKind.Relative),
+            new { agent = new { name = "support-routing" }, input = $"What's the status of {ownerOrder}?" },
+            TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Contains($"couldn't find order {ownerOrder}", body, StringComparison.Ordinal);
-            Assert.DoesNotContain("processing", body, StringComparison.OrdinalIgnoreCase);
-        }
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains($"couldn't find order {ownerOrder}", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("processing", body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
