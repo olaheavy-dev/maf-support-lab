@@ -6,9 +6,10 @@ One customer-support use case, built twice with Microsoft Agent Framework (MAF):
 
 | Piece | What it is | Details |
 | --- | --- | --- |
-| `apphost/` | Aspire AppHost (`Aspire.AppHost.Sdk` 13.6.5). Starts `support-api-dotnet`, `support-api-python` and the Python DevUI (`support-devui-python`), watches `/health`, and collects their OpenTelemetry. | [runbook](runbook.md) |
+| `apphost/` | Aspire AppHost (`Aspire.AppHost.Sdk` 13.6.5). Starts `support-api-dotnet`, `support-api-python`, the Python DevUI (`support-devui-python`) and the demo frontend (`web`), watches their health checks, and collects their OpenTelemetry. | [runbook](runbook.md) |
 | `src/dotnet/` | `Support.Api`: ASP.NET Core on .NET 11, MAF 1.28.0. One project with module folders, each layered Domain / Application / Infrastructure / Presentation and enforced by ArchUnitNET tests. | [.NET README](../src/dotnet/README.md), [code layout](decisions/0002-code-layout.md) |
 | `src/python/` | `support_agent`: FastAPI with Uvicorn on Python 3.15, MAF Python 1.25.0, uv-locked, pyright strict. | [Python README](../src/python/README.md) |
+| `frontend/` | The demo frontend: Next.js 16 from the house template, whose same-origin `/api` proxy forwards to a backend. The browser never sees a backend address or identity. | [0007](decisions/0007-demo-frontend.md) |
 | `contracts/` | Version 1 of the API as JSON Schemas: requests, results, stream events, errors. Includes the cross-backend probes. | [contract](../contracts/README.md) |
 | `fixtures/` | Synthetic customers, orders, invoices, payments, knowledge base and policies, plus 19 feature scenarios. | [fixtures](../fixtures/README.md) |
 | `evaluations/` | Datasets, the evaluation runner (deterministic, native MAF, model-judged), and reports. | [evaluations](../evaluations/README.md) |

@@ -16,6 +16,7 @@ Every pull request and every push to `main` runs `.github/workflows/repository-c
 | `python` | Locked sync, ruff (lint and format), pyright strict, and the Python integration tests in fake mode. |
 | `cross-backend` | The real .NET and Python servers in fake mode, sent the same requests by `contracts/probes/run_probes.py`: every response is schema-validated, and the two backends must agree (see [0004](decisions/0004-sdk-comparison.md)). |
 | `evaluations` | The Python evaluation package (`evaluations/python`): lint, format, strict types, dataset/result contract tests, dataset validation. The .NET evaluation runner and its tests build and run in the `dotnet` job; `cross-backend` also runs every dataset on both backends with the runner's launch mode (fresh store per write case, restarts, cancellation), writes the comparison, and uploads both. See [evaluations/README.md](../evaluations/README.md). |
+| `frontend` | The demo frontend (`frontend/`): locked install, peer dependencies, ESLint, Prettier, TypeScript, Vitest, a production build, and Playwright against it in Playwright's Linux image: axe (WCAG 2.2 AA), the CSP and security headers, and screenshots in light, dark and mobile ([0007](decisions/0007-demo-frontend.md)). |
 | `repository-checks` | **The only required status check.** It always reports and passes only if every job above succeeded. A failed, cancelled, or skipped job makes it fail, so nothing can be silently skipped or left pending. |
 
 A new job joins the required set by being listed in `repository-checks` → `needs`.
@@ -45,7 +46,7 @@ dotnet test --solution maf-support-lab.slnx --no-build --configuration Release
 
 ## Security advisories (network-backed, not required)
 
-Vulnerability data changes over time. In required builds, NuGet advisory warnings (NU1901–NU1904) are shown but don't fail the build, so a newly published advisory can't break unrelated pull requests. The separate `.github/workflows/dependency-audit.yml` fails when a vulnerable package (direct or transitive) is found. It runs weekly, on demand, and on pull requests that change package versions. Dependabot opens weekly update PRs for NuGet (grouped), contract test tools, and GitHub Actions.
+Vulnerability data changes over time. In required builds, NuGet advisory warnings (NU1901–NU1904) are shown but don't fail the build, so a newly published advisory can't break unrelated pull requests. The separate `.github/workflows/dependency-audit.yml` fails when a vulnerable package (direct or transitive) is found. It runs weekly, on demand, and on pull requests that change package versions. It also audits the demo frontend's production packages with `pnpm audit --prod`; its development tools are left to Dependabot. Dependabot opens weekly update PRs for NuGet (grouped), the Python manifests, the frontend's npm packages, contract test tools, and GitHub Actions.
 
 ## Live (opt-in)
 

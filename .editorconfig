@@ -13,3 +13,7 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+# The frontend follows its template's Prettier settings: 2 spaces everywhere.
+[frontend/**]
+indent_size = 2

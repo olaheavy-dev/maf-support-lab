@@ -13,6 +13,7 @@ Versions are pinned; the [version baseline](decisions/0001-version-baseline.md) 
 | uv | 0.13.7 | CI |
 | Aspire | AppHost SDK 13.6.5; CLI 13.6.x, optional | `apphost/Support.AppHost.csproj` |
 | `aieval` (Microsoft.Extensions.AI.Evaluation.Console) | 10.11.0, local tool | `.config/dotnet-tools.json` |
+| Node.js and pnpm (the demo frontend; the AppHost needs them on `PATH`) | Node 26, pnpm 12.15.0 | `.node-version`, `frontend/package.json` |
 
 The main application packages (versions as locked; the full list and the reasoning are in [0001](decisions/0001-version-baseline.md)):
 
@@ -25,7 +26,7 @@ The main application packages (versions as locked; the full list and the reasoni
 | Telemetry | OpenTelemetry 1.21 | OpenTelemetry (locked in `uv.lock`) |
 | Evaluation (runner only) | `Microsoft.Extensions.AI.Evaluation` + `.Quality` + `.Reporting` 10.11.0 | `agent-framework-core` 1.25.0 |
 
-NuGet packages are locked (`packages.lock.json`), and Python is locked (`src/python/uv.lock`, `evaluations/python/uv.lock`). Docker isn't needed.
+NuGet packages are locked (`packages.lock.json`), Python is locked (`src/python/uv.lock`, `evaluations/python/uv.lock`), and so is the frontend (`frontend/pnpm-lock.yaml`). Docker is needed only for the frontend's screenshot tests.
 
 ## Run both backends under Aspire
 
@@ -33,7 +34,7 @@ NuGet packages are locked (`packages.lock.json`), and Python is locked (`src/pyt
 dotnet run --project apphost        # or: aspire start --apphost apphost/Support.AppHost.csproj
 ```
 
-Open the dashboard link that is printed. It shows `support-api-dotnet` (http://localhost:5180, with a DevUI link), `support-api-python` and `support-devui-python`, their health, logs, traces and metrics. To run one backend alone, see the [.NET README](../src/dotnet/README.md#run) or the [Python README](../src/python/README.md#run-it-on-its-own-no-aspire-no-secrets).
+Open the dashboard link that is printed. It shows `support-api-dotnet` (http://localhost:5180, with a DevUI link), `support-api-python`, `support-devui-python` and `web`, the demo frontend (Aspire runs `pnpm install --frozen-lockfile` on every start, then the Next.js dev server, which talks to the .NET backend), with their health, logs, traces and metrics. To run one backend alone, see the [.NET README](../src/dotnet/README.md#run) or the [Python README](../src/python/README.md#run-it-on-its-own-no-aspire-no-secrets).
 
 ## Exercise the API
 
@@ -77,6 +78,7 @@ python3 scripts/check_docs_links.py && python3 -m unittest discover -s scripts/t
 dotnet build maf-support-lab.slnx -warnaserror && dotnet test --solution maf-support-lab.slnx
 (cd src/python && uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest)
 (cd evaluations/python && uv run --locked pytest)
+(cd frontend && pnpm install --frozen-lockfile && pnpm peers check && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build && pnpm e2e:docker)
 ```
 
 The cross-backend probes, the evaluations and the report are in [testing](testing.md) and [evaluation reports](evaluations/reports.md#reproduce). Opt-in live tests are `dotnet test … -- --filter-trait "Category=Live" --explicit only` and `uv run pytest -m live`. The model-judged quality lane is `quality --live` ([quality](evaluations/quality.md)).

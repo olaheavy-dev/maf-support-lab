@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+@layer base {
+  html {
+    color-scheme: light dark;
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+  }
+}

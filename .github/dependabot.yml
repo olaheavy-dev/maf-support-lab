@@ -66,3 +66,16 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 2
+  - package-ecosystem: npm
+    # The demo frontend (pnpm; Dependabot updates package.json and pnpm-lock.yaml together).
+    directory: /frontend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+      npm-major:
+        update-types: [major]

@@ -1,6 +1,6 @@
 # 0006 - Browser integration with the version-1 contract
 
-- Status: **Superseded** (2026-11-11). Accepted, then retired the same day when the owner dropped the frontend: the browser probes, their CI job, and the AppHost resource were removed. Kept as a record of what was verified; nothing in the repository implements it now. The contract is verified by the cross-backend probes.
+- Status: **Superseded** (2026-11-11). Accepted, then retired the same day when the owner dropped the frontend: the browser probes, their CI job, and the AppHost resource were removed. Kept as a record of what was verified; nothing in the repository implements it now. A new demo frontend came back on 2026-11-12 under [0007](0007-demo-frontend.md). The contract is verified by the cross-backend probes.
 - Versions: Node 26.13.1 (LTS "Lithium"; 26.13.0 used locally), `@playwright/test` 1.65.0 with Chromium (headless shell 158), and `Aspire.Hosting.JavaScript` 13.6.5, with every Aspire pin raised to 13.6.5 for advisory GHSA-f7vh-h5g3-7jrh.
 
 ## Decision

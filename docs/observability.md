@@ -58,6 +58,10 @@ A DevUI chat (with the `support-routing` workflow, the only entity the .NET DevU
 
 It has no `support.turn` span and no `support.turns` metric, because those belong to the contract API's turn handler. Tool calls still count in `support.tool.calls`, and token usage still counts in `gen_ai.client.token.usage`.
 
+## The demo frontend
+
+Under the AppHost, the frontend (`web`) exports traces over OTLP/HTTP, the only protocol its exporter (`@vercel/otel`) speaks; the launch profiles set the dashboard's HTTP endpoint for it. It sends the W3C trace context to the backend only (`API_BASE_URL`), so a request through its `/api` proxy and the backend's handling of it share one trace. Health checks are left out.
+
 ## Who owns which signal
 
 There is **one** OpenTelemetry pipeline and **one** OTLP exporter, both in `Support.ServiceDefaults`. The exporter is switched on by `OTEL_EXPORTER_OTLP_ENDPOINT`, which the AppHost sets. Modules only subscribe the pipeline to their own sources. Nobody creates a second provider or exporter.

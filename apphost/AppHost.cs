@@ -1,9 +1,10 @@
-// Local development orchestration. Starts both support backends (.NET and Python) and watches their health.
+// Local development orchestration. Starts both support backends (.NET and Python) and the demo frontend, and
+// watches their health.
 // Each runs in fake model mode unless its own configuration selects live mode. Each keeps its own state; they share
 // nothing but the contract and the synthetic fixtures.
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.AddProject<Projects.Support_Api>("support-api-dotnet")
+var dotnetApi = builder.AddProject<Projects.Support_Api>("support-api-dotnet")
     .WithHttpHealthCheck("/health")
     // DevUI is served by the API itself, in Development only. Show it as a link on the resource.
     // Its chats use the same instrumented agent, so they appear in Traces as invoke_agent > chat > execute_tool.
@@ -30,5 +31,18 @@ builder.AddPythonModule("support-devui-python", "../src/python", "support_agent.
     .WithOtlpExporter(OtlpProtocol.Grpc)
     .WithHttpHealthCheck("/health")
     .WaitFor(pythonApi);
+
+// The demo frontend (Next.js, from house-template-nextjs): its /api proxy forwards to the .NET backend, so the
+// browser stays on one origin. Telemetry goes to the dashboard over OTLP/HTTP (the only protocol its exporter
+// speaks; the launch profiles set the dashboard's HTTP endpoint), with the trace context passed to the backend.
+// AddJavaScriptApp (stable) runs its "dev" script; AddNextJsApp is still marked experimental in Aspire 13.6.
+builder.AddJavaScriptApp("web", "../frontend", "dev")
+    .WithPnpm(true, ["--frozen-lockfile"])
+    .WithHttpEndpoint(env: "PORT")
+    // The contract's routes are under /api, so the proxy's /api/v1/... reaches {backend}/api/v1/....
+    .WithEnvironment("API_BASE_URL", ReferenceExpression.Create($"{dotnetApi.GetEndpoint("http")}/api"))
+    .WithOtlpExporter(OtlpProtocol.HttpProtobuf)
+    .WithHttpHealthCheck("/health/live")
+    .WaitFor(dotnetApi);
 
 builder.Build().Run();
