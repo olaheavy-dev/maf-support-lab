@@ -11,20 +11,21 @@ Every pull request and every push to `main` runs `.github/workflows/repository-c
 
 | Job | What it checks |
 | --- | --- |
-| `planning-and-contracts` | Roadmap and issue metadata, planning regressions, contract schemas and examples, fixtures and scenarios. |
+| `planning-and-contracts` | Roadmap and issue metadata, planning regressions, contract schemas and examples, fixtures and scenarios, and (L34) the documentation links: every relative link, anchor and image in the tracked Markdown, and every `docs/` page reachable from [docs/README.md](README.md). |
 | `dotnet` | Locked restore, Release build with warnings as errors, and the .NET integration tests in fake mode. The test host clears any provider key. |
 | `python` | Locked sync, ruff (lint and format), pyright strict, and the Python integration tests in fake mode. |
 | `cross-backend` | (L21) The real .NET and Python servers in fake mode, sent the same requests by `contracts/probes/run_probes.py`: every response is schema-validated, and the two backends must agree (see [0004](decisions/0004-sdk-comparison.md)). |
 | `evaluations` | (L29) The Python evaluation package (`evaluations/python`): lint, format, strict types, dataset/result contract tests, dataset validation. The .NET evaluation runner and its tests build and run in the `dotnet` job; `cross-backend` also runs every dataset on both backends with the runner's launch mode (fresh store per write case, restarts, cancellation), writes the comparison, and uploads both. See [evaluations/README.md](../evaluations/README.md). |
 | `repository-checks` | **The only required status check.** It always reports and passes only if every job above succeeded. A failed, cancelled, or skipped job makes it fail, so nothing can be silently skipped or left pending. |
 
-New checks (Python in L17, the cross-backend probes in L21, the docs link check in L34) become jobs listed in `repository-checks` → `needs`.
+New jobs (Python in L17, the cross-backend probes in L21) are listed in `repository-checks` → `needs`. The docs link check (L34) is a step in `planning-and-contracts`, so it is already required.
 
 Run the same checks locally:
 
 ```bash
 python3 scripts/validate_repository.py
 python3 -m unittest discover -s scripts/tests
+python3 scripts/check_docs_links.py
 python3 -m venv .venv && .venv/bin/pip install --require-hashes -r contracts/requirements.txt
 .venv/bin/python -m unittest discover -s contracts/tests
 .venv/bin/python -m unittest discover -s fixtures/tests
