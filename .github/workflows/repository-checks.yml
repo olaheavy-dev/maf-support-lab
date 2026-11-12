@@ -26,6 +26,10 @@ jobs:
         run: python3 scripts/validate_repository.py
       - name: Check planning validation regressions
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+      # L34: every relative link, anchor and image in the tracked Markdown, and every docs/ page reachable from
+      # docs/README.md. Offline: external links are not fetched.
+      - name: Check documentation links
+        run: python3 scripts/check_docs_links.py
       - name: Install contract test tools (hash-locked)
         run: |
           python3 -m venv "$RUNNER_TEMP/contracts-venv"

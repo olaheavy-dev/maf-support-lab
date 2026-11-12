@@ -24,7 +24,7 @@ public sealed class TelemetryTests
         var api = new ApiClient(factory.CreateClient());
 
         var turn = await api.AskAsync(await api.CreateConversationAsync(), OrderQuestion);
-        var spans = await capture.TraceAsync(factory, TraceIdOf(turn));
+        var spans = await capture.TraceAsync(factory, TraceIdOf(turn), "support.turn");
 
         var http = Assert.Single(spans, span => span.Kind == ActivityKind.Server);
         var turnSpan = Assert.Single(spans, span => span.Source.Name == "Support.Api" && span.DisplayName == "support.turn");
@@ -75,7 +75,7 @@ public sealed class TelemetryTests
         var api = new ApiClient(factory.CreateClient());
 
         var turn = await api.AskAsync(await api.CreateConversationAsync(), message);
-        var spans = await capture.TraceAsync(factory, TraceIdOf(turn));
+        var spans = await capture.TraceAsync(factory, TraceIdOf(turn), "executor.process triage");
 
         var triage = Assert.Single(spans, span => span.DisplayName == "executor.process triage");
         Assert.Equal(outcome, Tag(triage, "support.triage.outcome"));

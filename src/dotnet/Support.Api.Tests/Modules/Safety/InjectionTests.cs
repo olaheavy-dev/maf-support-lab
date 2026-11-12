@@ -174,7 +174,7 @@ public sealed class InjectionTests
 
         Assert.Equal("answer", turn.ReplyKind()); // answered normally: the heuristic never blocks
         // The listener sees every test's spans, so find this turn's own span by its trace id.
-        var spans = await capture.TraceAsync(factory, ActivityTraceId.CreateFromString(turn.GetProperty("trace_id").GetString()));
+        var spans = await capture.TraceAsync(factory, ActivityTraceId.CreateFromString(turn.GetProperty("trace_id").GetString()), "support.turn");
         var span = Assert.Single(spans, s => s.DisplayName == "support.turn");
         Assert.Equal("ignore_instructions", span.GetTagItem("support.injection.message"));
         // Only the signal name is recorded: the message text stays out of telemetry by default.
