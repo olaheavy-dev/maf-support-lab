@@ -66,7 +66,7 @@ The backends are native to their stacks: MAF Workflows and `ChatClientAgent` in 
 
 ## Under load
 
-In fake mode on one 18-CPU machine, the .NET backend handles about 1,500 requests/s at 16 concurrent conversations, with a p50 of about 2 ms. The Python backend plateaus near 300 requests/s on its single event loop. Isolation, one write per approval, and one winner per decision race hold on both, and CI checks them on every push. Pooling the .NET SQLite connections removed 150–190 ms write tails ([load results](evaluations/load.md)).
+In fake mode on one 18-CPU machine, the .NET backend handles about 1,500 requests/s at 16 concurrent conversations, with a p50 of about 2 ms. The Python backend handles about 600 requests/s on its single event loop. Isolation, one write per approval, and one winner per decision race hold on both, and CI checks them on every push. Reusing SQLite connections removed 150–190 ms write tails in .NET and doubled Python's throughput ([load results](evaluations/load.md)).
 
 ## What it is not
 

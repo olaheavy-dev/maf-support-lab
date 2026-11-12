@@ -99,7 +99,7 @@ The same design and guarantees, ported idiomatically. The observable behaviour i
 - **Store:** the standard library's `sqlite3`, so no new dependency. The file is `STORAGE__PATH`, by default `.data/python/support.db` (ignored by Git), never the .NET file. Tests give each host its own temporary file, and the DevUI process uses its own `devui.db`.
 - **Same tables, same rules** (`database.py`):
   - `Database.atomically()` is one `BEGIN IMMEDIATE` transaction. Nested use joins it, through a `ContextVar` holding the connection.
-  - Other calls use a short-lived connection, so no connection outlives a call. At shutdown, the lifespan checkpoints the write-ahead log (`Resources` owns the database).
+  - Other calls reuse one autocommit connection per thread (each call is one synchronous statement, so coroutines never share a transaction). This doubled throughput under load ([load results](../evaluations/load.md#the-improvement-reused-sqlite-connections-python)). At shutdown, the lifespan closes them and checkpoints the write-ahead log (`Resources` owns the database).
 - **Mapping:**
 
   | .NET | Python |

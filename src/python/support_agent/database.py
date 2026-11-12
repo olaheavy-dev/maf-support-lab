@@ -1,14 +1,17 @@
 """The local durable store (the Python counterpart of the .NET store): one SQLite file per backend and per run.
 
 The Python backend never shares this file with .NET, and each test or evaluation run gets its own (``STORAGE__PATH``).
-Writes inside :meth:`Database.atomically` share one ``BEGIN IMMEDIATE`` transaction and commit together or not at all;
-other calls use their own short-lived connection, so there is nothing long-lived to close. Single process only:
+Writes inside :meth:`Database.atomically` share one ``BEGIN IMMEDIATE`` transaction on their own connection and
+commit together or not at all. Other calls reuse one autocommit connection per thread: opening a connection (and
+setting WAL) on every call cost about a quarter of a turn under load, all of it on the event loop. A call is a single
+synchronous statement, so coroutines interleaving on the loop never share a transaction. Single process only:
 SQLite serializes writers, and guarded updates keep data correct, but per-conversation turn coordination is in-process.
 """
 
 from __future__ import annotations
 
 import sqlite3
+import threading
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -38,6 +41,9 @@ class Rollback(Exception):  # noqa: N818 - a control-flow signal, not an error
 class Database:
     def __init__(self, path: Path) -> None:
         self.path = path.resolve()
+        self._local = threading.local()
+        self._open: list[sqlite3.Connection] = []
+        self._lock = threading.Lock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.closed = False
         connection = self._connect()
@@ -47,23 +53,49 @@ class Database:
             connection.close()
 
     def close(self) -> None:
-        """At shutdown: folds the write-ahead log back into the file. No connection outlives a call, so nothing else
-        stays open; a later call (a test reading state after shutdown) simply opens a new short-lived connection."""
+        """At shutdown: closes the reused connections and folds the write-ahead log back into the file. A later call
+        (a test reading state after shutdown) simply opens a new short-lived connection."""
+        self.closed = True
+        with self._lock:
+            reused, self._open = self._open, []
+        for open_connection in reused:
+            open_connection.close()
         connection = self._connect()
         try:
             connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         finally:
             connection.close()
-        self.closed = True
 
-    def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path, timeout=5, isolation_level=None)  # autocommit unless BEGIN
+    def _connect(self, *, shared: bool = False) -> sqlite3.Connection:
+        # A reused connection is only ever used by its own thread, but close() may run on another one at shutdown.
+        connection = sqlite3.connect(
+            self.path, timeout=5, isolation_level=None, check_same_thread=not shared
+        )  # autocommit unless BEGIN
         connection.execute("PRAGMA journal_mode = WAL")
+        return connection
+
+    def __copy__(self) -> Database:
+        return self
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> Database:
+        """A handle to one shared store: copying it (as MAF does with workflow state) must not duplicate it."""
+        return self
+
+    def _reused(self) -> sqlite3.Connection | None:
+        """This thread's autocommit connection, opened on first use; None after :meth:`close`."""
+        if self.closed:
+            return None
+        connection: sqlite3.Connection | None = getattr(self._local, "connection", None)
+        if connection is None:
+            connection = self._connect(shared=True)
+            self._local.connection = connection
+            with self._lock:
+                self._open.append(connection)
         return connection
 
     def execute(self, sql: str, parameters: Sequence[Any] = ()) -> int:
         """Runs a statement (in the current transaction, if any) and returns the number of rows it changed."""
-        if (connection := _ambient.get()) is not None:
+        if (connection := _ambient.get() or self._reused()) is not None:
             return connection.execute(sql, parameters).rowcount
         connection = self._connect()
         try:
@@ -72,7 +104,7 @@ class Database:
             connection.close()
 
     def query(self, sql: str, parameters: Sequence[Any] = ()) -> list[tuple[Any, ...]]:
-        if (connection := _ambient.get()) is not None:
+        if (connection := _ambient.get() or self._reused()) is not None:
             return connection.execute(sql, parameters).fetchall()
         connection = self._connect()
         try:

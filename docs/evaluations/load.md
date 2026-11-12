@@ -21,24 +21,25 @@ The checks are correctness only, with no timing thresholds, so they are determin
 
 ## Results (assistant-run, 2026-11-12)
 
-**Target:** macOS, 18 CPUs, Release build (.NET) and uv-locked (Python), loopback HTTP, with the runner on the same machine. Each row is the range over **3 runs**, with one warm-up pass before measuring. Every check passed in every run, on both backends.
+**Target:** macOS, 18 CPUs, Release build (.NET) and uv-locked (Python), loopback HTTP, with the runner on the same machine. Each row is the range over **3 runs**, with one warm-up pass before measuring. Every check passed in every run, on both backends. Both columns include their backend's storage fix (below); the Python column was re-measured after its fix.
 
 | Scenario | .NET req/s | .NET p50 / p95 ms | Python req/s | Python p50 / p95 ms |
 | --- | --- | --- | --- | --- |
-| isolation, 1 conversation | 680–779 | 1.2–1.3 / 1.4–2.2 | 121–136 | 7.0–7.8 / 9.4–11.1 |
-| isolation, 4 at once | 1,217–1,420 | 1.3–1.9 / 5.7–6.6 | 243–274 | 13.9–15.5 / 18.5–21.6 |
-| isolation, 16 at once | 1,533–1,673 | 2.2–2.5 / 21.8–22.9 | 274–322 | 51.8–55.3 / 72.5–73.8 |
-| faults under load (16) | 319–506 | 2.4–3.2 / 31.6–69.3 | 118–128 | 87–99 / 155–179 |
-| duplicate approval (16) | 598–644 | 24–25 / 25–26 | 359–517 | 20–30 / 29–44 |
-| decision race (16) | 458–906 | 10–12 / 17–35 | 572–642 | 18–19 / 25–28 |
+| isolation, 1 conversation | 680–779 | 1.2–1.3 / 1.4–2.2 | 238–243 | 4.1 / 4.7–5.0 |
+| isolation, 4 at once | 1,217–1,420 | 1.3–1.9 / 5.7–6.6 | 496–512 | 8.0–8.2 / 9.0 |
+| isolation, 16 at once | 1,533–1,673 | 2.2–2.5 / 21.8–22.9 | 607–646 | 26.5–28.2 / 31.6–34.2 |
+| faults under load (16) | 319–506 | 2.4–3.2 / 31.6–69.3 | 222–224 | 53–57 / 91–97 |
+| duplicate approval (16) | 598–644 | 24–25 / 25–26 | 1,393–1,459 | 8.7–9.1 / 10.3–10.7 |
+| decision race (16) | 458–906 | 10–12 / 17–35 | 1,355–1,632 | 7.9–9.4 / 9.6–11.4 |
 
 Request counts per scenario are in the result documents: for example, 97–112 for isolation (96 turns plus conversation creation) and 16 for the races.
 
 ## Bottlenecks
 
 - **.NET, before the fix: storage connections.** `SupportDatabase` opened a fresh SQLite connection (open plus pragmas) for every call. Under concurrent writes this showed a cluster of **150–190 ms** tail latencies (over 3 runs: duplicate-approval p95 186 and 156 ms in two runs and 37.5 ms in the third; decision-race p95 156–179 ms in all three), against medians of 10–36 ms.
-- **Python: one event loop.** Throughput plateaus near 300 req/s, and the median grows with concurrency (7 → 15 → 53 ms): requests queue on a single Uvicorn worker. Storage also opens a connection per call, synchronously on the loop.
-- **Python: the failure path.** With half the turns failing, throughput drops to about 120 req/s and the median to about 90 ms, roughly 2.5× slower than all-success load. A failed turn costs much more than a successful one there. **Not investigated further.** Candidates are exception classification and logging and telemetry on the failure path; the next step would be a profile of one failed turn.
+- **Python, before its fix: storage connections on the event loop.** Throughput plateaued near 300 req/s, and the median grew with concurrency (7 → 15 → 53 ms). A profile of the running server showed every database call opening a connection, setting WAL and closing it again, synchronously on the single event loop: 245 connects and closes for 80 turns, about 2.5 ms of a 10–12 ms turn.
+- **Python, still: one event loop.** After the fix the median still grows with concurrency (4 → 8 → 27 ms), because one Uvicorn worker serves every request. More workers would need a store shared across processes (see the limitations).
+- **Not a bottleneck: the failure path.** An earlier version of this page said failed turns were about 2.5× slower. That was a measurement artifact. The isolation scenario splits its conversations across two processes (one per customer), while the faults scenario puts all 16 on one process, so it carries twice the load per process. Measured one at a time on the same process, a failed turn takes 10.3 ms against 11.5 ms for a successful one.
 
 ## The improvement: pooled SQLite connections (.NET)
 
@@ -58,6 +59,20 @@ One setting changed: `Pooling = false` → `Pooling = true` in `SupportDatabase`
 - every load check.
 
 The before/after write rows come from the pooling experiment (concurrency 16 only, 3 runs each), which ran when these scenarios still wrote a cancellation and a refund; the throughput and p50 "after" values are from the final runs.
+
+## The improvement: reused SQLite connections (Python)
+
+`Database` now reuses one autocommit connection per thread for plain reads and writes, instead of opening one per call. Transactions (`atomically()`) still get their own connection, so coroutines interleaving on the event loop never share a transaction. Each call is a single synchronous statement. At shutdown, `close()` closes the reused connections before the final WAL checkpoint, and the class returns itself when copied, because MAF deep-copies workflow state.
+
+| Python, 3 runs each | Before | After |
+| --- | --- | --- |
+| isolation-c16 throughput | 274–322 req/s | 607–646 req/s |
+| isolation-c16 p50 | 51.8–55.3 ms | 26.5–28.2 ms |
+| isolation-c1 p50 | 7.0–7.8 ms | 4.1 ms |
+| duplicate-approval throughput | 359–517 req/s | 1,393–1,459 req/s |
+| decision-race throughput | 572–642 req/s | 1,355–1,632 req/s |
+
+**Still passing:** all 267 Python tests (durable-state and restart tests included), every load check, every launch-mode evaluation dataset, and the 29 cross-backend probes.
 
 ## Limitations
 

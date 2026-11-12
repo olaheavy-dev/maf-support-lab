@@ -23,7 +23,7 @@ flowchart LR
   - Microsoft's native agent evaluators;
   - a budgeted LLM-as-judge lane with calibration;
   - Microsoft evaluation reports;
-  - fault and load scenarios (with one fix they motivated);
+  - fault and load scenarios (and the two storage fixes they motivated);
   - a security review with CodeQL, dependency audits and secret scanning.
 
 ## See it
