@@ -45,6 +45,7 @@ public sealed class SupportDatabase : IUnitOfWork
     }
 
     /// <summary>Runs a statement and returns the number of rows it changed.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "Reviewed in L26: every caller passes constant SQL, and every value is a bound parameter. No SQL is built from strings anywhere in the API.")]
     public int Execute(string sql, params (string Name, object? Value)[] parameters) =>
         Run(command =>
         {
@@ -53,6 +54,7 @@ public sealed class SupportDatabase : IUnitOfWork
             return command.ExecuteNonQuery();
         });
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "CA2100:Review SQL queries for security vulnerabilities", Justification = "Reviewed in L26: every caller passes constant SQL, and every value is a bound parameter. No SQL is built from strings anywhere in the API.")]
     public IReadOnlyList<T> Query<T>(string sql, Func<SqliteDataReader, T> map, params (string Name, object? Value)[] parameters) =>
         Run(command =>
         {

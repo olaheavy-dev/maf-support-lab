@@ -7,6 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- L26: every security rule (CA2100, CA3xxx, CA5xxx), not just the recommended subset. -->
+    <AnalysisLevelSecurity>latest-all</AnalysisLevelSecurity>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 

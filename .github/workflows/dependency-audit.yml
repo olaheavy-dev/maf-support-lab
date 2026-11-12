@@ -9,6 +9,8 @@ on:
     paths:
       - "Directory.Packages.props"
       - "**/packages.lock.json"
+      - "**/uv.lock"
+      - "contracts/requirements.txt"
 permissions:
   contents: read
 jobs:
@@ -34,3 +36,30 @@ jobs:
             echo "::error::Vulnerable NuGet packages found"
             exit 1
           fi
+
+  # L26: the Python manifests (the backend, the evaluation package, the contract tools), audited from their lock files
+  # with hashes, so the exact resolved versions are checked; pip-audit queries the PyPI advisory database.
+  python:
+    name: python-vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          python-version: "3.15.2"
+      - name: Export the locked requirements
+        run: |
+          (cd src/python && uv export --locked --no-emit-project --format requirements-txt -q) > "$RUNNER_TEMP/backend.txt"
+          (cd evaluations/python && uv export --locked --no-emit-project --format requirements-txt -q) > "$RUNNER_TEMP/evaluations.txt"
+      - name: Fail on known vulnerable packages
+        run: |
+          for requirements in "$RUNNER_TEMP/backend.txt" "$RUNNER_TEMP/evaluations.txt" contracts/requirements.txt; do
+            echo "== $requirements"
+            uvx --from pip-audit==2.10.1 pip-audit --requirement "$requirements" --require-hashes --disable-pip --progress-spinner off
+          done

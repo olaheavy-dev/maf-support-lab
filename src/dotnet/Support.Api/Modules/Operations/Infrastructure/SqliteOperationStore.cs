@@ -25,12 +25,17 @@ internal sealed class SqliteOperationStore(SupportDatabase database) : IOperatio
             ("@owner", snapshot.OwnerCustomerId), ("@status", OperationNames.Of(snapshot.Status)), ("@json", JsonSerializer.Serialize(snapshot, Json)));
     }
 
-    public Operation? Find(string operationId) => Load("operation_id = @key", operationId).FirstOrDefault();
+    // Every query is a constant; the key is always a bound parameter (L26: no SQL is built from strings).
+    private const string ByOperation = "SELECT json FROM operations WHERE operation_id = @key";
+    private const string ByApproval = "SELECT json FROM operations WHERE approval_id = @key";
+    private const string ByConversation = "SELECT json FROM operations WHERE conversation_id = @key";
 
-    public Operation? FindByApproval(string approvalId) => Load("approval_id = @key", approvalId).FirstOrDefault();
+    public Operation? Find(string operationId) => Load(ByOperation, operationId).FirstOrDefault();
+
+    public Operation? FindByApproval(string approvalId) => Load(ByApproval, approvalId).FirstOrDefault();
 
     public IReadOnlyList<Operation> ForConversation(string conversationId) =>
-        [.. Load("conversation_id = @key", conversationId).OrderBy(operation => operation.CreatedAt)];
+        [.. Load(ByConversation, conversationId).OrderBy(operation => operation.CreatedAt)];
 
     public bool TryUpdate(Operation operation, OperationStatus expected)
     {
@@ -45,7 +50,7 @@ internal sealed class SqliteOperationStore(SupportDatabase database) : IOperatio
             return true;
         }
 
-        var stored = Snapshots("operation_id = @key", snapshot.OperationId);
+        var stored = Snapshots(ByOperation, snapshot.OperationId);
         if (stored.Count == 1)
         {
             operation.Reload(stored[0]);
@@ -54,8 +59,8 @@ internal sealed class SqliteOperationStore(SupportDatabase database) : IOperatio
         return false;
     }
 
-    private IEnumerable<Operation> Load(string where, string key) => Snapshots(where, key).Select(Operation.FromSnapshot);
+    private IEnumerable<Operation> Load(string query, string key) => Snapshots(query, key).Select(Operation.FromSnapshot);
 
-    private IReadOnlyList<OperationSnapshot> Snapshots(string where, string key) =>
-        database.Query($"SELECT json FROM operations WHERE {where}", reader => JsonSerializer.Deserialize<OperationSnapshot>(reader.GetString(0), Json)!, ("@key", key));
+    private IReadOnlyList<OperationSnapshot> Snapshots(string query, string key) =>
+        database.Query(query, reader => JsonSerializer.Deserialize<OperationSnapshot>(reader.GetString(0), Json)!, ("@key", key));
 }
