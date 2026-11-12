@@ -218,7 +218,29 @@ All three writes require approval in this learning baseline (a deliberately unif
 | Lost response after commit | Connection drops after a refund commits | Operation status lookup; no rollback, no repeat | L11, L12 |
 | Sensitive telemetry | Message text captured in spans | Capture off by default; sanitized `trace_id` only to clients | L06, L20 |
 | Credential exposure | Key in code, logs, or responses | Env/user-secrets only; validated only in live mode; never returned to a client | L03, L17 |
-| Resource exhaustion | Loops, huge outputs, retry storms | Timeouts, step and output budgets, one retry owner per layer | L15, L42 |
+| Resource exhaustion | Loops, huge outputs, retry storms | Timeouts, step and output budgets, one retry owner per layer | L15, L42; concurrency bounded and measured in L25 |
+| Concurrency abuse | Racing duplicate approvals, approve against reject, many turns in one conversation | One decision wins (guarded update); one write per approval; `409 turn_in_progress` | L25 (load scenarios, both backends, in CI) |
+| SQL injection | A crafted id reaching a query | Every statement is constant SQL with bound parameters; no SQL is built from strings | L26 (CA2100 reviewed; the one interpolated query removed) |
+| Vulnerable or tampered dependencies | A known-vulnerable package, a drifted lock file | Locked restores and syncs (NuGet locks, `uv.lock`, hashed `requirements.txt`); Dependabot on every manifest; NuGet and Python audits; SHA-pinned actions | L04, L17, L26 |
+| Committed secrets | A key pasted into a file or a commit | `.env*` and secrets ignored; GitHub secret scanning and push protection on | L26 |
+
+## Security review (L26, 2026-11-12)
+
+A review of the implementation as it stands on both backends, with the evidence for each finding. It is not a penetration test, and a green CI run is not a claim of production readiness.
+
+| Area | What is in place | Evidence | Open |
+| --- | --- | --- | --- |
+| **Hosts** | Both backends fail closed outside Development: .NET throws when a principal is requested; Python raises `RuntimeError("No identity provider is configured outside development (fail closed).")`. | `IdentityModule.cs`, `identity.py`; access matrices (L13, L39) | No real authentication (below) |
+| **DevUI** | .NET maps it only in Development. Python runs it as its own process, guarded to loopback, and the AppHost starts it only for local development. | `IdentityModule.Map…`, `devui.py`, `apphost/AppHost.cs` | Never deploy either DevUI |
+| **Ownership and approvals** | Ownership is checked in application services, and another customer's record looks missing. An approval is bound to the exact arguments, decided once and executed at most once, also under concurrency. | access matrices (L13, L39); approval tests (L10, L37); load scenarios with a probe ticket counting writes (L25) | Writes are simulated |
+| **Credentials** | Keys come from the environment or user-secrets, never config files. Startup errors name the missing setting, never its value. The evaluation runner hands the key only to child processes, and `LiveModel.ToString()` omits it. The billed CI lane reads a repository secret. | `ModelProviderOptionsValidator`, `settings.py` (`hide_input_in_errors`), `Backends.cs`, `quality-live.yml` | Key rotation is manual |
+| **Secrets in Git** | `.env*`, `secrets.json`, `.data/` and evaluation results are ignored. **Secret scanning and push protection are enabled** (they were off; turned on in L26 with the owner's approval). | `.gitignore`; repository settings; 0 open secret-scanning alerts after enabling | — |
+| **Sensitive telemetry** | Message content capture is off by default in both backends. Injection signals record names only, and clients see only a `trace_id`. | `appsettings.json` `CaptureSensitiveData: false`, `capture_sensitive_data = False`; L06, L14, L40, L41 | Telemetry retention is the collector's choice |
+| **Dependencies** | Locked restores and syncs everywhere. Dependabot covers NuGet (central versions), the .NET SDK (`dotnet-sdk`, added in L26), both uv projects, the contract tools and GitHub Actions. A weekly audit covers NuGet, and **Python since L26** (pip-audit 2.10.1 against the hashed lock exports). | `.github/dependabot.yml`, `dependency-audit.yml`; local audit 2026-11-12: no known vulnerabilities in any manifest | The `aieval` tool in `.config/dotnet-tools.json` isn't documented as covered by Dependabot's NuGet updater. Bump it with `Microsoft.Extensions.AI.Evaluation.Reporting`. |
+| **Code analysis** | .NET: `latest-recommended` plus **every security rule** (`AnalysisLevelSecurity=latest-all`, L26), with warnings as errors. Python: ruff with the Bandit rules (`S`) and pyright strict. **CodeQL** (security-and-quality) on C#, Python and the workflows (L26). | `Directory.Build.props`, `pyproject.toml`, `.github/workflows/codeql.yml` | Triage CodeQL alerts as they appear |
+| **SQL** | Constant SQL with bound parameters only. The one query built by interpolation (a constant `WHERE` fragment in `SqliteOperationStore`) was replaced with constant queries, and CA2100 is suppressed on the two generic helpers with that justification. | `SupportDatabase.cs`, `SqliteOperationStore.cs`; full .NET suite passes | — |
+| **Retention and cleanup** | None. Conversations, turns, sessions and operations stay in the local SQLite file until it is deleted. Expiry of approvals is lazy. | ADR 0003 | Production requirement (below) |
+| **CI supply chain** | Actions are pinned by commit SHA, with `persist-credentials: false` and read-only default permissions. Only CodeQL can write security events. | `.github/workflows/*.yml` | — |
 
 ## Gaps (not production-ready)
 
@@ -228,4 +250,15 @@ All three writes require approval in this learning baseline (a deliberately unif
   - **Detached turns** must keep pinning the validated principal at acceptance; they must not read the request later.
   - **DevUI** must never be exposed outside Development.
 - Writes are simulated. Duplicate protection covers the local store only; it is not exactly-once delivery to an external provider.
-- No rate limiting per customer, abuse monitoring, data retention policy, or encryption-at-rest decision yet (L26 lists these as follow-ups).
+
+### Production requirements (explicit follow-ups)
+
+None of these exist; each would be its own piece of work before any deployment.
+
+1. **Authentication and authorization:** an identity provider, validated per-request principals, authorization policies and an audit trail (above).
+2. **Rate limiting and abuse protection:** per customer and per IP, on turns and decisions. Today only the provider's `rate_limited` is classified, and nothing limits a client.
+3. **Retention and deletion:** a policy for conversations, sessions, operations and telemetry, with scheduled cleanup and a deletion path per customer.
+4. **Encryption and storage:** a decision on encryption at rest. Replace the local SQLite file with a managed store that supports several instances; today it is one process per database file.
+5. **Transport and hosting:** TLS termination, security headers, CORS policy, request size and time limits at the edge, secrets from a vault, and key rotation.
+6. **Real side effects:** idempotency keys with the external system, an outbox or reconciliation, and compensation where a provider can't guarantee exactly-once.
+7. **Operations:** alerting on failure classes and budgets, abuse monitoring, an incident runbook, and a backup and restore drill.
