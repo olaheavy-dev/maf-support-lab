@@ -93,6 +93,14 @@ A turn request with an extra `customer_id` field:
 
 The principal comes only from the host. No request schema accepts identity.
 
+## In DevUI
+
+Microsoft Agent Framework's DevUI runs the same `support-routing` workflow (development only, at `http://localhost:5180/devui/`). Choose **Configure & Run**, type a message, and the graph lights up the route that triage chose: `ask-for-order-id`, `orders-specialist`, `billing-specialist`, `technical-specialist` or `unrouted`. The reply, which starts with the route, is in the `output_text.delta` event on the right.
+
+![DevUI running the support-routing workflow on live Claude Haiku](assets/devui-demo.gif)
+
+This recording was made on 2026-11-12 against the .NET backend in live mode (`claude-haiku-5-5`), so the wording is the model's and varies between runs. It shows read questions only. DevUI chats have no support conversation, so the approval gate declines every write there; writes and approvals go through the API, as in the sections above. DevUI lists only the workflow, never a specialist on its own, because a direct agent chat would skip triage and the gate.
+
 ## Implemented, simulated, and not done
 
 | | |

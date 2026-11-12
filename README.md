@@ -35,6 +35,10 @@ scripts/demo.sh http://localhost:5180 # an answer, a denial, a write approved tw
 
 ![The demo script against the .NET backend in fake mode: an answer, a denial, an ineligible cancel, a ticket write approved twice that runs once, a refused change of mind, a model failure, and a rejected identity field](docs/assets/demo.gif)
 
+Microsoft's DevUI shows the same routing on the workflow graph. This run uses live Claude Haiku: an order question, a missing order id, an unknown order, another customer's order, an invoice and a troubleshooting question, each lighting up the route triage chose.
+
+![DevUI running the support-routing workflow on live Claude Haiku: each message goes through triage to the orders, ask-for-order-id, billing or technical path, with the reply shown in the event panel](docs/assets/devui-demo.gif)
+
 The [demonstration](docs/demo.md) shows the real output from a fresh clone on both backends. The [runbook](docs/runbook.md) has prerequisites (the .NET 11 SDK, Python 3.15, uv), live mode with Claude, and the full check suite.
 
 ## Read more
