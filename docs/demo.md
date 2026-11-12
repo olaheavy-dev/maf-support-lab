@@ -93,6 +93,23 @@ A turn request with an extra `customer_id` field:
 
 The principal comes only from the host. No request schema accepts identity.
 
+## In the chat page
+
+`frontend/` is a chat page over the same API: run the AppHost and open the `web` resource, or run the frontend alone against either backend ([runbook](runbook.md)). The empty page offers one-tap prompts for every scenario group, including "Test the guardrails".
+
+![The chat page on live Claude Haiku](assets/chat-demo.gif)
+
+The recording above was made on 2026-11-12 against the .NET backend in live mode (`claude-haiku-5-5`), by `frontend/e2e-flows/demo.spec.ts` (a paced, recorded walk through the page), so the wording is the model's. It shows a read, a cancellation approved and run once, an injection refused by the gate in code, and another customer's order answering as not found.
+
+The same page is tested end to end against each backend (`frontend/e2e-flows/chat.spec.ts`): every scenario group, with assertions on what the contract guarantees (approval cards, operation status, what the gate refused) rather than wording.
+
+| Run (2026-11-12) | .NET | Python |
+| --- | --- | --- |
+| Fake model (also every CI run) | 11 passed | 11 passed |
+| Live Claude Haiku | 9 passed, 2 skipped | 9 passed, 2 skipped |
+
+The two skipped in live mode use fake-model fault markers (a model failure and a slow reply to stop), which exist only in fake mode. The live runs used about 100 model calls in all.
+
 ## In DevUI
 
 Microsoft Agent Framework's DevUI runs the same `support-routing` workflow (development only, at `http://localhost:5180/devui/`). Choose **Configure & Run**, type a message, and the graph lights up the route that triage chose: `ask-for-order-id`, `orders-specialist`, `billing-specialist`, `technical-specialist` or `unrouted`. The reply, which starts with the route, is in the `output_text.delta` event on the right.

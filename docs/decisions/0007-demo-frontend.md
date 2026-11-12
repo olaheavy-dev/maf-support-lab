@@ -49,4 +49,5 @@ One page, `frontend/src/app/page.tsx`, holds one conversation as Ada Example (CU
 
 - **More to maintain:** Node 26, pnpm 12 and a Next.js stack join CI, Dependabot and CodeQL.
 - **Contract types:** the chat page's TypeScript types are generated from the existing JSON Schemas through `contracts/openapi.json`, an OpenAPI description that references them, rather than by adding OpenAPI to both backends. CI regenerates them and fails if they are stale, and a contract test keeps the file's routes equal to the contract's.
+- **Tested end to end against both backends:** the required `frontend-flows` job drives every scenario group through the page against each backend in fake mode; the same tests run against live Claude on request.
 - **A second identity boundary:** the frontend never sends identity. A real deployment would need sign-in in the frontend and authentication in the backends together.

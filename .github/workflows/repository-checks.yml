@@ -261,12 +261,62 @@ jobs:
       - name: End-to-end tests (Playwright's Linux image, axe, screenshots)
         run: pnpm e2e:docker
 
+  # The chat page end to end: the production frontend in front of each real backend (fake model, no
+  # credentials), every scenario group through the browser (frontend/e2e-flows, playwright.flows.config.ts).
+  frontend-flows:
+    name: frontend-flows (${{ matrix.backend }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [dotnet, python]
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up .NET
+        if: matrix.backend == 'dotnet'
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+      - name: Install uv and Python
+        if: matrix.backend == 'python'
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.7"
+          python-version: "3.15.2"
+          enable-cache: true
+          cache-dependency-glob: src/python/uv.lock
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json
+      - name: Install (locked) and Chromium
+        run: pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps chromium
+      - name: Production build
+        run: pnpm build
+      - name: Flows against the ${{ matrix.backend }} backend (fake model)
+        env:
+          BACKEND: ${{ matrix.backend }}
+          MODEL: fake
+        run: pnpm e2e:flows
+
   # The single required status check. It always reports, and it passes only when every
   # language job succeeded: a failed, cancelled, or skipped job turns it red.
   repository-checks:
     name: repository-checks
     if: always()
-    needs: [contracts-and-docs, dotnet, python, cross-backend, evaluations, frontend]
+    needs: [contracts-and-docs, dotnet, python, cross-backend, evaluations, frontend, frontend-flows]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

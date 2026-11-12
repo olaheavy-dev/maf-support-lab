@@ -29,9 +29,13 @@ The Support API is built twice, in C# (ASP.NET Core, Agent Framework 1.28) and i
 
 ## See it
 
+![The VoltCart chat page on live Claude Haiku: an order question answered from the customer's record; a cancellation proposed, held at the approval gate, approved and run once; an injection asking for another customer's refund, refused by the gate in code; the circuit beside the conversation lights each step](docs/assets/chat-demo.gif)
+
+The chat page (`frontend/`) on live Claude Haiku against the .NET backend. The circuit on the right shows how each turn ran: triage, the specialist, its tools, the approval gate, the reply. A change the model proposes is held at the gate until the customer approves it, then runs once; one the gate refuses in code never reaches the customer.
+
 ```bash
-dotnet run --project apphost          # both backends in fake mode (no key) + the Aspire dashboard
-scripts/demo.sh http://localhost:5180 # an answer, a denial, a write approved twice that runs once, a failure
+dotnet run --project apphost          # both backends in fake mode (no key), the chat page (`web`) and the Aspire dashboard
+scripts/demo.sh http://localhost:5180 # the same story from the command line
 ```
 
 ![The demo script against the .NET backend in fake mode: an answer, a denial, an ineligible cancel, a ticket write approved twice that runs once, a refused change of mind, a model failure, and a rejected identity field](docs/assets/demo.gif)
