@@ -47,7 +47,7 @@ dotnet test --solution maf-support-lab.slnx --no-build --configuration Release
 
 ## Security advisories (network-backed, not required)
 
-Vulnerability data changes over time. In required builds, NuGet advisory warnings (NU1901–NU1904) are shown but don't fail the build, so a newly published advisory can't break unrelated pull requests. The separate `.github/workflows/dependency-audit.yml` fails when a vulnerable package (direct or transitive) is found. It runs weekly, on demand, and on pull requests that change package versions. It also audits the demo frontend's production packages with `pnpm audit --prod`; its development tools are left to Dependabot. Dependabot opens weekly update PRs for NuGet (grouped), the Python manifests, the frontend's npm packages, contract test tools, and GitHub Actions.
+Vulnerability data changes over time. In required builds, NuGet advisory warnings (NU1901–NU1904) are shown but don't fail the build, so a newly published advisory can't break unrelated pull requests. The separate `.github/workflows/dependency-audit.yml` fails when a vulnerable package (direct or transitive) is found. It runs weekly, on demand, and on pull requests that change package versions. It also audits the demo frontend's production packages with `pnpm audit --prod`; its development tools are left to Dependabot, and an advisory upstream hasn't fixed yet is pinned with a pnpm override in `frontend/pnpm-workspace.yaml`, with its reason. Dependabot opens weekly update PRs for NuGet (grouped), the Python manifests, the frontend's npm packages, contract test tools, and GitHub Actions.
 
 ## Live (opt-in)
 
