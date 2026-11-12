@@ -75,6 +75,10 @@ updates:
       default-days: 7
     open-pull-requests-limit: 3
     groups:
+      # The OpenTelemetry packages must move together (their peer ranges are tied; `pnpm peers check`
+      # fails on a partial update), so they get one group across every update type, ahead of the others.
+      opentelemetry:
+        patterns: ["@opentelemetry/*", "@vercel/otel"]
       npm-minor-and-patch:
         update-types: [minor, patch]
       npm-major:
