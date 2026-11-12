@@ -36,6 +36,7 @@ A capability is available only after its owning ticket meets its acceptance crit
 | [L16](tickets/L16.md) | [L21](tickets/L21.md), [L29](tickets/L29.md), [L15](tickets/L15.md), [L42](tickets/L42.md) | `evaluation_harness`, `dotnet_baseline`, `python_baseline`, `backend_parity` |
 | [L30](tickets/L30.md) | [L16](tickets/L16.md), [L29](tickets/L29.md), [L01](tickets/L01.md) | `dotnet_native_evaluation` |
 | [L31](tickets/L31.md) | [L16](tickets/L16.md), [L30](tickets/L30.md), [L17](tickets/L17.md) | `python_native_evaluation` |
+| [L44](tickets/L44.md) | [L01](tickets/L01.md) | `dotnet_current_runtime` |
 | [L32](tickets/L32.md) | [L30](tickets/L30.md), [L31](tickets/L31.md), [L16](tickets/L16.md) | `quality_evaluation_lane` |
 | [L33](tickets/L33.md) | [L32](tickets/L32.md), [L16](tickets/L16.md) | `evaluation_reports` |
 | [L34](tickets/L34.md) | [L21](tickets/L21.md), [L33](tickets/L33.md) | `markdown_documentation` |

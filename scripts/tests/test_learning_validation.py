@@ -30,7 +30,7 @@ class LearningValidationTests(unittest.TestCase):
 
     def test_current_plan_is_valid(self) -> None:
         epics, tickets, _ = validate(self.root)
-        self.assertEqual((epics, tickets), (8, 38))  # 5 tickets and 1 epic retired on 2026-11-11
+        self.assertEqual((epics, tickets), (8, 39))  # 5 tickets and 1 epic retired on 2026-11-11; L44 added 2026-11-12
 
     def test_prebuild_evaluation_deliverable_is_rejected(self) -> None:
         self.edit_json("docs/learning/backlog.json",
