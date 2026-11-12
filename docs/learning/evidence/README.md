@@ -39,4 +39,5 @@ One note per finished ticket, in roadmap order. Each records what was built, how
 | L32 | [Add budgeted model-based quality evaluation for both backends](L32.md) |
 | L33 | [Generate Microsoft evaluation reports and separate CI lanes](L33.md) |
 | L34 | [Author canonical Markdown documentation for the completed system](L34.md) |
+| L25 | [Run fault, concurrency, and bounded load exercises](L25.md) |
 | L22 | [Verify browser compatibility with the established API contract (retired)](L22.md) |

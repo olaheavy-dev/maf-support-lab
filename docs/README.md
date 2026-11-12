@@ -45,6 +45,7 @@ Plain Markdown, read on GitHub: no site and no build. Every page under `docs/` i
 | [Evaluation results](evaluations/README.md) | Curated summaries, and how to regenerate them |
 | [Baseline](evaluations/baseline.md) | Deterministic behaviour on both backends, side by side |
 | [Quality](evaluations/quality.md) | The model-judged lane: method, live results, limitations |
+| [Fault and load](evaluations/load.md) | Concurrency and fault scenarios, latency and throughput on both backends, bottlenecks |
 | [Reports and CI lanes](evaluations/reports.md) | The Microsoft evaluation report, what gates a merge, the curated summary |
 
 ### Learning
