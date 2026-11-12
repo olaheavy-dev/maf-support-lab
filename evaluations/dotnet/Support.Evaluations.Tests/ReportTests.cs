@@ -123,6 +123,27 @@ public sealed class ReportTests
     }
 
     [Fact]
+    public async Task Failed_and_inconclusive_calibration_comparisons_are_failed_scenarios_in_the_report()
+    {
+        var config = QualityConfig.Load(QualityConfig.DefaultPath());
+        var calibrationOnly = QualityLane.Plan(config, [.. DatasetLoader.AllPaths().Select(DatasetLoader.Load)]).Where(s => s.Kind == "calibration").ToList();
+        // Every answer scores 3, except the contradicting one, whose judge call fails: one comparison inconclusive, two failed.
+        var judge = new FakeJudge(prompt => prompt.Contains("refunded", StringComparison.Ordinal) ? throw new HttpRequestException("down") : 3);
+        var document = await QualityLane.RunAsync(config, calibrationOnly, new FakeReplies(), new BudgetedJudgeClient(judge), GroundingContext.Load(), "unknown", TimeProvider.System, None);
+
+        var checks = ReportAdapter.FromQuality(document, "exec").Where(s => s.ScenarioName.StartsWith("quality.calibration-check.", StringComparison.Ordinal)).ToList();
+
+        Assert.Equal(3, checks.Count);
+        Assert.All(checks, s => Assert.True(Assert.Single(s.EvaluationResult.Metrics.Values).Interpretation!.Failed));
+        var inconclusive = checks.Single(s => s.ScenarioName.EndsWith("good-vs-ungrounded", StringComparison.Ordinal));
+        Assert.Null(((BooleanMetric)inconclusive.EvaluationResult.Metrics.Values.Single()).Value);
+        Assert.Contains("status:inconclusive", inconclusive.Tags!);
+        var failed = checks.Single(s => s.ScenarioName.EndsWith("good-vs-off-topic", StringComparison.Ordinal));
+        Assert.False(((BooleanMetric)failed.EvaluationResult.Metrics.Values.Single()).Value);
+        Assert.Contains(failed.EvaluationResult.Metrics.Values.Single().Diagnostics!, d => d.Severity == EvaluationDiagnosticSeverity.Error);
+    }
+
+    [Fact]
     public async Task A_broken_result_document_or_two_results_for_one_scenario_stop_the_report()
     {
         var folder = Directory.CreateTempSubdirectory("report-broken-");

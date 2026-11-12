@@ -188,6 +188,38 @@ internal static class ReportAdapter
                 ]));
         }
 
+        // The calibration comparisons are the lane's own verdict on the judge (the command exits 1 unless every one
+        // passed), so each becomes a scenario: a failed or inconclusive comparison must not hide behind good scores.
+        foreach (var check in (document["summary"]?["calibration"]?.AsArray() ?? []).OfType<JsonObject>())
+        {
+            var (metricName, high, low, verdict) = (Text(check["metric"]), Text(check["high"]), Text(check["low"]), Text(check["result"]));
+            var reason = $"'{high}' scored {Json(check["high_score"])}, '{low}' scored {Json(check["low_score"])}: the high answer must score above the low one";
+            var metric = new BooleanMetric($"{metricName} separates {high} from {low}", verdict switch { "passed" => true, "failed" => false, _ => null }, reason)
+            {
+                Interpretation = verdict switch
+                {
+                    "passed" => new EvaluationMetricInterpretation(EvaluationRating.Good, failed: false),
+                    "failed" => new EvaluationMetricInterpretation(EvaluationRating.Unacceptable, failed: true, reason: "the judge did not separate a good answer from a bad one"),
+                    _ => new EvaluationMetricInterpretation(EvaluationRating.Inconclusive, failed: true, reason: "not every calibration answer was scored, so the judge is unverified"),
+                },
+            };
+            if (verdict != "passed")
+            {
+                metric.AddDiagnostics(verdict == "failed" ? EvaluationDiagnostic.Error(reason) : EvaluationDiagnostic.Warning(reason));
+            }
+
+            results.Add(new ScenarioRunResult(
+                $"quality.calibration-check.{metricName}.{high}-vs-{low}",
+                "1",
+                executionName,
+                created,
+                [new ChatMessage(ChatRole.User, $"Calibration: does the judge score '{high}' above '{low}' for {metricName}?")],
+                new ChatResponse(new ChatMessage(ChatRole.Assistant, $"{verdict}: {reason}")),
+                new EvaluationResult(metric),
+                chatDetails: null, // a comparison of recorded scores, not a model call
+                tags: [$"run:{Text(run["run_id"])}", $"judge:{judge}", "kind:calibration-check", $"status:{verdict}", $"source-commit:{Text(run["source_commit"])}"]));
+        }
+
         return results;
     }
 
