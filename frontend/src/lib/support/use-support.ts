@@ -108,7 +108,9 @@ export function useSupport() {
   }, [setBusy]);
 
   useEffect(() => {
-    if (state.conversation && !state.activeId) {
+    // Saved as soon as the conversation exists, mid-turn too, so a reload during the first reply can still
+    // find it and resume the server's active turn. Restore drops entries that hadn't finished.
+    if (state.conversation) {
       save({
         conversationId: state.conversation.conversation_id,
         entries: state.entries,
@@ -116,7 +118,7 @@ export function useSupport() {
         operations: state.operations,
       });
     }
-  }, [state.conversation, state.entries, state.approvals, state.operations, state.activeId]);
+  }, [state.conversation, state.entries, state.approvals, state.operations]);
 
   /**
    * Streams one turn. If the stream ends before turn.final: with a turn id, poll that turn; without one,

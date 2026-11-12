@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 
 import type { AssistantEntry } from "@/lib/support/conversation";
 import { outcomeLabel, replyKindLabel } from "@/lib/support/labels";
+import type { Approval } from "@/lib/support/types";
 import { useSupport } from "@/lib/support/use-support";
 
 import { Circuit } from "./circuit";
@@ -24,6 +25,18 @@ export function SupportApp() {
   const active = state.entries.find(
     (entry): entry is AssistantEntry => entry.id === state.activeId && entry.kind === "assistant",
   );
+  // Approvals the server says are pending but no entry here shows (their turn's reply never reached this
+  // page, for example after a dropped stream and a reload): shown on their own so they can be decided.
+  const shown = new Set(
+    state.entries.flatMap((entry) =>
+      entry.kind === "assistant" && entry.result?.pending_approval
+        ? [entry.result.pending_approval.approval_id]
+        : [],
+    ),
+  );
+  const recovered = (state.conversation?.pending_approvals ?? []).filter(
+    (approval) => !shown.has(approval.approval_id),
+  ) as Approval[];
   const pane = useRef<HTMLDivElement>(null);
   const following = useRef(true);
 
@@ -102,13 +115,14 @@ export function SupportApp() {
             className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6 lg:px-0"
           >
             <div className="mx-auto w-full max-w-[720px] py-6 sm:py-8">
-              {state.entries.length === 0 ? (
+              {state.entries.length === 0 && recovered.length === 0 ? (
                 <Welcome onPick={send} disabled={busy} />
               ) : (
                 <Transcript
                   entries={state.entries}
                   approvals={state.approvals}
                   operations={state.operations}
+                  recovered={recovered}
                   busy={busy}
                   onDecide={decide}
                 />

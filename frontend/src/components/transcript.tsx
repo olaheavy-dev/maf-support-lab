@@ -29,12 +29,15 @@ export function Transcript({
   entries,
   approvals,
   operations,
+  recovered,
   busy,
   onDecide,
 }: {
   entries: Entry[];
   approvals: Record<string, ApprovalState>;
   operations: Record<string, OperationStatus>;
+  /** Pending approvals the server reported that no entry shows. */
+  recovered: Approval[];
   busy: boolean;
   onDecide: (approval: Approval, decision: "approve" | "reject") => void;
 }) {
@@ -60,6 +63,32 @@ export function Transcript({
               onDecide={onDecide}
             />
           )}
+        </li>
+      ))}
+      {recovered.map((approval) => (
+        <li key={approval.approval_id} className="entry-in">
+          <article className="grid grid-cols-[28px_1fr] gap-x-3">
+            <span className="text-accent-primary mt-0.5">
+              <BoltMark size={24} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-text-tertiary text-xs font-medium">
+                VoltCart support · still waiting from earlier
+              </p>
+              <ApprovalCard
+                approval={approval}
+                state={
+                  approvals[approval.approval_id] ?? {
+                    operationId: approval.operation_id,
+                    status: "pending",
+                  }
+                }
+                operation={operations[approval.operation_id]}
+                busy={busy}
+                onDecide={(decision) => onDecide(approval, decision)}
+              />
+            </div>
+          </article>
         </li>
       ))}
     </ol>

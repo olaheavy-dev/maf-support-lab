@@ -6,8 +6,12 @@ export type Theme = "system" | "light" | "dark";
 
 export const THEME_KEY = "voltcart-theme";
 
-/** Runs inline in <head>, before the first paint. Storage can be unavailable (private windows): ignore it. */
-export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)});if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}})();`;
+/**
+ * Runs inline in <head>, before the first paint. Storage can be unavailable (private windows): ignore it.
+ * A fixed string, with nothing interpolated into the script; src/lib/theme.test.ts checks it uses THEME_KEY.
+ */
+export const THEME_SCRIPT =
+  '(function(){try{var t=localStorage.getItem("voltcart-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}})();';
 
 export function readTheme(): Theme {
   const value = document.documentElement.dataset.theme;
