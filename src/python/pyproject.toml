@@ -13,11 +13,11 @@ dependencies = [
     "anthropic==1.17.0",
     # Prerelease, unavoidable (no stable release): DevUI, mounted in development only (docs/decisions/0001).
     "agent-framework-devui==1.0.0b261106",
-    "fastapi==0.162.3",
+    "fastapi==0.162.5",
     "jsonschema==4.26.0",
     "uvicorn==0.54.0",
     "pydantic==2.14.3",
-    "pydantic-settings==2.16.2",
+    "pydantic-settings==2.16.3",
     # OTLP over gRPC to Aspire (the owner's choice; brings grpcio, which ships a cp315 wheel).
     "opentelemetry-exporter-otlp-proto-grpc==1.45.2",
 ]
