@@ -4,17 +4,23 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
   - package-ecosystem: pip
     directory: /contracts
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
   - package-ecosystem: nuget
     # Central versions live in /Directory.Packages.props; lock files are refreshed with each update.
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     groups:
       aspire:
@@ -46,12 +52,16 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 1
   - package-ecosystem: uv
     # The Python backend: pyproject.toml plus uv.lock; Dependabot updates both together.
     directory: /src/python
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     groups:
       agent-framework:
@@ -65,6 +75,8 @@ updates:
     directory: /evaluations/python
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 2
   - package-ecosystem: npm
     # The demo frontend (pnpm; Dependabot updates package.json and pnpm-lock.yaml together).
