@@ -22,6 +22,13 @@ Pin Aspire SDK/integrations and all application dependencies to compatible versi
 
 Package refreshes are separate reviewed changes. Reading newer docs does not silently change an existing locked baseline.
 
+## Release cooldown
+
+Decided 2026-11-18 by the owner (prompt window: "Yes, 7 days everywhere (Recommended)" and "Yes, all three repos (Recommended)"). A new release waits 7 days before it can enter this repository, so a malicious release that is pulled within hours stays out. On 2026-11-17 `agent-framework` 1.26.1 and 1.26.2 were published to PyPI and removed within hours ([PYSEC-2026-4388](https://osv.dev/vulnerability/PYSEC-2026-4388), MAL-2026-20101).
+
+- **Dependabot:** every update entry in `.github/dependabot.yml` sets `cooldown: default-days: 7` ([options reference](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference)). It applies to version updates only; security updates are not delayed.
+- **uv:** `exclude-newer = "7 days"` under `[tool.uv]` in `src/python/pyproject.toml` and `evaluations/python/pyproject.toml`; `uv.lock` records it as `exclude-newer-span = "P7D"` ([uv settings](https://docs.astral.sh/uv/reference/settings/#exclude-newer)). For an urgent security fix, exempt one package with `exclude-newer-package = { <name> = false }`, with the reason in the pull request.
+
 ## Held upgrades
 
 The latest-stable rule yields to compatibility: an upgrade waits while a tool or framework around it doesn't support it yet. Each hold is a Dependabot ignore rule (`.github/dependabot.yml`) or a pnpm setting (`frontend/pnpm-workspace.yaml`) with its reason, and is lifted as soon as its condition is met. The weekly maintenance routine re-checks them.

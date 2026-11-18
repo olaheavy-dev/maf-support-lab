@@ -24,6 +24,13 @@ dev = [
 requires = ["uv_build>=0.13.7,<0.14"]
 build-backend = "uv_build"
 
+[tool.uv]
+# Supply-chain cooldown: ignore releases newer than 7 days, so a malicious release that is pulled within hours
+# (agent-framework 1.26.1 and 1.26.2 on PyPI, 17 Nov 2026: PYSEC-2026-4388, MAL-2026-20101) never enters the lock.
+# For an urgent security fix, exempt one package: exclude-newer-package = { <name> = false }.
+# https://docs.astral.sh/uv/reference/settings/#exclude-newer
+exclude-newer = "7 days"
+
 [tool.uv.build-backend]
 module-root = ""
 
