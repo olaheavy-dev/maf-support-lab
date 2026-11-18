@@ -1,7 +1,12 @@
 # pnpm settings (https://pnpm.io/supply-chain-security). Install scripts run only for packages
 # listed here as true: sharp and unrs-resolver ship prebuilt binaries, so neither needs one.
-# pnpm also holds back versions published in the last day (minimumReleaseAge, default 1440
-# minutes), and Dependabot waits seven days before proposing an update.
+# pnpm refuses versions published in the last 7 days (minimumReleaseAge, in minutes: 10080; the default is
+# 1440), for direct and transitive dependencies. Why: on 17 Nov 2026 malicious agent-framework 1.26.1 and
+# 1.26.2 reached PyPI and were pulled within hours; this keeps the same kind of release out of the npm lock,
+# matching uv and Dependabot (docs/version-policy.md). To let an urgent security fix through, list the package
+# (or one version, e.g. "pkg@1.2.3") under minimumReleaseAgeExclude and say why in the pull request.
+# https://pnpm.io/settings/dependency-resolution
+minimumReleaseAge: 10080
 allowBuilds:
   sharp: false
   unrs-resolver: false
