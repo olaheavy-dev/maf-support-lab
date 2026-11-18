@@ -13,7 +13,7 @@ dependencies = [
     "anthropic==1.17.0",
     # Prerelease, unavoidable (no stable release): DevUI, mounted in development only (docs/decisions/0001).
     "agent-framework-devui==1.0.0b261106",
-    "fastapi==0.162.3",
+    "fastapi==0.162.4",
     "jsonschema==4.26.0",
     "uvicorn==0.54.0",
     "pydantic==2.14.3",
