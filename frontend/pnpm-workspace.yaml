@@ -7,6 +7,9 @@
 # (or one version, e.g. "pkg@1.2.3") under minimumReleaseAgeExclude and say why in the pull request.
 # https://pnpm.io/settings/dependency-resolution
 minimumReleaseAge: 10080
+# Strict (the default once minimumReleaseAge is set explicitly, written out so it is visible): a too-new version
+# fails resolution instead of silently falling back to an older one.
+minimumReleaseAgeStrict: true
 allowBuilds:
   sharp: false
   unrs-resolver: false

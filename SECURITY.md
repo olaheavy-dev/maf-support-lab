@@ -13,7 +13,7 @@ Don't open a public issue with exploitable details. Use GitHub's private vulnera
 | Secret scanning and push protection (pushes containing a recognised credential are blocked) | Repository settings |
 | `.env*`, `secrets.json`, local stores (`.data/`) and generated evaluation results are ignored | `.gitignore` |
 | Locked dependencies: NuGet lock files, `uv.lock`, a hash-pinned `requirements.txt`; CI restores in locked mode | `Directory.Build.props`, `.github/workflows/repository-checks.yml` |
-| Dependabot on every manifest: NuGet, .NET SDK, both uv projects, contract tools, GitHub Actions; a 7-day release cooldown (Dependabot `cooldown`, pnpm `minimumReleaseAge`, uv `exclude-newer`) keeps freshly published, possibly malicious releases out | `.github/dependabot.yml` |
+| Dependabot on every manifest: NuGet, .NET SDK, both uv projects, npm (frontend), contract tools, GitHub Actions; a 7-day release cooldown (Dependabot `cooldown`, pnpm `minimumReleaseAge`, uv `exclude-newer`) keeps freshly published, possibly malicious releases out | `.github/dependabot.yml` |
 | A weekly vulnerability audit of the NuGet and Python dependencies | `.github/workflows/dependency-audit.yml` |
 | Code scanning: CodeQL on C#, Python and the workflows; .NET security analyzers as errors; ruff's Bandit rules | `.github/workflows/codeql.yml`, `Directory.Build.props`, `pyproject.toml` |
 | GitHub Actions pinned by commit SHA, read-only by default, no persisted credentials | `.github/workflows/` |
