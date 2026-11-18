@@ -1,0 +1,5 @@
+# Supply-chain cooldown for `uv pip compile` (requirements.txt): ignore uploads newer than 7 days, so a malicious
+# release that is pulled within hours (agent-framework 1.26.1 and 1.26.2 on PyPI, 17 Nov 2026: PYSEC-2026-4388,
+# MAL-2026-20101) never enters the lock. See docs/version-policy.md. For an urgent security fix, exempt one package:
+# exclude-newer-package = { <name> = false }.
+exclude-newer = "7 days"
