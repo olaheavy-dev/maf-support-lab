@@ -8,20 +8,20 @@ exclude-newer-span = "P7D"
 
 [[package]]
 name = "agent-framework-anthropic"
-version = "1.0.0b261106"
+version = "1.0.0b261112"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agent-framework-core" },
     { name = "anthropic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/95/11853d8b90d231fec82342c8a23cabe2fa907a72a5fa1fbb92993503d711/agent_framework_anthropic-1.0.0b261106.tar.gz", hash = "sha256:cb38dfd5a68e5256e0c934a605ccf437fdd5574167273c76b3126b57bfe39d21", size = 29690, upload-time = "2026-11-07T15:41:29.622Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/2b/45e65852273e7458feb6e9ff252ad2ed135a6d858f0199727b62532dce5b/agent_framework_anthropic-1.0.0b261112.tar.gz", hash = "sha256:a4c1719d0d852fef210cb22632a297edf0b2866ae5ee9fe8bf2f2aab543058f8", size = 29700, upload-time = "2026-11-12T18:25:01.606Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/0f/93b4ec6f45c71dc9d2d99b2220db6c718a67e3a769fb799054fca39c4baf/agent_framework_anthropic-1.0.0b261106-py3-none-any.whl", hash = "sha256:b9b53678334bf6b3c60ba6251abda1b0d69161c5ef98ee671346e566127c4d89", size = 32203, upload-time = "2026-11-07T15:42:27.625Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/91/022925268219872aedbfa0b06465f79257ff72990424ec0847070bf71ab5/agent_framework_anthropic-1.0.0b261112-py3-none-any.whl", hash = "sha256:44403e124ef70b28982ac76ebe34324db41198450d38068aee77fb6a485e2336", size = 32202, upload-time = "2026-11-12T18:25:41.513Z" },
 ]
 
 [[package]]
 name = "agent-framework-core"
-version = "1.25.0"
+version = "1.26.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "msgspec" },
@@ -32,14 +32,14 @@ dependencies = [
     { name = "regex" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d9/12/17f89cfc22d0ff19da99c4276295c6661ee7c9a522fb558c2cad992a18da/agent_framework_core-1.25.0.tar.gz", hash = "sha256:99c4fead7d89fbea30c69a5f53417e44062390cd58cf2a7592da0a4928d363f4", size = 810707, upload-time = "2026-11-07T15:41:42.368Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/b0/632e1bd56c8d6202b146d81767ef3dc5dff0e25a05442aa0c571ac973612/agent_framework_core-1.26.0.tar.gz", hash = "sha256:7ecd792184c8e706220ea3994fba71aa422a3e8be396a510ec2c4dd014289bca", size = 827413, upload-time = "2026-11-12T18:25:08.694Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/b3/f5fc9f6c455e693e0bfc98c62ef4038e918995fb7d10dedec61d84dcd012/agent_framework_core-1.25.0-py3-none-any.whl", hash = "sha256:0e46bab6f2575ab9c59007218ad1f7bfb0320422a09eaf1d6c7638cbb2880b7c", size = 872003, upload-time = "2026-11-07T15:42:40.233Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/2a/5cc1d3b5274489355e57e273df3c5e330613a0b3e5498bd2bf6265500ed5/agent_framework_core-1.26.0-py3-none-any.whl", hash = "sha256:175b75f07e15d1bb7b6cea9cb35b965ac2528cd96e3eae8f791c85c48c7232b3", size = 889044, upload-time = "2026-11-12T18:25:48.022Z" },
 ]
 
 [[package]]
 name = "agent-framework-devui"
-version = "1.0.0b261106"
+version = "1.0.0b261112"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "agent-framework-core" },
@@ -48,9 +48,9 @@ dependencies = [
     { name = "opentelemetry-sdk" },
     { name = "uvicorn", extra = ["standard"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/2b/d62238f56ba57ecf230df32a4133453b8382f724ef83fdd1c1418d5f0108/agent_framework_devui-1.0.0b261106.tar.gz", hash = "sha256:06d2cf02b5644a74079055ec47b209005dcc6bc566a8eb7130cdd9bbe5c8ca04", size = 378949, upload-time = "2026-11-07T15:41:45.961Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/4e/9e33cfadde769b0c1a2a72e5cf2217a4bdcff6d38a664a6e239bde51a154/agent_framework_devui-1.0.0b261112.tar.gz", hash = "sha256:4bcba09855695794c3fde901c06cd4d0b03e9781ae3c30350a443077ac5815d9", size = 378931, upload-time = "2026-11-12T18:25:12.184Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/aa/19bc4dc18697e9589a6a0f871003e9a43ee8ee256f48048983524ccb462f/agent_framework_devui-1.0.0b261106-py3-none-any.whl", hash = "sha256:38c6a3428ddeb8a13eaccad703657cf5eb9dc2e96eafe704783b9b5f2d8eb825", size = 384087, upload-time = "2026-11-07T15:42:43.711Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/ff/b3de5be096006f4d158a80e411a25cb54efa2fc636ebfd477b29ab58f434/agent_framework_devui-1.0.0b261112-py3-none-any.whl", hash = "sha256:59e31d72d16538a148fc58ccf895dde62356b679d25d93ac92beed8005688607", size = 384072, upload-time = "2026-11-12T18:25:51.123Z" },
 ]
 
 [[package]]
@@ -73,7 +73,7 @@ wheels = [
 
 [[package]]
 name = "anthropic"
-version = "1.17.0"
+version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -85,9 +85,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4e/66/4ec271f7607460005276bb09b0d1c749a9ed0cead35a488a8676f15ed6d5/anthropic-1.17.0.tar.gz", hash = "sha256:dcf77a74dde89a9fd12405fca798b012725a107f7c9488454234a74e275c2163", size = 1756371, upload-time = "2026-10-20T22:13:35.117Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/75/e6/aabc3c266a0aaf38fa542648585741fce9616ba4cd034ddde74548f790a0/anthropic-2.8.0.tar.gz", hash = "sha256:d34e389ba0544cd64e033eb7475f46cc1ac6f2a388cdcd472b33ad4ac29ef40c", size = 1976933, upload-time = "2026-11-10T16:33:19.38Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/9d/b4d4e46ec05bf19bcfd46c1417337e7cf42b9ecb95c3c63f295e2e9fee4b/anthropic-1.17.0-py3-none-any.whl", hash = "sha256:ccb98b85e1a14f81cf1e2ba348393f341f342bad9e07e014f96c9b69f853aaa7", size = 2094718, upload-time = "2026-10-20T22:13:32.585Z" },
+    { url = "https://files.pythonhosted.org/packages/96/8e/f8ef271dcbe3b187879b660c129ee36ef655c7b878f6878460891d9b2a26/anthropic-2.8.0-py3-none-any.whl", hash = "sha256:76ad332e2d500fc54d0112cf100544ad1a7605e71e092b98d9eb664d2b66e283", size = 2456925, upload-time = "2026-11-10T16:33:21.388Z" },
 ]
 
 [[package]]
@@ -855,10 +855,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agent-framework-anthropic", specifier = "==1.0.0b261106" },
-    { name = "agent-framework-core", specifier = "==1.25.0" },
-    { name = "agent-framework-devui", specifier = "==1.0.0b261106" },
-    { name = "anthropic", specifier = "==1.17.0" },
+    { name = "agent-framework-anthropic", specifier = "==1.0.0b261112" },
+    { name = "agent-framework-core", specifier = "==1.26.0" },
+    { name = "agent-framework-devui", specifier = "==1.0.0b261112" },
+    { name = "anthropic", specifier = "==2.8.0" },
     { name = "fastapi", specifier = "==0.162.3" },
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = "==1.45.2" },
